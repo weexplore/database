@@ -4,6 +4,7 @@
             Destination Items
         </h2>
     </x-slot>
+    @php($returnTo = request()->fullUrl())
 
     <div class="py-6">
         <div class="w-full max-w-none mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 space-y-6">
@@ -73,7 +74,8 @@
                             </a>
                         </div>
 
-                        <a href="{{ route('destination-items.create') }}" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                        <a href="{{ route('destination-items.create', ['return_to' => $returnTo]) }}"
+                        class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
                             Add Destination Item
                         </a>
                     </div>
@@ -116,6 +118,7 @@
                                 <th class="px-4 py-3 text-left font-semibold text-gray-700">Place</th>
                                 <th class="px-4 py-3 text-left font-semibold text-gray-700">Booking</th>
                                 <th class="px-4 py-3 text-left font-semibold text-gray-700">Active</th>
+                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Coordinates</th>
                                 <th class="px-4 py-3 text-center font-semibold text-gray-700">Actions</th>
                             </tr>
                         </thead>
@@ -131,15 +134,31 @@
                                     <td class="px-4 py-3">{{ $item->place?->placename }}</td>
                                     <td class="px-4 py-3">{{ $item->bookingrequired ? 'Yes' : 'No' }}</td>
                                     <td class="px-4 py-3">{{ $item->isactive ? 'Yes' : 'No' }}</td>
+                                    <td class="px-4 py-3">
+                                        @if(!is_null($item->latitude) && !is_null($item->longitude))
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
+                                                Yes
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
+                                                No
+                                            </span>
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-3 text-center whitespace-nowrap">
                                         <div class="inline-flex items-center gap-2">
-                                            <a href="{{ route('destination-items.edit', $item) }}" class="px-3 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200">
+                                            <a href="{{ route('destination-items.edit', ['destinationItem' => $item, 'return_to' => $returnTo]) }}"
+                                            class="px-3 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200">
                                                 Edit
                                             </a>
 
-                                            <form method="POST" action="{{ route('destination-items.destroy', $item) }}" onsubmit="return confirm('Delete this destination item?');" class="inline">
+                                            <form method="POST"
+                                                action="{{ route('destination-items.destroy', $item) }}"
+                                                onsubmit="return confirm('Delete this destination item?');"
+                                                class="inline">
                                                 @csrf
                                                 @method('DELETE')
+                                                <input type="hidden" name="return_to" value="{{ $returnTo }}">
                                                 <button type="submit" class="px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200">
                                                     Delete
                                                 </button>
@@ -149,7 +168,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="px-4 py-6 text-center text-gray-500">
+                                    <td colspan="8" class="px-4 py-6 text-center text-gray-500">
                                         No destination items found.
                                     </td>
                                 </tr>

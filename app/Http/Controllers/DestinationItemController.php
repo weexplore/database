@@ -50,9 +50,8 @@ class DestinationItemController extends Controller
         }
 
         $items = $query
-            ->orderBy('destinationid')
-            ->orderByRaw('COALESCE(sortorder, 999999)')
             ->orderBy('itemname')
+            ->orderByRaw('COALESCE(sortorder, 999999)')
             ->paginate(25)
             ->withQueryString();
 

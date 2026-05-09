@@ -110,7 +110,7 @@ class TripReviewController extends Controller
             ->orderBy('stayname')
             ->get();
         $tripItems = TripItem::where('tripid', $trip->id)
-            ->orderBy('startdate')
+            ->orderBy('startdatetime')   // or ->orderBy('itemdate')
             ->orderBy('title')
             ->get();
         $tripLegs = TripLeg::with(['fromPlace', 'toPlace'])
@@ -160,37 +160,44 @@ class TripReviewController extends Controller
     }
 
     protected function validatedData(Request $request, Trip $trip): array
-    {
-        return $request->validate([
-            'travellerid' => [
-                'nullable',
-                'integer',
-                'exists:travellers,id',
-            ],
-            'tripstayid' => [
-                'nullable',
-                'integer',
-                Rule::exists('tripstays', 'id')->where(fn($q) => $q->where('tripid', $trip->id)),
-            ],
-            'tripitemid' => [
-                'nullable',
-                'integer',
-                Rule::exists('tripitems', 'id')->where(fn($q) => $q->where('tripid', $trip->id)),
-            ],
-            'destinationid' => ['nullable', 'integer', 'exists:destinations,id'],
-            'destinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
-            'placeid' => ['nullable', 'integer', 'exists:places,id'],
-            'reviewdate' => ['nullable', 'date'],
-            'ratingoverall' => ['nullable', 'integer', 'between:1,10'],
-            'ratingvalue' => ['nullable', 'integer', 'between:1,10'],
-            'ratingfacility' => ['nullable', 'integer', 'between:1,10'],
-            'ratingaccess' => ['nullable', 'integer', 'between:1,10'],
-            'ratingambience' => ['nullable', 'integer', 'between:1,10'],
-            'title' => ['nullable', 'string', 'max:150'],
-            'comments' => ['nullable', 'string'],
-            'returninterestlevel' => ['nullable', 'integer', 'between:1,5'],
-            'wouldreturn' => ['nullable', 'boolean'],
-            'isprivate' => ['nullable', 'boolean'],
-        ]);
+{
+    $data = $request->validate([
+        'travellerid' => [
+            'nullable',
+            'integer',
+            'exists:travellers,id',
+        ],
+        'tripstayid' => [
+            'nullable',
+            'integer',
+            Rule::exists('tripstays', 'id')->where(fn($q) => $q->where('tripid', $trip->id)),
+        ],
+        'tripitemid' => [
+            'nullable',
+            'integer',
+            Rule::exists('tripitems', 'id')->where(fn($q) => $q->where('tripid', $trip->id)),
+        ],
+        'destinationid' => ['nullable', 'integer', 'exists:destinations,id'],
+        'destinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
+        'placeid' => ['nullable', 'integer', 'exists:places,id'],
+        'reviewdate' => ['required', 'date'],
+        'ratingoverall' => ['nullable', 'integer', 'between:1,10'],
+        'ratingvalue' => ['nullable', 'integer', 'between:1,10'],
+        'ratingfacility' => ['nullable', 'integer', 'between:1,10'],
+        'ratingaccess' => ['nullable', 'integer', 'between:1,10'],
+        'ratingambience' => ['nullable', 'integer', 'between:1,10'],
+        'title' => ['nullable', 'string', 'max:150'],
+        'comments' => ['nullable', 'string'],
+        'returninterestlevel' => ['nullable', 'integer', 'between:1,5'],
+        'wouldreturn' => ['nullable', 'boolean'],
+        'isprivate' => ['nullable', 'boolean'],
+    ]);
+
+    // DB requires reviewdate NOT NULL, so default to today if empty
+    if (empty($data['reviewdate'])) {
+        $data['reviewdate'] = now()->toDateString();
     }
+
+    return $data;
+}
 }

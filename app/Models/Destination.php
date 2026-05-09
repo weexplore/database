@@ -82,4 +82,8 @@ class Destination extends Model
             'attraction' => 'Attraction',
         ];
     }
+    public function destinationItems()
+    {
+        return $this->hasMany(\App\Models\DestinationItem::class, 'destinationid');
+    }
 }

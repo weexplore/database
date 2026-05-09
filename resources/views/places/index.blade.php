@@ -183,6 +183,8 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Postcode</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Active</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Coordinates</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Destination</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
                                 </tr>
                             </thead>
@@ -306,6 +308,28 @@
                                                 class="rounded border-gray-300 text-blue-600 shadow-sm"
                                                 @checked(old("existing.{$place->id}.isactive", $place->isactive))
                                             >
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            @if(!is_null($place->latitude) && !is_null($place->longitude))
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
+                                                    Yes
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
+                                                    No
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            @if(($place->destinations_count ?? 0) > 0)
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
+                                                    Yes
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-medium">
+                                                    Missing
+                                                </span>
+                                            @endif
                                         </td>
 
                                         <td class="px-4 py-3 text-center whitespace-nowrap">

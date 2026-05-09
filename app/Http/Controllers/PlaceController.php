@@ -82,7 +82,11 @@ class PlaceController extends Controller
         ->get()
         ->groupBy('stateid');
 
-    $query = Place::query();
+    $query = Place::query()
+        ->with(['country', 'state', 'region'])
+        ->withCount('destinations');
+
+
 
     if ($selectedCountryId) {
         $query->where('countryid', $selectedCountryId);

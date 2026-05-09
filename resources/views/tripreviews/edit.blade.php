@@ -40,14 +40,14 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            abel for="reviewdate" class="block text-sm font-medium text-gray-700">Review date</label>
+                            <label for="reviewdate" class="block text-sm font-medium text-gray-700">Review date</label>
                             <input type="date" name="reviewdate" id="reviewdate"
                                    value="{{ old('reviewdate', optional($review->reviewdate)->format('Y-m-d')) }}"
                                    class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
                         </div>
 
                         <div>
-                            abel for="travellerid" class="block text-sm font-medium text-gray-700">Traveller</label>
+                            <label for="travellerid" class="block text-sm font-medium text-gray-700">Traveller</label>
                             <select id="travellerid" name="travellerid"
                                     class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 <option value="">None</option>
@@ -60,7 +60,7 @@
                         </div>
 
                         <div>
-                            abel for="tripstayid" class="block text-sm font-medium text-gray-700">Stay</label>
+                            <label for="tripstayid" class="block text-sm font-medium text-gray-700">Stay</label>
                             <select id="tripstayid" name="tripstayid"
                                     class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 <option value="">None</option>
@@ -73,7 +73,7 @@
                         </div>
 
                         <div>
-                            abel for="tripitemid" class="block text-sm font-medium text-gray-700">Trip item</label>
+                            <label for="tripitemid" class="block text-sm font-medium text-gray-700">Trip item</label>
                             <select id="tripitemid" name="tripitemid"
                                     class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 <option value="">None</option>
@@ -86,7 +86,7 @@
                         </div>
 
                         <div>
-                            abel for="destinationid" class="block text-sm font-medium text-gray-700">Destination</label>
+                            <label for="destinationid" class="block text-sm font-medium text-gray-700">Destination</label>
                             <select id="destinationid" name="destinationid"
                                     class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 <option value="">None</option>
@@ -99,7 +99,7 @@
                         </div>
 
                         <div>
-                            abel for="destinationitemid" class="block text-sm font-medium text-gray-700">Destination item</label>
+                            <label for="destinationitemid" class="block text-sm font-medium text-gray-700">Destination item</label>
                             <select id="destinationitemid" name="destinationitemid"
                                     class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 <option value="">None</option>
@@ -112,7 +112,7 @@
                         </div>
 
                         <div>
-                            abel for="placeid" class="block text-sm font-medium text-gray-700">Place</label>
+                            <label for="placeid" class="block text-sm font-medium text-gray-700">Place</label>
                             <select id="placeid" name="placeid"
                                     class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 <option value="">None</option>
@@ -127,7 +127,7 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                         <div>
-                            abel for="ratingoverall" class="block text-sm font-medium text-gray-700">
+                            <label for="ratingoverall" class="block text-sm font-medium text-gray-700">
                                 Overall rating (1–10)
                             </label>
                             <input type="number" name="ratingoverall" id="ratingoverall"
@@ -136,7 +136,7 @@
                                    class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
                         </div>
                         <div>
-                            abel for="ratingvalue" class="block text-sm font-medium text-gray-700">
+                            <label for="ratingvalue" class="block text-sm font-medium text-gray-700">
                                 Value (1–10)
                             </label>
                             <input type="number" name="ratingvalue" id="ratingvalue"
@@ -145,7 +145,7 @@
                                    class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
                         </div>
                         <div>
-                            abel for="ratingfacility" class="block text-sm font-medium text-gray-700">
+                            <label for="ratingfacility" class="block text-sm font-medium text-gray-700">
                                 Facilities (1–10)
                             </label>
                             <input type="number" name="ratingfacility" id="ratingfacility"
@@ -154,7 +154,7 @@
                                    class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
                         </div>
                         <div>
-                            abel for="ratingaccess" class="block text-sm font-medium text-gray-700">
+                            <label for="ratingaccess" class="block text-sm font-medium text-gray-700">
                                 Access (1–10)
                             </label>
                             <input type="number" name="ratingaccess" id="ratingaccess"
@@ -163,7 +163,7 @@
                                    class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
                         </div>
                         <div>
-                            abel for="ratingambience" class="block text-sm font-medium text-gray-700">
+                            <label for="ratingambience" class="block text-sm font-medium text-gray-700">
                                 Ambience (1–10)
                             </label>
                             <input type="number" name="ratingambience" id="ratingambience"
@@ -175,7 +175,7 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            abel for="returninterestlevel" class="block text-sm font-medium text-gray-700">
+                            <label for="returninterestlevel" class="block text-sm font-medium text-gray-700">
                                 Return interest (1–5)
                             </label>
                             <input type="number" name="returninterestlevel" id="returninterestlevel"
@@ -186,14 +186,14 @@
 
                         <div class="flex items-end">
                             <div class="space-y-2">
-                                abel class="inline-flex items-center text-sm text-gray-700">
+                                <label class="inline-flex items-center text-sm text-gray-700">
                                     <input type="checkbox" name="wouldreturn" value="1"
                                            class="rounded border-gray-300 text-indigo-600 shadow-sm mr-2"
                                            @checked(old('wouldreturn', $review->wouldreturn))>
                                     Would return
                                 </label>
 
-                                abel class="inline-flex items-center text-sm text-gray-700">
+                                <label class="inline-flex items-center text-sm text-gray-700">
                                     <input type="checkbox" name="isprivate" value="1"
                                            class="rounded border-gray-300 text-indigo-600 shadow-sm mr-2"
                                            @checked(old('isprivate', $review->isprivate))>
@@ -204,14 +204,14 @@
                     </div>
 
                     <div>
-                        abel for="title" class="block text-sm font-medium text-gray-700">Title</label>
+                        <label for="title" class="block text-sm font-medium text-gray-700">Title</label>
                         <input type="text" name="title" id="title" maxlength="150"
                                value="{{ old('title', $review->title) }}"
                                class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
                     </div>
 
                     <div>
-                        abel for="comments" class="block text-sm font-medium text-gray-700">Comments</label>
+                        <label for="comments" class="block text-sm font-medium text-gray-700">Comments</label>
                         <textarea name="comments" id="comments" rows="5"
                                   class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('comments', $review->comments) }}</textarea>
                     </div>

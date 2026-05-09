@@ -131,6 +131,9 @@
                                         Featured
                                     </th>
                                     <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">
+                                        Items
+                                    </th>
+                                    <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">
                                         Actions
                                     </th>
                                 </tr>
@@ -196,15 +199,18 @@
                                                    class="rounded border-gray-300 text-blue-600 shadow-sm"
                                                    @checked(old("existing.{$destination->id}.isfeatured", $destination->isfeatured))>
                                         </td>
+                                        <td class="px-3 py-2 text-center text-sm text-gray-700">
+                                            {{ $destination->destination_items_count ?? 0 }}
+                                        </td>
 
                                         <td class="px-3 py-2 text-center whitespace-nowrap">
-<a href="{{ route('destinations.edit', [
-        'destination' => $destination,
-        'return_to' => url()->full(),
-    ]) }}"
-   class="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs">
-    Open
-</a>
+                                            <a href="{{ route('destinations.edit', [
+                                                    'destination' => $destination,
+                                                    'return_to' => url()->full(),
+                                                ]) }}"
+                                            class="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs">
+                                                Open
+                                            </a>
 
                                             <button type="button"
                                                     class="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs delete-destination-btn"
@@ -217,7 +223,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="px-3 py-6 text-center text-sm text-gray-500">
+                                        <td colspan="8" class="px-3 py-6 text-center text-sm text-gray-500">
                                             No destinations found.
                                         </td>
                                     </tr>

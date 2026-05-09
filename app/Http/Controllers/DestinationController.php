@@ -37,7 +37,8 @@ class DestinationController extends Controller
             ->get();
 
         $query = Destination::query()
-            ->with('place');
+            ->with('place')
+            ->withCount('destinationItems');
 
         if ($request->filled('placeid')) {
             $query->where('placeid', (int) $request->placeid);
