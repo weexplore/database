@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Destination;
+use App\Models\DestinationItem;
 use App\Models\Place;
 use App\Models\Trip;
 use App\Models\TripLeg;
@@ -34,6 +35,11 @@ class TripLegController extends Controller
 
         $places = Place::orderBy('placename')->get();
         $destinations = Destination::orderBy('destinationname')->get();
+        $destinationItems = DestinationItem::query()
+            ->with(['destination', 'place'])
+            ->where('isactive', 1)
+            ->orderBy('itemname')
+            ->get();
         $vehicles = Vehicle::query()
             ->where('isactive', 1)
             ->orderBy('vehiclename')
@@ -50,6 +56,7 @@ class TripLegController extends Controller
             'legs',
             'places',
             'destinations',
+            'destinationItems',
             'vehicles',
             'showCreate',
             'selectedDestinationId',
@@ -89,6 +96,8 @@ class TripLegController extends Controller
             'fromplaceid' => ['nullable', 'integer', 'exists:places,id'],
             'toplaceid' => ['nullable', 'integer', 'exists:places,id'],
             'destinationid' => ['nullable', 'integer', 'exists:destinations,id'],
+            'fromdestinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
+            'destinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
             'title' => ['nullable', 'string', 'max:200'],
             'description' => ['nullable', 'string'],
             'distancekm' => ['nullable', 'numeric', 'min:0'],
@@ -136,37 +145,72 @@ class TripLegController extends Controller
 
         $places = Place::orderBy('placename')->get();
         $destinations = Destination::orderBy('destinationname')->get();
+        $destinationItems = DestinationItem::query()
+            ->with(['destination', 'place'])
+            ->where('isactive', 1)
+            ->orderBy('itemname')
+            ->get();
         $vehicles = Vehicle::query()
             ->where('isactive', 1)
             ->orderBy('vehiclename')
             ->orderBy('id')
             ->get();
 
-        $tripLeg->load(['fromPlace', 'toPlace', 'destination', 'vehicles']);
-
+        // Eager-load including destinationItem with coords
         $tripLeg->load([
             'fromPlace:id,placename,latitude,longitude',
             'toPlace:id,placename,latitude,longitude',
-            'destination',
+            'destination:id,destinationname,placeid',
+            'fromDestinationItem:id,itemname,latitude,longitude,destinationid,placeid',
+            'destinationItem:id,itemname,latitude,longitude,destinationid,placeid',
             'vehicles',
         ]);
 
+        $fromPlace = $tripLeg->fromPlace;
+        $toPlace = $tripLeg->toPlace;
+        $fromDestinationItem = $tripLeg->fromDestinationItem;
+        $destinationItem = $tripLeg->destinationItem;
+
+        $from = null;
+        if ($fromDestinationItem && $fromDestinationItem->latitude !== null && $fromDestinationItem->longitude !== null) {
+            $from = [
+                'id' => $fromDestinationItem->id,
+                'name' => $fromDestinationItem->itemname,
+                'lat' => (float) $fromDestinationItem->latitude,
+                'lng' => (float) $fromDestinationItem->longitude,
+            ];
+        } elseif ($fromPlace && $fromPlace->latitude !== null && $fromPlace->longitude !== null) {
+            $from = [
+                'id' => $fromPlace->id,
+                'name' => $fromPlace->placename,
+                'lat' => (float) $fromPlace->latitude,
+                'lng' => (float) $fromPlace->longitude,
+            ];
+        }
+
+        $to = null;
+        if ($destinationItem && $destinationItem->latitude !== null && $destinationItem->longitude !== null) {
+            $to = [
+                'id' => $destinationItem->id,
+                'name' => $destinationItem->itemname,
+                'lat' => (float) $destinationItem->latitude,
+                'lng' => (float) $destinationItem->longitude,
+            ];
+        } elseif ($toPlace && $toPlace->latitude !== null && $toPlace->longitude !== null) {
+            $to = [
+                'id' => $toPlace->id,
+                'name' => $toPlace->placename,
+                'lat' => (float) $toPlace->latitude,
+                'lng' => (float) $toPlace->longitude,
+            ];
+        }
+
         $tripLegMap = [
-            'from' => $tripLeg->fromPlace ? [
-                'id' => $tripLeg->fromPlace->id,
-                'name' => $tripLeg->fromPlace->placename,
-                'lat' => $tripLeg->fromPlace->latitude !== null ? (float) $tripLeg->fromPlace->latitude : null,
-                'lng' => $tripLeg->fromPlace->longitude !== null ? (float) $tripLeg->fromPlace->longitude : null,
-            ] : null,
-            'to' => $tripLeg->toPlace ? [
-                'id' => $tripLeg->toPlace->id,
-                'name' => $tripLeg->toPlace->placename,
-                'lat' => $tripLeg->toPlace->latitude !== null ? (float) $tripLeg->toPlace->latitude : null,
-                'lng' => $tripLeg->toPlace->longitude !== null ? (float) $tripLeg->toPlace->longitude : null,
-            ] : null,
+            'from' => $from,
+            'to' => $to,
         ];
 
-        return view('trip-legs.edit', compact('trip', 'tripLeg', 'places', 'destinations', 'vehicles', 'tripLegMap'));
+        return view('trip-legs.edit', compact('trip', 'tripLeg', 'places', 'destinations', 'destinationItems', 'vehicles', 'tripLegMap'));
     }
 
     public function update(Request $request, Trip $trip, TripLeg $tripLeg)
@@ -181,6 +225,8 @@ class TripLegController extends Controller
             'fromplaceid' => ['nullable', 'integer', 'exists:places,id'],
             'toplaceid' => ['nullable', 'integer', 'exists:places,id'],
             'destinationid' => ['nullable', 'integer', 'exists:destinations,id'],
+            'destinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'], // NEW
+            'fromdestinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
             'title' => ['nullable', 'string', 'max:200'],
             'description' => ['nullable', 'string'],
             'distancekm' => ['nullable', 'numeric', 'min:0'],

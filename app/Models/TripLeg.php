@@ -17,41 +17,44 @@ class TripLeg extends Model
     const CREATED_AT = 'createdat';
     const UPDATED_AT = 'updatedat';
 
-    protected $fillable = [
-        'tripid',
-        'legnumber',
-        'startdate',
-        'enddate',
-        'nightsplanned',
-        'fromplaceid',
-        'toplaceid',
-        'destinationid',
-        'title',
-        'description',
-        'distancekm',
-        'elevationgainm',
-        'elevationlossm',
-        'drivingnotes',
-        'planningnotes',
-        'actualnotes',
-        'sortorder',
-        'plannerstatus',
-    ];
+protected $fillable = [
+    'tripid',
+    'legnumber',
+    'startdate',
+    'enddate',
+    'nightsplanned',
+    'fromplaceid',
+    'toplaceid',
+    'destinationid',
+    'fromdestinationitemid',
+    'destinationitemid',
+    'title',
+    'description',
+    'distancekm',
+    'elevationgainm',
+    'elevationlossm',
+    'drivingnotes',
+    'planningnotes',
+    'actualnotes',
+    'sortorder',
+    'plannerstatus',
+];
 
-    protected $casts = [
-        'tripid' => 'integer',
-        'legnumber' => 'integer',
-        'startdate' => 'date',
-        'enddate' => 'date',
-        'nightsplanned' => 'integer',
-        'fromplaceid' => 'integer',
-        'toplaceid' => 'integer',
-        'destinationid' => 'integer',
-        'distancekm' => 'decimal:1',
-        'elevationgainm' => 'decimal:1',
-        'elevationlossm' => 'decimal:1',
-        'sortorder' => 'integer',
-    ];
+protected $casts = [
+    'tripid' => 'integer',
+    'legnumber' => 'integer',
+    'startdate' => 'date',
+    'enddate' => 'date',
+    'nightsplanned' => 'integer',
+    'fromplaceid' => 'integer',
+    'toplaceid' => 'integer',
+    'destinationid' => 'integer',
+    'fromdestinationitemid' => 'integer',
+    'distancekm' => 'decimal:1',
+    'elevationgainm' => 'decimal:1',
+    'elevationlossm' => 'decimal:1',
+    'sortorder' => 'integer',
+];
 
     public function trip(): BelongsTo
     {
@@ -132,5 +135,13 @@ class TripLeg extends Model
         return $this->belongsToMany(DestinationItem::class, 'tripleg_destinationitems', 'triplegid', 'destinationitemid')
             ->withPivot(['id', 'sequence_no', 'linkrole', 'notes', 'planneddate', 'createdat', 'updatedat'])
             ->withTimestamps('createdat', 'updatedat');
+    }
+    public function fromDestinationItem(): BelongsTo
+    {
+        return $this->belongsTo(DestinationItem::class, 'fromdestinationitemid');
+    }
+    public function destinationItem(): BelongsTo
+    {
+        return $this->belongsTo(DestinationItem::class, 'destinationitemid');
     }
 }

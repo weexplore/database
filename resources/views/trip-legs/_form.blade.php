@@ -2,6 +2,8 @@
     $selectedDestinationId = old('destinationid', old('destination_id', $tripLeg->destinationid ?? $selectedDestinationId ?? ''));
     $selectedFromPlaceId = old('fromplaceid', old('fromplace_id', $tripLeg->fromplaceid ?? $selectedFromPlaceId ?? ''));
     $selectedToPlaceId = old('toplaceid', old('toplace_id', $tripLeg->toplaceid ?? $selectedToPlaceId ?? ''));
+    $selectedFromDestinationItemId = old('fromdestinationitemid', $tripLeg->fromdestinationitemid ?? '');
+    $selectedDestinationItemId = old('destinationitemid', $tripLeg->destinationitemid ?? '');
     $isCreate = $isCreate ?? false;
 @endphp
 
@@ -12,7 +14,7 @@
                 {{ $isCreate ? 'Add Trip Leg' : 'Leg Details' }}
             </h3>
             <p class="mt-1 text-sm text-gray-500">
-                Define the route segment, places, dates, and planning notes for this trip leg.
+                Define the route segment, places, destination items, dates, and planning notes for this trip leg.
             </p>
         </div>
 
@@ -78,7 +80,9 @@
             <select name="destinationid" id="destinationid" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                 <option value="">Select destination</option>
                 @foreach($destinations as $destination)
-                    <option value="{{ $destination->id }}" @selected((string) $selectedDestinationId === (string) $destination->id)>
+                    <option value="{{ $destination->id }}"
+                            data-place-id="{{ $destination->placeid ?? '' }}"
+                            @selected((string) $selectedDestinationId === (string) $destination->id)>
                         {{ $destination->destinationname }}
                     </option>
                 @endforeach
@@ -98,15 +102,63 @@
         </div>
 
         <div>
-            <label for="toplaceid" class="block text-sm font-medium text-gray-700 mb-1">To Place</label>
-            <select name="toplaceid" id="toplaceid" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                <option value="">Select destination place</option>
-                @foreach($places as $place)
-                    <option value="{{ $place->id }}" @selected((string) $selectedToPlaceId === (string) $place->id)>
-                        {{ $place->placename }}
+            <label for="fromdestinationitemid" class="block text-sm font-medium text-gray-700 mb-1">From Destination Item</label>
+            <select name="fromdestinationitemid" id="fromdestinationitemid" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                <option value="">Select start destination item</option>
+                @foreach($destinationItems as $destinationItem)
+                    @php
+                        $resolvedPlaceId = $destinationItem->placeid ?? $destinationItem->destination?->placeid;
+                    @endphp
+                    <option value="{{ $destinationItem->id }}"
+                            data-destination-id="{{ $destinationItem->destinationid ?? '' }}"
+                            data-place-id="{{ $resolvedPlaceId ?? '' }}"
+                            @selected((string) $selectedFromDestinationItemId === (string) $destinationItem->id)>
+                        {{ $destinationItem->itemname }}
+                        @if($destinationItem->destination?->destinationname)
+                            - {{ $destinationItem->destination->destinationname }}
+                        @endif
                     </option>
                 @endforeach
             </select>
+            <p class="mt-1 text-xs text-gray-500">
+                If selected, this item is used as the route start point instead of the From Place.
+            </p>
+        </div>
+
+<div class="xl:col-start-1">
+    <label for="toplaceid" class="block text-sm font-medium text-gray-700 mb-1">To Place</label>
+    <select name="toplaceid" id="toplaceid" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+        <option value="">Select destination place</option>
+        @foreach($places as $place)
+            <option value="{{ $place->id }}" @selected((string) $selectedToPlaceId === (string) $place->id)>
+                {{ $place->placename }}
+            </option>
+        @endforeach
+    </select>
+</div>
+
+        <div>
+            <label for="destinationitemid" class="block text-sm font-medium text-gray-700 mb-1">Destination Item</label>
+            <select name="destinationitemid" id="destinationitemid" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                <option value="">Select end destination item</option>
+                @foreach($destinationItems as $destinationItem)
+                    @php
+                        $resolvedPlaceId = $destinationItem->placeid ?? $destinationItem->destination?->placeid;
+                    @endphp
+                    <option value="{{ $destinationItem->id }}"
+                            data-destination-id="{{ $destinationItem->destinationid ?? '' }}"
+                            data-place-id="{{ $resolvedPlaceId ?? '' }}"
+                            @selected((string) $selectedDestinationItemId === (string) $destinationItem->id)>
+                        {{ $destinationItem->itemname }}
+                        @if($destinationItem->destination?->destinationname)
+                            - {{ $destinationItem->destination->destinationname }}
+                        @endif
+                    </option>
+                @endforeach
+            </select>
+            <p class="mt-1 text-xs text-gray-500">
+                If selected, this item is used as the route end point instead of the To Place.
+            </p>
         </div>
 
         <div class="xl:col-span-3">
@@ -127,11 +179,12 @@
         </div>
     </div>
 </div>
+
 <div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-6">
     <div>
         <h3 class="text-lg font-medium text-gray-900">Route Map</h3>
         <p class="mt-1 text-sm text-gray-500">
-            Preview the trip leg between the selected From Place and To Place.
+            Preview the trip leg between the selected From Destination Item or From Place, and the selected Destination Item or To Place.
         </p>
     </div>
 
@@ -149,7 +202,7 @@
         </div>
 
         <div id="trip-leg-map-summary" class="text-sm text-gray-600">
-            Select both a From Place and To Place with coordinates to display the route preview.
+            Select a start point and an end point with coordinates to display the route preview.
         </div>
     </div>
 </div>
@@ -224,6 +277,7 @@
         </div>
     </div>
 </div>
+
 @php
     $selectedVehicles = old('vehicles');
 
@@ -357,3 +411,124 @@
         Save Trip Leg
     </button>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const fromPlaceSelect = document.getElementById('fromplaceid');
+    const toPlaceSelect = document.getElementById('toplaceid');
+    const destinationSelect = document.getElementById('destinationid');
+    const fromDestinationItemSelect = document.getElementById('fromdestinationitemid');
+    const destinationItemSelect = document.getElementById('destinationitemid');
+
+    function buildOptionCache(select) {
+        if (!select) return [];
+        return Array.from(select.options).map(option => ({
+            value: option.value,
+            text: option.text,
+            destinationId: option.dataset.destinationId || '',
+            placeId: option.dataset.placeId || '',
+        }));
+    }
+
+    const fromDestinationItemOptions = buildOptionCache(fromDestinationItemSelect);
+    const destinationItemOptions = buildOptionCache(destinationItemSelect);
+
+    function rebuildSelect(select, options, placeholder, selectedValue) {
+        if (!select) return;
+
+        select.innerHTML = '';
+
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = placeholder;
+        select.appendChild(placeholderOption);
+
+        options.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.value;
+            option.textContent = item.text;
+
+            if (item.destinationId) option.dataset.destinationId = item.destinationId;
+            if (item.placeId) option.dataset.placeId = item.placeId;
+            if (String(item.value) === String(selectedValue)) option.selected = true;
+
+            select.appendChild(option);
+        });
+    }
+
+    function filterFromDestinationItems() {
+        if (!fromDestinationItemSelect) return;
+
+        const selectedFromPlaceId = fromPlaceSelect ? fromPlaceSelect.value : '';
+        const currentValue = fromDestinationItemSelect.value;
+
+        const filtered = fromDestinationItemOptions.filter(option => {
+            if (!option.value) return false;
+            if (selectedFromPlaceId) {
+                return String(option.placeId) === String(selectedFromPlaceId);
+            }
+            return true;
+        });
+
+        const stillValid = filtered.some(option => String(option.value) === String(currentValue));
+
+        rebuildSelect(
+            fromDestinationItemSelect,
+            filtered,
+            'Select start destination item',
+            stillValid ? currentValue : ''
+        );
+
+        if (!stillValid) {
+            fromDestinationItemSelect.value = '';
+        }
+    }
+
+    function filterDestinationItems() {
+        if (!destinationItemSelect) return;
+
+        const selectedDestinationId = destinationSelect ? destinationSelect.value : '';
+        const selectedToPlaceId = toPlaceSelect ? toPlaceSelect.value : '';
+        const currentValue = destinationItemSelect.value;
+
+        const filtered = destinationItemOptions.filter(option => {
+            if (!option.value) return false;
+            if (selectedDestinationId) {
+                return String(option.destinationId) === String(selectedDestinationId);
+            }
+            if (selectedToPlaceId) {
+                return String(option.placeId) === String(selectedToPlaceId);
+            }
+            return true;
+        });
+
+        const stillValid = filtered.some(option => String(option.value) === String(currentValue));
+
+        rebuildSelect(
+            destinationItemSelect,
+            filtered,
+            'Select end destination item',
+            stillValid ? currentValue : ''
+        );
+
+        if (!stillValid) {
+            destinationItemSelect.value = '';
+        }
+    }
+
+    if (fromPlaceSelect) {
+        fromPlaceSelect.addEventListener('change', filterFromDestinationItems);
+    }
+
+    if (destinationSelect) {
+        destinationSelect.addEventListener('change', filterDestinationItems);
+    }
+
+    if (toPlaceSelect) {
+        toPlaceSelect.addEventListener('change', filterDestinationItems);
+    }
+
+    filterFromDestinationItems();
+    filterDestinationItems();
+});
+</script>
