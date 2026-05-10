@@ -205,10 +205,14 @@
                                         <td class="px-4 py-3">
                                             <input
                                                 type="text"
+                                                value="{{ $place->placename }}"
+                                                class="w-full min-w-[180px] rounded-md border-gray-200 bg-gray-100 text-gray-600 cursor-not-allowed"
+                                                disabled
+                                            >
+                                            <input
+                                                type="hidden"
                                                 name="existing[{{ $place->id }}][placename]"
-                                                value="{{ old("existing.{$place->id}.placename", $place->placename) }}"
-                                                class="w-full min-w-[180px] rounded-md border-gray-300 shadow-sm"
-                                                required
+                                                value="{{ $place->placename }}"
                                             >
                                         </td>
 

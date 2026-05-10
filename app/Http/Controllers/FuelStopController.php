@@ -127,16 +127,41 @@ public function edit(Request $request, FuelStop $fuelStop)
     }
 
     protected function validateFuelStop(Request $request): array
+{
+    return $request->validate([
+        'placeid' => ['nullable', 'integer', 'exists:places,id'],
+        'stopname' => ['required', 'string', 'max:200'],
+        'brandname' => ['nullable', 'string', 'max:100'],
+
+        'addressline1' => ['nullable', 'string', 'max:200'],
+        'addressline2' => ['nullable', 'string', 'max:200'],
+        'addressline3' => ['nullable', 'string', 'max:200'],
+        'postcode' => ['nullable', 'string', 'max:20'],
+        'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+        'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+        'website' => ['nullable', 'url', 'max:500'],
+        'telephone' => ['nullable', 'string', 'max:50'],
+        'internetsearch' => ['nullable', 'string', 'max:500'],
+
+        'fueltypesavailable' => ['nullable', 'array'],
+        'fueltypesavailable.*' => ['string', Rule::in(array_keys(config('fuel.fuel_types')))],
+        'caravanaccessnotes' => ['nullable', 'string'],
+        'openingnotes' => ['nullable', 'string'],
+        'generalnotes' => ['nullable', 'string'],
+    ]);
+}
+    public function create(Request $request)
     {
-        return $request->validate([
-            'placeid' => ['required', 'integer', 'exists:places,id'],
-            'stopname' => ['required', 'string', 'max:200'],
-            'brandname' => ['nullable', 'string', 'max:100'],
-            'fueltypesavailable' => ['nullable', 'array'],
-            'fueltypesavailable.*' => ['string', Rule::in(array_keys(config('fuel.fuel_types')))],
-            'caravanaccessnotes' => ['nullable', 'string'],
-            'openingnotes' => ['nullable', 'string'],
-            'generalnotes' => ['nullable', 'string'],
+        $fuelStop = FuelStop::create([
+            'stopname' => 'New Fuel Stop',
+            'isactive' => true,
         ]);
+
+        $returnTo = $request->input('return_to');
+
+    return redirect()->route('fuel-stops.edit', [
+        'fuel_stop' => $fuelStop,
+        'return_to' => $returnTo,
+    ])->with('success', 'Fuel stop created. Update the details below.');
     }
 }

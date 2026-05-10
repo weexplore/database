@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Destination;
 use App\Models\DestinationItem;
+use App\Models\DestinationItemType;
 use App\Models\Place;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -16,85 +17,95 @@ class DestinationItemController extends Controller
     }
 
     public function index(Request $request)
-    {
-        $destinations = Destination::orderBy('destinationname')->get();
-        $places = Place::orderBy('placename')->get();
-        $itemTypes = $this->itemTypeOptions();
+{
+    $destinations = Destination::orderBy('destinationname')->get();
+    $places = Place::orderBy('placename')->get();
 
-        $query = DestinationItem::with(['destination', 'place']);
+    $itemTypes = DestinationItemType::query()
+        ->where('isactive', 1)
+->orderBy('typename')
+        ->orderBy('sortorder')
+        ->get();
 
-        if ($request->filled('destination_id')) {
-            $query->where('destinationid', (int) $request->destination_id);
-        }
+    $query = DestinationItem::with([
+        'destination',
+        'place',
+        'itemTypes',
+    ]);
 
-        if ($request->filled('place_id')) {
-            $query->where('placeid', (int) $request->place_id);
-        }
-
-        if ($request->filled('itemtype')) {
-            $query->where('itemtype', $request->itemtype);
-        }
-
-        if ($request->filled('status')) {
-            $query->where('isactive', (int) $request->status);
-        }
-
-        if ($request->filled('search')) {
-            $search = trim((string) $request->search);
-
-            $query->where(function ($q) use ($search) {
-                $q->where('itemname', 'like', "%{$search}%")
-                    ->orWhere('shortdescription', 'like', "%{$search}%")
-                    ->orWhere('itemtype', 'like', "%{$search}%");
-            });
-        }
-
-        $items = $query
-            ->orderBy('itemname')
-            ->orderByRaw('COALESCE(sortorder, 999999)')
-            ->paginate(25)
-            ->withQueryString();
-
-        $showCreate = $request->boolean('show_create');
-        $selectedDestinationId = $request->integer('destination_id');
-
-        return view('destination-items.index', compact(
-            'items',
-            'destinations',
-            'places',
-            'itemTypes',
-            'showCreate',
-            'selectedDestinationId'
-        ));
+    if ($request->filled('destination_id')) {
+        $query->where('destinationid', (int) $request->destination_id);
     }
+
+    if ($request->filled('place_id')) {
+        $query->where('placeid', (int) $request->place_id);
+    }
+
+    if ($request->filled('itemtype_id')) {
+        $itemTypeId = (int) $request->itemtype_id;
+
+        $query->whereHas('itemTypes', function ($q) use ($itemTypeId) {
+            $q->where('destination_item_types.id', $itemTypeId);
+        });
+    }
+
+    if ($request->filled('status')) {
+        $query->where('isactive', (int) $request->status);
+    }
+
+    if ($request->filled('search')) {
+        $search = trim((string) $request->search);
+
+        $query->where(function ($q) use ($search) {
+            $q->where('itemname', 'like', "%{$search}%")
+                ->orWhere('shortdescription', 'like', "%{$search}%")
+                ->orWhereHas('itemTypes', function ($typeQuery) use ($search) {
+                    $typeQuery->where('destination_item_types.typename', 'like', "%{$search}%");
+                });
+        });
+    }
+
+    $items = $query
+        ->orderBy('itemname')    
+        ->orderByRaw('COALESCE(sortorder, 999999)')
+        ->paginate(25)
+        ->withQueryString();
+
+    $showCreate = $request->boolean('show_create', false);
+    $selectedDestinationId = $request->integer('destination_id');
+
+    return view('destination-items.index', compact(
+        'items',
+        'destinations',
+        'places',
+        'itemTypes',
+        'showCreate',
+        'selectedDestinationId'
+    ));
+}
 
 public function create(Request $request)
 {
-    $destinationId = $request->filled('destination_id')
-        ? $request->integer('destination_id')
-        : null;
+    $destinations = Destination::orderBy('destinationname')->get();
+    $places = Place::orderBy('placename')->get();
 
-    $destination = null;
-    $placeId = null;
+    $itemTypes = DestinationItemType::query()
+        ->where('isactive', 1)
+        ->orderBy('typename')
+        ->orderBy('sortorder')
+        ->get();
 
-    if ($destinationId) {
-        $destination = Destination::findOrFail($destinationId);
-        $placeId = $destination->placeid ?: null;
-    }
+    $destinationItem = new DestinationItem();
 
-    $item = DestinationItem::create([
-        'destinationid' => $destinationId,
-        'placeid' => $placeId,
-        'itemname' => 'New Destination Item',
-        'itemtype' => array_key_first(DestinationItem::itemTypeOptions()),
-    ]);
+    $returnTo = $request->input('return_to', route('destinations.index'));
 
-    $returnTo = $request->input('return_to');
-
-    return redirect()->route('destination-items.edit', [
-        'destinationItem' => $item,
-        'return_to' => $returnTo,
-    ])->with('success', 'Destination item created. Update the details below.');
+    return view('destination-items.create', compact(
+        'destinationItem',
+        'destinations',
+        'places',
+        'itemTypes',
+        'returnTo'
+    ));
 }
 
     public function store(Request $request)
@@ -114,7 +125,8 @@ public function create(Request $request)
         'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         'internetsearch' => ['nullable', 'string', 'max:500'],
         'itemname' => ['required', 'string', 'max:200'],
-        'itemtype' => ['nullable', 'string', 'max:50', Rule::in($itemTypeKeys)],
+        'itemtype_ids' => ['nullable', 'array'],
+        'itemtype_ids.*' => ['integer', 'exists:destination_item_types,id'],
         'shortdescription' => ['nullable', 'string'],
         'notes' => ['nullable', 'string'],
         'estimatedcostperperson' => ['nullable', 'numeric', 'min:0'],
@@ -139,7 +151,7 @@ public function create(Request $request)
         'longitude' => $data['longitude'] ?? null,
         'internetsearch' => $data['internetsearch'] ?? null,
         'itemname' => $data['itemname'],
-        'itemtype' => $data['itemtype'] ?? null,
+        $item->itemTypes()->sync($data['itemtype_ids'] ?? []),
         'shortdescription' => $data['shortdescription'] ?? null,
         'notes' => $data['notes'] ?? null,
         'estimatedcostperperson' => $data['estimatedcostperperson'] ?? null,
@@ -162,24 +174,26 @@ public function create(Request $request)
         ->with('success', 'Destination item created successfully.');
 }
 
-
 public function edit(Request $request, DestinationItem $destinationItem)
 {
-    $destinationItem->load([
-        'destination.place',
-        'place',
-    ]);
+    $destinationItem->load('itemTypes');
 
     $destinations = Destination::orderBy('destinationname')->get();
     $places = Place::orderBy('placename')->get();
-    $itemTypeOptions = DestinationItem::itemTypeOptions();
-    $returnTo = $request->input('return_to', route('destination-items.index'));
+
+    $itemTypes = DestinationItemType::query()
+        ->where('isactive', 1)
+        ->orderBy('typename')
+        ->orderBy('sortorder')
+        ->get();
+
+    $returnTo = $request->input('return_to', route('destinations.edit', $destinationItem->destinationid));
 
     return view('destination-items.edit', compact(
         'destinationItem',
         'destinations',
         'places',
-        'itemTypeOptions',
+        'itemTypes',
         'returnTo'
     ));
 }
@@ -201,42 +215,46 @@ public function edit(Request $request, DestinationItem $destinationItem)
         'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         'internetsearch' => ['nullable', 'string', 'max:500'],
         'itemname' => ['required', 'string', 'max:200'],
-        'itemtype' => ['nullable', 'string', 'max:50', Rule::in($itemTypeKeys)],
+        'itemtype_ids' => ['nullable', 'array'],
+        'itemtype_ids.*' => ['integer', 'exists:destination_item_types,id'],
         'shortdescription' => ['nullable', 'string'],
         'notes' => ['nullable', 'string'],
         'estimatedcostperperson' => ['nullable', 'numeric', 'min:0'],
         'estimatedtotalcost' => ['nullable', 'numeric', 'min:0'],
         'bookingrequired' => ['nullable', 'boolean'],
         'caravanaccessnotes' => ['nullable', 'string'],
+        'disabilityaccessnotes' => ['nullable', 'string'],
         'recommendedstayminutes' => ['nullable', 'integer', 'min:0'],
         'sortorder' => ['nullable', 'integer', 'min:0'],
         'isactive' => ['nullable', 'boolean'],
     ]);
 
-    $destinationItem->update([
-        'destinationid' => $data['destinationid'],
-        'placeid' => $data['placeid'] ?? null,
-        'addressline1' => $data['addressline1'] ?? null,
-        'addressline2' => $data['addressline2'] ?? null,
-        'addressline3' => $data['addressline3'] ?? null,
-        'postcode' => $data['postcode'] ?? null,
-        'telephone' => $data['telephone'] ?? null,
-        'website' => $data['website'] ?? null,
-        'latitude' => $data['latitude'] ?? null,
-        'longitude' => $data['longitude'] ?? null,
-        'internetsearch' => $data['internetsearch'] ?? null,
-        'itemname' => $data['itemname'],
-        'itemtype' => $data['itemtype'] ?? null,
-        'shortdescription' => $data['shortdescription'] ?? null,
-        'notes' => $data['notes'] ?? null,
-        'estimatedcostperperson' => $data['estimatedcostperperson'] ?? null,
-        'estimatedtotalcost' => $data['estimatedtotalcost'] ?? null,
-        'bookingrequired' => !empty($data['bookingrequired']),
-        'caravanaccessnotes' => $data['caravanaccessnotes'] ?? null,
-        'recommendedstayminutes' => $data['recommendedstayminutes'] ?? null,
-        'sortorder' => $data['sortorder'] ?? null,
-        'isactive' => !empty($data['isactive']),
-    ]);
+$destinationItem->update([
+    'destinationid' => $data['destinationid'],
+    'placeid' => $data['placeid'] ?? null,
+    'addressline1' => $data['addressline1'] ?? null,
+    'addressline2' => $data['addressline2'] ?? null,
+    'addressline3' => $data['addressline3'] ?? null,
+    'postcode' => $data['postcode'] ?? null,
+    'telephone' => $data['telephone'] ?? null,
+    'website' => $data['website'] ?? null,
+    'latitude' => $data['latitude'] ?? null,
+    'longitude' => $data['longitude'] ?? null,
+    'internetsearch' => $data['internetsearch'] ?? null,
+    'itemname' => $data['itemname'],
+    'shortdescription' => $data['shortdescription'] ?? null,
+    'notes' => $data['notes'] ?? null,
+    'estimatedcostperperson' => $data['estimatedcostperperson'] ?? null,
+    'estimatedtotalcost' => $data['estimatedtotalcost'] ?? null,
+    'bookingrequired' => !empty($data['bookingrequired']),
+    'caravanaccessnotes' => $data['caravanaccessnotes'] ?? null,
+    'disabilityaccessnotes' => $data['disabilityaccessnotes'] ?? null,
+    'recommendedstayminutes' => $data['recommendedstayminutes'] ?? null,
+    'sortorder' => $data['sortorder'] ?? null,
+    'isactive' => !empty($data['isactive']),
+]);
+
+$destinationItem->itemTypes()->sync($data['itemtype_ids'] ?? []);
 
     $returnTo = $request->input('return_to');
 
@@ -273,4 +291,23 @@ public function edit(Request $request, DestinationItem $destinationItem)
                 ->with('error', 'This destination item could not be deleted.');
         }
     }
+
+    public function createFromDestination(Request $request, Destination $destination)
+{
+    $returnTo = $request->input('return_to');
+
+    $item = DestinationItem::create([
+        'destinationid' => $destination->id,
+        'placeid' => $destination->placeid,
+        'itemname' => 'New Destination Item',
+        'isactive' => true,
+    ]);
+
+    return redirect()
+        ->route('destination-items.edit', [
+            'destinationItem' => $item,
+            'return_to' => $returnTo,
+        ])
+        ->with('success', 'Destination item created. You can now complete the details.');
+}
 }

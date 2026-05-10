@@ -336,47 +336,7 @@
         </p>
     </a>
 </div>
-<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-    <a href="{{ route('trips.legs.index', $trip) }}"
-       class="block p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition">
-        <h4 class="text-sm font-semibold text-gray-900 mb-1">Trip Legs</h4>
-        <p class="text-xs text-gray-600">
-            Plan route structure, sequence, and driving notes.
-        </p>
-    </a>
 
-    <a href="{{ route('trips.stays.index', $trip) }}"
-       class="block p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition">
-        <h4 class="text-sm font-semibold text-gray-900 mb-1">Trip Stays</h4>
-        <p class="text-xs text-gray-600">
-            Record planned and actual stays, nights, and accommodation costs.
-        </p>
-    </a>
-
-    <a href="{{ route('trips.items.index', $trip) }}"
-       class="block p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition">
-        <h4 class="text-sm font-semibold text-gray-900 mb-1">Trip Items</h4>
-        <p class="text-xs text-gray-600">
-            Manage activities, tasks, events, bookings, meals, drives, and other trip items.
-        </p>
-    </a>
-
-    <a href="{{ route('trips.bookings.index', $trip) }}"
-       class="block p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition">
-        <h4 class="text-sm font-semibold text-gray-900 mb-1">Trip Bookings</h4>
-        <p class="text-xs text-gray-600">
-            Manage provider details, references, dates, payment status, and booking costs.
-        </p>
-    </a>
-
-    <a href="{{ route('trips.reviews.index', $trip) }}"
-       class="block p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition">
-        <h4 class="text-sm font-semibold text-gray-900 mb-1">Trip Reviews</h4>
-        <p class="text-xs text-gray-600">
-            Record review scores, comments, return interest, and private trip feedback.
-        </p>
-    </a>
-</div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
     <a href="{{ route('trips.fuel-estimates.index', $trip) }}"

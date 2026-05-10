@@ -216,6 +216,7 @@ document.addEventListener('DOMContentLoaded', function () {
         );
 
         const itemStillValid = filtered.some(option => String(option.value) === String(currentDestinationItemId));
+        const itemStillValid = filtered.some(option => String(option.value) === String(currentDestinationItemId));delete
 
         rebuildSelect(
             destinationItemSelect,

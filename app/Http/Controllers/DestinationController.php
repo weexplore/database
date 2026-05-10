@@ -170,8 +170,9 @@ class DestinationController extends Controller
         $destination->load([
             'place',
             'items' => fn ($query) => $query
-                ->orderByRaw('COALESCE(sortorder, 999999)')
-                ->orderBy('itemname'),
+                ->with('itemTypes')
+                ->orderBy('itemname')
+                ->orderByRaw('COALESCE(sortorder, 999999)'),
             'sources' => fn ($query) => $query
                 ->orderByRaw("CASE importstatus
                     WHEN 'pendingreview' THEN 1
@@ -334,4 +335,14 @@ class DestinationController extends Controller
         ])
         ->with('success', 'Destination created from place. You can now add overview and commentary.');
 }
+
+public function create(Request $request)
+{
+    return redirect()->route('destination-items.index', array_filter([
+        'show_create' => 1,
+        'destination_id' => $request->input('destination_id'),
+        'return_to' => $request->input('return_to'),
+    ]));
+}
+
 }

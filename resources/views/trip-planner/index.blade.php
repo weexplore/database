@@ -141,10 +141,22 @@
 
                                                 <td class="px-3 py-3 align-top">
                                                     <div class="flex items-center justify-end gap-2">
-                                                        <a href="{{ route('trips.planner.edit', ['trip' => $trip->id, 'tripPlanItem' => $item->id, 'return_to' => url()->full()]) }}"
-                                                           class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-xs">
+                                                        <a href="{{ route('trips.planner.edit', [
+                                                                'trip' => $trip->id,
+                                                                'tripPlanItem' => $item->id,
+                                                                'return_to' => url()->full(),
+                                                            ]) }}"
+                                                        class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-xs">
                                                             Edit
                                                         </a>
+
+                                                        <button type="button"
+                                                                class="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs js-delete-trip-plan-item"
+                                                                data-name="{{ $item->title ?: 'this planning item' }}"
+                                                                data-action="{{ route('trips.planner.destroy', ['trip' => $trip->id, 'tripPlanItem' => $item->id]) }}"
+                                                                data-return-to="{{ url()->full() }}">
+                                                            Delete
+                                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -168,6 +180,12 @@
                     </div>
                 </form>
             </div>
+
+            <form method="POST" id="delete-trip-plan-item-form" class="hidden">
+                @csrf
+                @method('DELETE')
+                <input type="hidden" name="return_to" id="delete-trip-plan-item-return-to" value="">
+            </form>
 
             {{-- Add Planning Item card (now the only create flow) --}}
             @if($showCreate)
@@ -355,4 +373,30 @@
         filterDestinationItems();
     });
     </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const deleteForm = document.getElementById('delete-trip-plan-item-form');
+            const returnToInput = document.getElementById('delete-trip-plan-item-return-to');
+
+            document.querySelectorAll('.js-delete-trip-plan-item').forEach(button => {
+                button.addEventListener('click', function () {
+                    const action = this.dataset.action;
+                    const name = this.dataset.name || 'this planning item';
+                    const returnTo = this.dataset.returnTo || '';
+
+                    if (!action) {
+                        return;
+                    }
+
+                    if (!confirm(`Delete ${name}? This cannot be undone.`)) {
+                        return;
+                    }
+
+                    deleteForm.action = action;
+                    returnToInput.value = returnTo;
+                    deleteForm.submit();
+                });
+            });
+        });
+        </script>
 </x-app-layout>

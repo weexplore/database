@@ -793,18 +793,62 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const latInput = document.getElementById('latitude');
-        const lngInput = document.getElementById('longitude');
-        const searchInput = document.getElementById('map-search');
-        const searchButton = document.getElementById('map-search-button');
-        const useMyLocationButton = document.getElementById('use-my-location');
-        const syncFromFieldsButton = document.getElementById('sync-from-fields');
-        const mapStatus = document.getElementById('map-status');
-        const googleMapsLink = document.getElementById('open-in-google-maps');
+    const latInput = document.getElementById('latitude');
+    const lngInput = document.getElementById('longitude');
+    const searchInput = document.getElementById('map-search');
+    const placeNameInput = document.getElementById('placename');
+    let searchTouchedManually = false;
 
-        if (!latInput || !lngInput || !document.getElementById('place-map') || typeof L === 'undefined') {
-            return;
+    const searchButton = document.getElementById('map-search-button');
+    const useMyLocationButton = document.getElementById('use-my-location');
+    const syncFromFieldsButton = document.getElementById('sync-from-fields');
+    const mapStatus = document.getElementById('map-status');
+    const googleMapsLink = document.getElementById('open-in-google-maps');
+
+    if (!latInput || !lngInput || !document.getElementById('place-map') || typeof L === 'undefined') return;
+
+    function coordsAreBlank() {
+        return latInput.value.trim() === '' && lngInput.value.trim() === '';
+    }
+
+    function shouldAutoFillSearch() {
+        return placeNameInput && searchInput && coordsAreBlank();
+    }
+
+    function syncSearchFromPlaceName(force = false) {
+        if (!placeNameInput || !searchInput) return;
+        if (!shouldAutoFillSearch()) return;
+
+        const placeName = placeNameInput.value.trim();
+        const currentSearch = searchInput.value.trim();
+
+        if (
+            force ||
+            !searchTouchedManually ||
+            currentSearch === '' ||
+            currentSearch === placeName
+        ) {
+            searchInput.value = placeName;
         }
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            const placeName = placeNameInput ? placeNameInput.value.trim() : '';
+            const currentSearch = searchInput.value.trim();
+
+            searchTouchedManually = currentSearch !== '' && currentSearch !== placeName;
+        });
+    }
+
+    if (placeNameInput) {
+        placeNameInput.addEventListener('input', function () {
+            syncSearchFromPlaceName();
+        });
+    }
+
+    syncSearchFromPlaceName(true);
+
 
         const defaultLat = parseFloat(latInput.value) || -37.8136;
         const defaultLng = parseFloat(lngInput.value) || 144.9631;

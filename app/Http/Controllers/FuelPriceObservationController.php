@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\FuelPriceObservation;
 use App\Models\FuelStop;
+use App\Models\Trip;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -53,65 +54,126 @@ class FuelPriceObservationController extends Controller
             ->with('success', 'Fuel price observation added.');
     }
 
-    public function edit(FuelPriceObservation $fuelPriceObservation)
-    {
-        $fuelTypes = config('fuel.fuel_types');
+    public function edit(Request $request, FuelPriceObservation $fuelPriceObservation)
+{
+    $fuelPriceObservation->load([
+        'fuelStop.place',
+        'trip',
+    ]);
 
-        $priceSources = [
-            'actual_purchase' => 'Actual Purchase',
-            'signboard' => 'Signboard',
-            'website' => 'Website',
-            'imported' => 'Imported',
-            'estimate' => 'Estimate',
-        ];
+    $fuelStop = $fuelPriceObservation->fuelStop;
+    $fuelStops = FuelStop::orderBy('stopname')->get();
+    $fuelTypes = FuelPriceObservation::fuelTypeOptions();
+    $priceSources = FuelPriceObservation::priceSourceOptions();
+    $trips = Trip::orderBy('tripname')->get();
+    $returnTo = $request->input('return_to', route('fuel-price-observations.index'));
 
-        $fuelStops = FuelStop::orderBy('stopname')->get();
-
-        return view('fuelpriceobservations.edit', compact(
-            'fuelPriceObservation',
-            'fuelStops',
-            'fuelTypes',
-            'priceSources'
-        ));
-    }
+    return view('fuelpriceobservations.edit', compact(
+        'fuelPriceObservation',
+        'fuelStop',
+        'fuelStops',
+        'fuelTypes',
+        'priceSources',
+        'trips',
+        'returnTo'
+    ));
+}
 
     public function update(Request $request, FuelPriceObservation $fuelPriceObservation)
-    {
-        $validated = $this->validateObservation($request);
+{
+    $validated = $this->validateObservation($request);
 
-        $fuelPriceObservation->update($validated);
+    $fuelPriceObservation->update($validated);
 
-        if ($request->input('save_action') === 'index') {
-            return redirect()
-                ->route('fuel-price-observations.index')
-                ->with('success', 'Fuel price observation updated.');
+    $saveAction = $request->input('save_action');
+    $returnTo = $request->input('return_to');
+
+    if ($saveAction === 'stay') {
+        return redirect()
+            ->route('fuel-price-observations.edit', [
+                'fuel_price_observation' => $fuelPriceObservation,
+                'return_to' => $returnTo,
+            ])
+            ->with('success', 'Fuel price observation updated successfully.');
+    }
+
+    if ($saveAction === 'index') {
+        if ($returnTo) {
+            return redirect($returnTo)
+                ->with('success', 'Fuel price observation updated successfully.');
         }
 
         return redirect()
-            ->route('fuel-price-observations.edit', $fuelPriceObservation)
-            ->with('success', 'Fuel price observation updated.');
+            ->route('fuel-price-observations.index')
+            ->with('success', 'Fuel price observation updated successfully.');
     }
 
-    public function destroy(FuelPriceObservation $fuelPriceObservation)
+    if ($returnTo) {
+        return redirect($returnTo)
+            ->with('success', 'Fuel price observation updated successfully.');
+    }
+
+    return redirect()
+        ->route('fuel-price-observations.index')
+        ->with('success', 'Fuel price observation updated successfully.');
+}
+
+    public function destroy(Request $request, FuelPriceObservation $fuelPriceObservation)
     {
+        $returnTo = $request->input('return_to');
+
         $fuelPriceObservation->delete();
+
+        if ($returnTo) {
+            return redirect($returnTo)
+                ->with('success', 'Fuel price observation deleted.');
+        }
 
         return redirect()
             ->route('fuel-price-observations.index')
             ->with('success', 'Fuel price observation deleted.');
     }
 
-    protected function validateObservation(Request $request): array
-    {
-        $priceSources = ['actual_purchase', 'signboard', 'website', 'imported', 'estimate'];
+private function validateObservation(Request $request): array
+{
+    $fuelTypeKeys = array_keys(FuelPriceObservation::fuelTypeOptions());
+    $priceSourceKeys = array_keys(FuelPriceObservation::priceSourceOptions());
 
-        return $request->validate([
-            'fuelstopid' => ['required', 'integer', 'exists:fuelstops,id'],
-            'observedon' => ['required', 'date'],
-            'fueltype' => ['required', 'string', Rule::in(array_keys(config('fuel.fuel_types')))],
-            'priceperlitre' => ['required', 'numeric', 'min:0', 'max:99.9999'],
-            'pricesource' => ['nullable', 'string', Rule::in($priceSources)],
-            'observationnotes' => ['nullable', 'string'],
-        ]);
+    return $request->validate([
+        'fuelstopid' => ['required', 'integer', 'exists:fuelstops,id'],
+        'observedon' => ['required', 'date'],
+        'fueltype' => ['required', 'string', Rule::in($fuelTypeKeys)],
+        'priceperlitre' => ['required', 'numeric', 'min:0'],
+        'pricesource' => ['nullable', 'string', Rule::in($priceSourceKeys)],
+        'observationnotes' => ['nullable', 'string'],
+        'tripid' => ['nullable', 'integer', 'exists:trips,id'],
+    ]);
+}
+public function create(Request $request)
+{
+    $fuelStopId = $request->filled('fuel_stop_id')
+        ? $request->integer('fuel_stop_id')
+        : null;
+
+    $fuelStop = null;
+
+    if ($fuelStopId) {
+        $fuelStop = FuelStop::findOrFail($fuelStopId);
     }
+
+    $observation = FuelPriceObservation::create([
+        'fuelstopid' => $fuelStopId,
+        'observedon' => now()->toDateString(),
+        'fueltype' => array_key_first(FuelPriceObservation::fuelTypeOptions()),
+        'priceperlitre' => 0,
+        'pricesource' => array_key_first(FuelPriceObservation::priceSourceOptions()),
+    ]);
+
+    $returnTo = $request->input('return_to');
+
+    return redirect()->route('fuel-price-observations.edit', [
+        'fuel_price_observation' => $observation,
+        'return_to' => $returnTo,
+    ])->with('success', 'Fuel price observation created. Update the details below.');
+}
 }

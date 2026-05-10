@@ -164,125 +164,139 @@ class PlaceController extends Controller
 }
 
     public function bulkSave(Request $request)
-    {
-        $payload = $request->all();
-        $placeTypeKeys = array_keys($this->placeTypeOptions());
+{
+    $payload = $request->all();
+    $placeTypeKeys = array_keys($this->placeTypeOptions());
 
-        if (!empty($payload['existing']) && is_array($payload['existing'])) {
-            foreach ($payload['existing'] as $id => $row) {
-                $payload['existing'][$id]['country_id'] = $this->normaliseFk($row['country_id'] ?? null);
-                $payload['existing'][$id]['state_id'] = $this->normaliseFk($row['state_id'] ?? null);
-                $payload['existing'][$id]['region_id'] = $this->normaliseFk($row['region_id'] ?? null);
-                $payload['existing'][$id]['isactive'] = !empty($row['isactive']) ? 1 : 0;
-            }
+    if (!empty($payload['existing']) && is_array($payload['existing'])) {
+        foreach ($payload['existing'] as $id => $row) {
+            $payload['existing'][$id]['country_id'] = $this->normaliseFk($row['country_id'] ?? null);
+            $payload['existing'][$id]['state_id'] = $this->normaliseFk($row['state_id'] ?? null);
+            $payload['existing'][$id]['region_id'] = $this->normaliseFk($row['region_id'] ?? null);
+            $payload['existing'][$id]['isactive'] = !empty($row['isactive']) ? 1 : 0;
         }
+    }
 
-        if (!empty($payload['new']) && is_array($payload['new'])) {
-            $payload['new']['country_id'] = $this->normaliseFk($payload['new']['country_id'] ?? null);
-            $payload['new']['state_id'] = $this->normaliseFk($payload['new']['state_id'] ?? null);
-            $payload['new']['region_id'] = $this->normaliseFk($payload['new']['region_id'] ?? null);
-            $payload['new']['isactive'] = !empty($payload['new']['isactive']) ? 1 : 0;
-        }
+    if (!empty($payload['new']) && is_array($payload['new'])) {
+        $payload['new']['country_id'] = $this->normaliseFk($payload['new']['country_id'] ?? null);
+        $payload['new']['state_id'] = $this->normaliseFk($payload['new']['state_id'] ?? null);
+        $payload['new']['region_id'] = $this->normaliseFk($payload['new']['region_id'] ?? null);
+        $payload['new']['isactive'] = !empty($payload['new']['isactive']) ? 1 : 0;
+    }
 
-        $validated = validator($payload, [
-            'existing' => ['nullable', 'array'],
-            'existing.*.placename' => ['required', 'string', 'max:200'],
-            'existing.*.country_id' => ['required', 'integer', 'exists:countries,id'],
-            'existing.*.state_id' => ['nullable', 'integer', 'exists:states,id'],
-            'existing.*.region_id' => ['nullable', 'integer', 'exists:regions,id'],
-            'existing.*.placetype' => ['nullable', 'string', 'max:50', Rule::in($placeTypeKeys)],
-            'existing.*.locality' => ['nullable', 'string', 'max:150'],
-            'existing.*.postcode' => ['nullable', 'string', 'max:20'],
-            'existing.*.latitude' => ['nullable', 'numeric', 'between:-90,90'],
-            'existing.*.longitude' => ['nullable', 'numeric', 'between:-180,180'],
-            'existing.*.sourcequality' => ['nullable', 'string', 'max:30'],
-            'existing.*.isactive' => ['nullable', 'boolean'],
+    $validated = validator($payload, [
+        'existing' => ['nullable', 'array'],
+        'existing.*.placename' => ['required', 'string', 'max:200'],
+        'existing.*.country_id' => ['required', 'integer', 'exists:countries,id'],
+        'existing.*.state_id' => ['nullable', 'integer', 'exists:states,id'],
+        'existing.*.region_id' => ['nullable', 'integer', 'exists:regions,id'],
+        'existing.*.placetype' => ['nullable', 'string', 'max:50', Rule::in($placeTypeKeys)],
+        'existing.*.locality' => ['nullable', 'string', 'max:150'],
+        'existing.*.postcode' => ['nullable', 'string', 'max:20'],
+        'existing.*.latitude' => ['nullable', 'numeric', 'between:-90,90'],
+        'existing.*.longitude' => ['nullable', 'numeric', 'between:-180,180'],
+        'existing.*.sourcequality' => ['nullable', 'string', 'max:30'],
+        'existing.*.isactive' => ['nullable', 'boolean'],
 
-            'new.placename' => ['nullable', 'string', 'max:200'],
-            'new.country_id' => ['nullable', 'integer', 'exists:countries,id'],
-            'new.state_id' => ['nullable', 'integer', 'exists:states,id'],
-            'new.region_id' => ['nullable', 'integer', 'exists:regions,id'],
-            'new.placetype' => ['nullable', 'string', 'max:50', Rule::in($placeTypeKeys)],
-            'new.locality' => ['nullable', 'string', 'max:150'],
-            'new.postcode' => ['nullable', 'string', 'max:20'],
-            'new.latitude' => ['nullable', 'numeric', 'between:-90,90'],
-            'new.longitude' => ['nullable', 'numeric', 'between:-180,180'],
-            'new.sourcequality' => ['nullable', 'string', 'max:30'],
-            'new.isactive' => ['nullable', 'boolean'],
-        ])->validate();
+        'new.placename' => ['nullable', 'string', 'max:200'],
+        'new.country_id' => ['nullable', 'integer', 'exists:countries,id'],
+        'new.state_id' => ['nullable', 'integer', 'exists:states,id'],
+        'new.region_id' => ['nullable', 'integer', 'exists:regions,id'],
+        'new.placetype' => ['nullable', 'string', 'max:50', Rule::in($placeTypeKeys)],
+        'new.locality' => ['nullable', 'string', 'max:150'],
+        'new.postcode' => ['nullable', 'string', 'max:20'],
+        'new.latitude' => ['nullable', 'numeric', 'between:-90,90'],
+        'new.longitude' => ['nullable', 'numeric', 'between:-180,180'],
+        'new.sourcequality' => ['nullable', 'string', 'max:30'],
+        'new.isactive' => ['nullable', 'boolean'],
+    ])->validate();
 
-        if (!empty($validated['existing'])) {
-            foreach ($validated['existing'] as $placeId => $row) {
-                $place = Place::findOrFail($placeId);
+    if (!empty($validated['existing'])) {
+        foreach ($validated['existing'] as $placeId => $row) {
+            $place = Place::findOrFail($placeId);
 
-                $place->update([
-                    'placename' => $row['placename'],
-                    'countryid' => $row['country_id'],
-                    'stateid' => $row['state_id'] ?? null,
-                    'regionid' => $row['region_id'] ?? null,
-                    'placetype' => $row['placetype'] ?? null,
-                    'locality' => $row['locality'] ?? null,
-                    'postcode' => $row['postcode'] ?? null,
-                    'latitude' => $row['latitude'] ?? null,
-                    'longitude' => $row['longitude'] ?? null,
-                    'sourcequality' => $row['sourcequality'] ?? null,
-                    'addressline1' => $row['addressline1'] ?? null,
-                    'addressline2' => $row['addressline2'] ?? null,
-                    'accessnotes' => $row['accessnotes'] ?? null,
-                    'generalnotes' => $row['generalnotes'] ?? null,
-                    'isactive' => !empty($row['isactive']),
-                    'updatedat' => now(),
-                ]);
-            }
-        }
-
-        $new = $validated['new'] ?? [];
-        if (!empty(trim((string) ($new['placename'] ?? '')))) {
-            validator($new, [
-                'placename' => ['required', 'string', 'max:200'],
-                'country_id' => ['required', 'integer', 'exists:countries,id'],
-                'placetype' => ['nullable', 'string', 'max:50', Rule::in($placeTypeKeys)],
-            ])->validate();
-
-            Place::create([
-                'placename' => $new['placename'],
-                'countryid' => $new['country_id'],
-                'stateid' => $new['state_id'] ?? null,
-                'regionid' => $new['region_id'] ?? null,
-                'placetype' => $new['placetype'] ?? null,
-                'locality' => $new['locality'] ?? null,
-                'postcode' => $new['postcode'] ?? null,
-                'latitude' => $new['latitude'] ?? null,
-                'longitude' => $new['longitude'] ?? null,
-                'sourcequality' => $new['sourcequality'] ?? null,
-                'addressline1' => $new['addressline1'] ?? null,
-                'addressline2' => $new['addressline2'] ?? null,
-                'accessnotes' => $new['accessnotes'] ?? null,
-                'generalnotes' => $new['generalnotes'] ?? null,
-                'isactive' => !empty($new['isactive']),
-                'createdat' => now(),
+            $place->update([
+                'placename' => $row['placename'],
+                'countryid' => $row['country_id'],
+                'stateid' => $row['state_id'] ?? null,
+                'regionid' => $row['region_id'] ?? null,
+                'placetype' => $row['placetype'] ?? null,
+                'locality' => $row['locality'] ?? null,
+                'postcode' => $row['postcode'] ?? null,
+                'latitude' => $row['latitude'] ?? null,
+                'longitude' => $row['longitude'] ?? null,
+                'sourcequality' => $row['sourcequality'] ?? null,
+                'addressline1' => $row['addressline1'] ?? null,
+                'addressline2' => $row['addressline2'] ?? null,
+                'accessnotes' => $row['accessnotes'] ?? null,
+                'generalnotes' => $row['generalnotes'] ?? null,
+                'isactive' => !empty($row['isactive']),
                 'updatedat' => now(),
             ]);
         }
+    }
 
-        $returnTo = $request->input('return_to');
+    $new = $validated['new'] ?? [];
+    if (!empty(trim((string) ($new['placename'] ?? '')))) {
+        validator($new, [
+            'placename' => ['required', 'string', 'max:200'],
+            'country_id' => ['required', 'integer', 'exists:countries,id'],
+            'placetype' => ['nullable', 'string', 'max:50', Rule::in($placeTypeKeys)],
+        ])->validate();
 
-        if ($returnTo) {
-            return redirect($returnTo)->with('success', 'Places saved successfully.');
+        $duplicateExists = Place::query()
+            ->whereRaw('LOWER(placename) = ?', [mb_strtolower(trim($new['placename']))])
+            ->where('countryid', $new['country_id'])
+            ->exists();
+
+        if ($duplicateExists) {
+            return redirect()
+                ->back()
+                ->withErrors([
+                    'new.placename' => 'A place with this name already exists in the selected country.',
+                ])
+                ->withInput();
         }
 
-        return redirect()
-            ->route('places.index', $request->only([
-                'search',
-                'country_id',
-                'state_id',
-                'region_id',
-                'placetype',
-                'status',
-                'page',
-            ]))
-            ->with('success', 'Places saved successfully.');
+        Place::create([
+            'placename' => $new['placename'],
+            'countryid' => $new['country_id'],
+            'stateid' => $new['state_id'] ?? null,
+            'regionid' => $new['region_id'] ?? null,
+            'placetype' => $new['placetype'] ?? null,
+            'locality' => $new['locality'] ?? null,
+            'postcode' => $new['postcode'] ?? null,
+            'latitude' => $new['latitude'] ?? null,
+            'longitude' => $new['longitude'] ?? null,
+            'sourcequality' => $new['sourcequality'] ?? null,
+            'addressline1' => $new['addressline1'] ?? null,
+            'addressline2' => $new['addressline2'] ?? null,
+            'accessnotes' => $new['accessnotes'] ?? null,
+            'generalnotes' => $new['generalnotes'] ?? null,
+            'isactive' => !empty($new['isactive']),
+            'createdat' => now(),
+            'updatedat' => now(),
+        ]);
     }
+
+    $returnTo = $request->input('return_to');
+
+    if ($returnTo) {
+        return redirect($returnTo)->with('success', 'Places saved successfully.');
+    }
+
+    return redirect()
+        ->route('places.index', $request->only([
+            'search',
+            'country_id',
+            'state_id',
+            'region_id',
+            'placetype',
+            'status',
+            'page',
+        ]))
+        ->with('success', 'Places saved successfully.');
+}
 
     private function normaliseFk($value): ?int
     {
@@ -407,7 +421,7 @@ public function edit(Request $request, Place $place)
     ));
 }
 
-    public function update(Request $request, Place $place)
+public function update(Request $request, Place $place)
 {
     $placeTypeKeys = array_keys($this->placeTypeOptions());
 
@@ -428,6 +442,21 @@ public function edit(Request $request, Place $place)
         'sourcequality' => ['nullable', 'string', 'max:30'],
         'isactive'      => ['nullable', 'boolean'],
     ]);
+
+    $duplicateExists = Place::query()
+        ->whereRaw('LOWER(placename) = ?', [mb_strtolower(trim($data['placename']))])
+        ->where('countryid', $data['countryid'])
+        ->where('id', '!=', $place->id)
+        ->exists();
+
+    if ($duplicateExists) {
+        return redirect()
+            ->back()
+            ->withErrors([
+                'placename' => 'A place with this name already exists in the selected country.',
+            ])
+            ->withInput();
+    }
 
     $place->update([
         'placename'     => $data['placename'],
@@ -599,6 +628,23 @@ public function regionsForCountryState(Request $request): JsonResponse
             'status',
             'page',
         ])),
+    ]);
+}
+
+private function normaliseText(?string $value): ?string
+{
+    $value = trim((string) $value);
+
+    return $value === '' ? null : mb_strtolower($value);
+}
+
+private function placeDuplicateKey(?string $placename, $countryId, $stateId, ?string $locality): string
+{
+    return implode('|', [
+        $this->normaliseText($placename) ?? '',
+        (string) ($countryId ?? ''),
+        (string) ($stateId ?? ''),
+        $this->normaliseText($locality) ?? '',
     ]);
 }
 

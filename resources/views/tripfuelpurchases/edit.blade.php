@@ -75,26 +75,32 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label for="fuelstopid" class="block text-sm font-medium text-gray-700 mb-1">
-                                Fuel Stop (optional)
-                            </label>
-                            <select name="fuelstopid"
-                                    id="fuelstopid"
-                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                <option value="">No linked fuel stop</option>
-                                @foreach($fuelStops as $fuelStop)
-                                    <option value="{{ $fuelStop->id }}"
-                                        @selected((int) old('fuelstopid', $fuelPurchase->fuelstopid) === $fuelStop->id)>
-                                        {{ $fuelStop->stopname }}
-                                        @if($fuelStop->place)
-                                            – {{ $fuelStop->place->placename }}
-                                        @endif
-                                    </option>
-                                @endforeach
-                            </select>
+                        <div class="flex flex-col md:flex-row md:items-end gap-2">
+                            <div class="flex-1 min-w-0">
+                                <label for="fuelstopid" class="block text-sm font-medium text-gray-700 mb-1">Fuel Stop</label>
+                                <select name="fuelstopid" id="fuelstopid" class="w-full rounded-md border-gray-300 shadow-sm">
+                                    <option value="">Select fuel stop</option>
+                                    @foreach($fuelStops as $fuelStop)
+                                        <option value="{{ $fuelStop->id }}"
+                                            @selected((int) old('fuelstopid', $fuelPurchase->fuelstopid) === $fuelStop->id)>
+                                            {{ $fuelStop->stopname }}
+                                            @if($fuelStop->place)
+                                                – {{ $fuelStop->place->placename }}
+                                            @endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                        <a href="{{ route('fuel-stops.create', [
+                            'return_to' => url()->full(),
+                        ]) }}"
+                        class="inline-flex shrink-0 items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                            Add Fuel Stop
+                        </a>
                         </div>
                     </div>
+                    
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
@@ -311,6 +317,28 @@
                     event.returnValue = '';
                 }
             });
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const litresInput = document.getElementById('litres');
+            const priceInput  = document.getElementById('priceperlitre');
+            const totalInput  = document.getElementById('fueltotal');
+
+            if (!litresInput || !priceInput || !totalInput) return;
+
+            function recalcTotal() {
+                const litres = parseFloat(litresInput.value);
+                const price  = parseFloat(priceInput.value);
+
+                if (!isNaN(litres) && !isNaN(price) && litres > 0 && price > 0) {
+                    const total = litres * price;
+                    totalInput.value = total.toFixed(2);
+                }
+            }
+
+            litresInput.addEventListener('input', recalcTotal);
+            priceInput.addEventListener('input', recalcTotal);
         });
     </script>
 </x-app-layout>

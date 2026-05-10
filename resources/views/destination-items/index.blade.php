@@ -45,11 +45,12 @@
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Type</label>
-                        <select name="itemtype" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                        <select name="itemtype_id" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                             <option value="">All</option>
-                            @foreach($itemTypes as $value => $label)
-                                <option value="{{ $value }}" @selected((string) request('itemtype') === (string) $value)>
-                                    {{ $label }}
+                            @foreach($itemTypes as $itemType)
+                                <option value="{{ $itemType->id }}"
+                                    @selected((string) request('itemtype_id') === (string) $itemType->id)>
+                                    {{ $itemType->typename }}
                                 </option>
                             @endforeach
                         </select>
@@ -74,7 +75,7 @@
                             </a>
                         </div>
 
-                        <a href="{{ route('destination-items.create', ['return_to' => $returnTo]) }}"
+                        <a href="{{ route('destination-items.index', array_merge(request()->query(), ['show_create' => 1])) }}"
                         class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
                             Add Destination Item
                         </a>
@@ -130,7 +131,9 @@
                                         <div class="text-xs text-gray-500">{{ \Illuminate\Support\Str::limit($item->shortdescription, 80) }}</div>
                                     </td>
                                     <td class="px-4 py-3">{{ $item->destination?->destinationname }}</td>
-                                    <td class="px-4 py-3">{{ $itemTypes[$item->itemtype] ?? $item->itemtype }}</td>
+                                    <td class="px-4 py-3">
+                                        {{ $item->itemTypes->pluck('typename')->join(', ') ?: '—' }}
+                                    </td>
                                     <td class="px-4 py-3">{{ $item->place?->placename }}</td>
                                     <td class="px-4 py-3">{{ $item->bookingrequired ? 'Yes' : 'No' }}</td>
                                     <td class="px-4 py-3">{{ $item->isactive ? 'Yes' : 'No' }}</td>

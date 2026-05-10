@@ -314,7 +314,7 @@
                                                 </div>
                                                 <div class="mt-1 text-xs text-gray-500">
                                                     Type:
-                                                    {{ \App\Models\DestinationItem::itemTypeOptions()[$item->itemtype] ?? ($item->itemtype ?: '—') }}
+                                                    {{ $item->itemTypes->pluck('typename')->join(', ') ?: '—' }}
                                                 </div>
                                             </a>
                                         </li>
@@ -326,15 +326,13 @@
                                 </p>
                             @endif
 
-                            <div class="mt-4">
-                                <a href="{{ route('destination-items.create', [
-                                        'destination_id' => $destination->id,
-                                        'return_to' => url()->full(),
-                                    ]) }}"
-                                   class="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-700 rounded hover:bg-green-100 text-xs">
-                                    + Add Destination Item
-                                </a>
-                            </div>
+<a href="{{ route('destination-items.create-from-destination', [
+        'destination' => $destination,
+        'return_to' => url()->full(),
+    ]) }}"
+    class="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-700 rounded hover:bg-green-100 text-xs">
+    + Add Destination Item
+</a>
                         </div>
                     </div>
 

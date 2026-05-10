@@ -85,21 +85,6 @@
                     @endforeach
                 </select>
             </div>
-
-            <div>
-                <label for="destinationitemid" class="block text-sm font-medium text-gray-700">Destination Item</label>
-                <select name="destinationitemid" id="destinationitemid" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                    <option value="">None</option>
-                    @foreach($destinationItems as $destinationItem)
-                        <option value="{{ $destinationItem->id }}"
-                            data-destination-id="{{ $destinationItem->destinationid }}"
-                            data-place-id="{{ $destinationItem->placeid }}"
-                            @selected((string) old('destinationitemid', $tripPlanItem->destinationitemid) === (string) $destinationItem->id)>
-                            {{ $destinationItem->itemname }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
         </div>
 
         {{-- Dates / times --}}

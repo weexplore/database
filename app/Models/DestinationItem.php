@@ -36,6 +36,7 @@ class DestinationItem extends Model
         'estimatedtotalcost',
         'bookingrequired',
         'caravanaccessnotes',
+        'disabilityaccessnotes',
         'recommendedstayminutes',
         'sortorder',
         'isactive',
@@ -66,26 +67,37 @@ class DestinationItem extends Model
             'beach' => 'Beach',
             'river' => 'River',
             'lake' => 'Lake',
-            'Artesian Pool' => 'Artesian Pool',
+            'artesian Pool' => 'Artesian Pool',
+            'swimming-pool' => 'Swimming Pool',
+            'jetty' => 'Jetty',
+            'lighthouse' => 'Lighthouse',
+            'memorials' => 'Memorials',
             'quilt-shop' => 'Quilt Shop',
             'campground' => 'Campground',
             'caravan-park' => 'Caravan Park',
             'free-camp' => 'Free Camp',
             'cafe' => 'Cafe',
             'bakery' => 'Bakery',
+            'butcher' => 'Butcher',
+            'takeaway' => 'Takeaway',
+            'shopping-area' => 'Shopping Area',
             'hotel-motel' => 'Hotel/Motel',
             'restaurant' => 'Restaurant',
+            'craft-beer' => 'Craft Beer',
             'winery' => 'Winery',
             'supermarket' => 'Supermarket',
             'dump_point' => 'Dump Point',
             'water_point' => 'Water Point',
             'water_dump_point' => 'Water & Dump Point',
             'church' => 'Church',
+            'hospital' => 'Hospital',
+            'medical-centre' => 'Medical Centre',
             'information' => 'Information',
             'vehicle-repair' => 'Vehicle Repair',
             'rest-area' => 'Rest Area',
             'silo-art' => 'Silo Art',
             'street-art' => 'Street Art',
+            'family-friends' => 'Family-Friends',
             'other' => 'Other',
         ];
     }
@@ -119,4 +131,13 @@ class DestinationItem extends Model
     {
         return $this->hasMany(DestinationSource::class, 'destinationitemid');
     }
+public function itemTypes()
+{
+    return $this->belongsToMany(
+        DestinationItemType::class,
+        'destinationitem_destination_item_type',
+        'destinationitem_id',
+        'destination_item_type_id'
+    )->orderBy('sortorder')->orderBy('typename');
+}
 }

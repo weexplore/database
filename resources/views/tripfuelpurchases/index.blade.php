@@ -72,22 +72,23 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label for="fuel_type" class="block text-xs font-medium text-gray-700 mb-1">
-                                Fuel Type
-                            </label>
-                            <select name="fuel_type"
-                                    id="fuel_type"
-                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                <option value="">All fuel types</option>
-                                @foreach($fuelTypes as $value => $label)
-                                    <option value="{{ $value }}"
-                                        @selected(request('fuel_type') === $value)>
-                                        {{ $label }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
+<div>
+    <label for="create_fueltype" class="block text-xs font-medium text-gray-700 mb-1">
+        Fuel Type
+    </label>
+    <select name="fueltype"
+            id="create_fueltype"
+            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+            required>
+        <option value="">Select fuel type</option>
+        @foreach(($fuelTypes ?? []) as $value => $label)
+            <option value="{{ $value }}"
+                @selected(old('fueltype') === $value)>
+                {{ $label }}
+            </option>
+        @endforeach
+    </select>
+</div>
 
                         <div class="flex items-end gap-2">
                             <button type="submit"
@@ -155,82 +156,101 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label for="create_fuelstopid" class="block text-xs font-medium text-gray-700 mb-1">
-                                Fuel Stop (optional)
-                            </label>
-                            <select name="fuelstopid"
-                                    id="create_fuelstopid"
-                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                <option value="">No linked fuel stop</option>
-                                @foreach($fuelStops as $fuelStop)
-                                    <option value="{{ $fuelStop->id }}"
-                                        @selected(old('fuelstopid') == $fuelStop->id)>
-                                        {{ $fuelStop->stopname }}
-                                        @if($fuelStop->place)
-                                            – {{ $fuelStop->place->placename }}
-                                        @endif
-                                    </option>
-                                @endforeach
-                            </select>
+                        <div class="flex flex-col md:flex-row md:items-end gap-2">
+                            <div class="flex-1 min-w-0">
+                                <label for="create_fuelstopid" class="block text-xs font-medium text-gray-700 mb-1">
+                                    Fuel Stop (optional)
+                                </label>
+                                <select name="fuelstopid"
+                                        id="create_fuelstopid"
+                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                    <option value="">No linked fuel stop</option>
+                                    @foreach($fuelStops as $fuelStop)
+                                        <option value="{{ $fuelStop->id }}"
+                                                @selected(old('fuelstopid') == $fuelStop->id)>
+                                            {{ $fuelStop->stopname }}
+                                            @if($fuelStop->place)
+                                                – {{ $fuelStop->place->placename }}
+                                            @endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <a href="{{ route('fuel-stops.create', ['return_to' => url()->full()]) }}"
+                            class="inline-flex shrink-0 items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-md text-xs font-semibold text-gray-700 hover:bg-gray-50">
+                                Add Fuel Stop
+                            </a>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div>
-                            <label for="create_fueltype" class="block text-xs font-medium text-gray-700 mb-1">
-                                Fuel Type
-                            </label>
-                            <input type="text"
-                                   name="fueltype"
-                                   id="create_fueltype"
-                                   value="{{ old('fueltype') }}"
-                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                   required>
-                        </div>
+                    <<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div>
+        <label for="create_fueltype" class="block text-xs font-medium text-gray-700 mb-1">
+            Fuel Type
+        </label>
+        <select name="fueltype"
+                id="create_fueltype"
+                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                required>
+            <option value="">Select fuel type</option>
+            @foreach(($fuelTypes ?? []) as $value => $label)
+                <option value="{{ $value }}"
+                    @selected(old('fueltype') === $value)>
+                    {{ $label }}
+                </option>
+            @endforeach
+        </select>
+    </div>
 
-                        <div>
-                            <label for="create_litres" class="block text-xs font-medium text-gray-700 mb-1">
-                                Litres
-                            </label>
-                            <input type="number"
-                                   step="0.001"
-                                   min="0"
-                                   name="litres"
-                                   id="create_litres"
-                                   value="{{ old('litres') }}"
-                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                   required>
-                        </div>
+    <div>
+        <label for="create_litres" class="block text-xs font-medium text-gray-700 mb-1">
+            Litres
+        </label>
+        <input type="number"
+               step="0.001"
+               min="0"
+               name="litres"
+               id="create_litres"
+               data-fuel-litres
+               value="{{ old('litres') }}"
+               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+               required>
+    </div>
 
-                        <div>
-                            <label for="create_priceperlitre" class="block text-xs font-medium text-gray-700 mb-1">
-                                Price per Litre
-                            </label>
-                            <input type="number"
-                                   step="0.0001"
-                                   min="0"
-                                   name="priceperlitre"
-                                   id="create_priceperlitre"
-                                   value="{{ old('priceperlitre') }}"
-                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                   required>
-                        </div>
+    <div>
+        <label for="create_priceperlitre" class="block text-xs font-medium text-gray-700 mb-1">
+            Price per Litre
+        </label>
+        <input type="number"
+               step="0.0001"
+               min="0"
+               name="priceperlitre"
+               id="create_priceperlitre"
+               data-fuel-price
+               value="{{ old('priceperlitre') }}"
+               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+               required>
+    </div>
 
-                        <div>
-                            <label for="create_fueltotal" class="block text-xs font-medium text-gray-700 mb-1">
-                                Fuel Total
-                            </label>
-                            <input type="number"
-                                   step="0.01"
-                                   min="0"
-                                   name="fueltotal"
-                                   id="create_fueltotal"
-                                   value="{{ old('fueltotal') }}"
-                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                   required>
-                        </div>
-                    </div>
+    <div>
+        <label for="create_fueltotal" class="block text-xs font-medium text-gray-700 mb-1">
+            Fuel Total
+        </label>
+        <input type="number"
+               step="0.01"
+               min="0"
+               name="fueltotal"
+               id="create_fueltotal"
+               data-fuel-total
+               value="{{ old('fueltotal') }}"
+               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+               required>
+        <p class="mt-1 text-[11px] text-gray-500">
+            Will auto-calculate when litres and price are entered.
+        </p>
+    </div>
+</div>
 
                     <div class="flex items-center justify-end gap-3">
                         <button type="button"
@@ -375,4 +395,26 @@
             });
         </script>
     @endif
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const litresInput = document.querySelector('#create_litres');
+        const priceInput  = document.querySelector('#create_priceperlitre');
+        const totalInput  = document.querySelector('#create_fueltotal');
+
+        if (!litresInput || !priceInput || !totalInput) return;
+
+        function recalcTotal() {
+            const litres = parseFloat(litresInput.value);
+            const price  = parseFloat(priceInput.value);
+
+            if (!isNaN(litres) && !isNaN(price) && litres > 0 && price > 0) {
+                const total = litres * price;
+                totalInput.value = total.toFixed(2);
+            }
+        }
+
+        litresInput.addEventListener('input', recalcTotal);
+        priceInput.addEventListener('input', recalcTotal);
+    });
+</script>
 </x-app-layout>

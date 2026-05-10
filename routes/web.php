@@ -150,6 +150,10 @@ Route::post('/destination-items', [DestinationItemController::class, 'store'])->
 Route::get('/destination-items/{destinationItem}/edit', [DestinationItemController::class, 'edit'])->name('destination-items.edit');
 Route::put('/destination-items/{destinationItem}', [DestinationItemController::class, 'update'])->name('destination-items.update');
 Route::delete('/destination-items/{destinationItem}', [DestinationItemController::class, 'destroy'])->name('destination-items.destroy');
+Route::get(
+    '/destinations/{destination}/destination-items/create-from-destination',
+    [DestinationItemController::class, 'createFromDestination']
+)->name('destination-items.create-from-destination');
 
 Route::prefix('trips/{trip}')->name('trips.')->group(function () {
     Route::get('/edit', [TripController::class, 'edit'])->name('edit');

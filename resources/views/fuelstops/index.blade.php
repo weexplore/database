@@ -231,6 +231,7 @@
                                 <th class="px-4 py-3 text-left font-semibold text-gray-700">Brand</th>
                                 <th class="px-4 py-3 text-left font-semibold text-gray-700">Fuel Types</th>
                                 <th class="px-4 py-3 text-left font-semibold text-gray-700">Facilities</th>
+                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Coordinates</th>
                                 <th class="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
                                 <th class="px-4 py-3 text-right font-semibold text-gray-700">Actions</th>
                             </tr>
@@ -246,12 +247,15 @@
                                             </div>
                                         @endif
                                     </td>
+
                                     <td class="px-4 py-3 align-top text-gray-700">
                                         {{ $fuelStop->place?->placename ?? '—' }}
                                     </td>
+
                                     <td class="px-4 py-3 align-top text-gray-700">
                                         {{ $fuelStop->brandname ?: '—' }}
                                     </td>
+
                                     <td class="px-4 py-3 align-top text-gray-700">
                                         @if (count($fuelStop->fuel_types_array))
                                             <div class="flex flex-wrap gap-1">
@@ -265,6 +269,7 @@
                                             —
                                         @endif
                                     </td>
+
                                     <td class="px-4 py-3 align-top text-gray-700">
                                         <div class="flex flex-wrap gap-1">
                                             @if ($fuelStop->hashighflowdiesel)
@@ -289,6 +294,19 @@
                                             @endif
                                         </div>
                                     </td>
+
+                                    <td class="px-4 py-3 align-top">
+                                        @if (!is_null($fuelStop->latitude) && !is_null($fuelStop->longitude))
+                                            <span class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                                                Added
+                                            </span>
+                                        @else
+                                            <span class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                                Missing
+                                            </span>
+                                        @endif
+                                    </td>
+
                                     <td class="px-4 py-3 align-top">
                                         @if ($fuelStop->isactive)
                                             <span class="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Active</span>
@@ -296,16 +314,20 @@
                                             <span class="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">Inactive</span>
                                         @endif
                                     </td>
+
                                     <td class="px-4 py-3 align-top text-right">
                                         <div class="flex items-center justify-end gap-2">
-                                            <a href="{{ route('fuel-stops.edit', $fuelStop) }}"
-                                               class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50">
+                                            <a href="{{ route('fuel-stops.edit', ['fuel_stop' => $fuelStop, 'return_to' => request()->fullUrl()]) }}"
+                                            class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50">
                                                 Edit
                                             </a>
 
-                                            <form method="POST" action="{{ route('fuel-stops.destroy', $fuelStop) }}" onsubmit="return confirm('Delete this fuel stop?');">
+                                            <form method="POST"
+                                                action="{{ route('fuel-stops.destroy', $fuelStop) }}"
+                                                onsubmit="return confirm('Delete this fuel stop?');">
                                                 @csrf
                                                 @method('DELETE')
+                                                <input type="hidden" name="return_to" value="{{ request()->fullUrl() }}">
                                                 <button type="submit"
                                                         class="inline-flex items-center px-3 py-1.5 border border-red-300 rounded-md text-xs font-medium text-red-700 bg-white hover:bg-red-50">
                                                     Delete
@@ -316,7 +338,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="px-4 py-6 text-center text-sm text-gray-500">
+                                    <td colspan="8" class="px-4 py-6 text-center text-sm text-gray-500">
                                         No fuel stops found.
                                     </td>
                                 </tr>

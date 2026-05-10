@@ -26,67 +26,70 @@ class TripStayController extends Controller
     }
 
     public function index(Request $request, Trip $trip)
-    {
-        $query = TripStay::with(['place', 'tripLeg', 'travelledFromPlace'])
-            ->where('tripid', $trip->id);
+{
+    $query = TripStay::with(['place', 'tripLeg', 'travelledFromPlace'])
+        ->where('tripid', $trip->id);
 
-        if ($request->filled('tripleg_id')) {
-            $query->where('triplegid', $request->integer('tripleg_id'));
-        }
-
-        if ($request->filled('place_id')) {
-            $query->where('placeid', $request->integer('place_id'));
-        }
-
-        if ($request->filled('travelledfromplace_id')) {
-            $query->where('travelledfromplaceid', $request->integer('travelledfromplace_id'));
-        }
-
-        if ($request->filled('staytype')) {
-            $query->where('staytype', $request->string('staytype'));
-        }
-
-        $stays = $query->orderBy('checkindate')
-            ->orderBy('id')
-            ->get();
-
-        $places = Place::orderBy('placename')->get();
-
-        $tripLegs = TripLeg::where('tripid', $trip->id)
-            ->orderBy('legnumber')
-            ->orderBy('sortorder')
-            ->get();
-
-        $stayTypes = [
-            'caravan_park',
-            'free_camp',
-            'showgrounds',
-            'station_stay',
-            'campground',
-            'motel',
-            'farm_stay',
-            'friends_family',
-            'roadside_stop',
-            'other',
-        ];
-
-        $showCreate = $request->boolean('show_create');
-        $selectedTripLegId = $request->integer('tripleg_id');
-        $selectedPlaceId = $request->integer('place_id');
-        $selectedTravelledFromPlaceId = $request->integer('travelledfromplace_id');
-
-        return view('trip-stays.index', compact(
-            'trip',
-            'stays',
-            'places',
-            'tripLegs',
-            'stayTypes',
-            'showCreate',
-            'selectedTripLegId',
-            'selectedPlaceId',
-            'selectedTravelledFromPlaceId'
-        ));
+    if ($request->filled('tripleg_id')) {
+        $query->where('triplegid', $request->integer('tripleg_id'));
     }
+
+    if ($request->filled('place_id')) {
+        $query->where('placeid', $request->integer('place_id'));
+    }
+
+    if ($request->filled('travelledfromplace_id')) {
+        $query->where('travelledfromplaceid', $request->integer('travelledfromplace_id'));
+    }
+
+    if ($request->filled('staytype')) {
+        $query->where('staytype', $request->string('staytype'));
+    }
+
+    $stays = $query->orderBy('checkindate')
+        ->orderBy('id')
+        ->get();
+
+    $places = Place::orderBy('placename')->get();
+
+    $tripLegs = TripLeg::where('tripid', $trip->id)
+        ->orderBy('legnumber')
+        ->orderBy('sortorder')
+        ->get();
+
+    $destinationItems = DestinationItem::orderBy('itemname')->get();
+
+    $stayTypes = [
+        'caravan_park',
+        'free_camp',
+        'showgrounds',
+        'station_stay',
+        'campground',
+        'motel',
+        'farm_stay',
+        'friends_family',
+        'roadside_stop',
+        'other',
+    ];
+
+    $showCreate = $request->boolean('show_create');
+    $selectedTripLegId = $request->integer('tripleg_id');
+    $selectedPlaceId = $request->integer('place_id');
+    $selectedTravelledFromPlaceId = $request->integer('travelledfromplace_id');
+
+    return view('trip-stays.index', compact(
+        'trip',
+        'stays',
+        'places',
+        'tripLegs',
+        'destinationItems',
+        'stayTypes',
+        'showCreate',
+        'selectedTripLegId',
+        'selectedPlaceId',
+        'selectedTravelledFromPlaceId'
+    ));
+}
 
     public function create(Request $request, Trip $trip)
     {

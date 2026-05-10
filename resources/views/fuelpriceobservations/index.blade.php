@@ -303,4 +303,35 @@
             });
         })();
     </script>
+    <script>
+        (() => {
+            const forms = document.querySelectorAll('[data-dirty-form]');
+            forms.forEach((form) => {
+                let isDirty = false;
+
+                form.querySelectorAll('input, select, textarea').forEach((field) => {
+                    field.addEventListener('change', () => isDirty = true);
+                    field.addEventListener('input', () => isDirty = true);
+                });
+
+                form.addEventListener('submit', () => isDirty = false);
+
+                window.addEventListener('beforeunload', (event) => {
+                    if (!isDirty) return;
+                    event.preventDefault();
+                    event.returnValue = '';
+                });
+
+                const priceInput = form.querySelector('#priceperlitre');
+                if (priceInput) {
+                    priceInput.addEventListener('blur', () => {
+                        const value = parseFloat(priceInput.value);
+                        if (!isNaN(value) && value >= 0) {
+                            priceInput.value = value.toFixed(4);
+                        }
+                    });
+                }
+            });
+        })();
+    </script>
 </x-app-layout>

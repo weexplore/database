@@ -48,4 +48,33 @@ class FuelPriceObservation extends Model
             'estimate' => 'Estimate',
         ][$this->pricesource] ?? ($this->pricesource ?: '—');
     }
+        public static function fuelTypeOptions(): array
+    {
+        return [
+            'diesel' => 'Diesel',
+            'premiumdiesel' => 'Premium Diesel',
+            'unleaded91' => 'Unleaded 91',
+            'unleaded95' => 'Unleaded 95',
+            'unleaded98' => 'Unleaded 98',
+            'e10' => 'E10',
+            'lpg' => 'LPG',
+            'adblue' => 'AdBlue',
+        ];
+    }
+
+    public static function priceSourceOptions(): array
+    {
+        return [
+            'actualpurchase' => 'Actual Purchase',
+            'signboard' => 'Signboard',
+            'website' => 'Website',
+            'imported' => 'Imported',
+            'estimate' => 'Estimate',
+        ];
+    }
+
+    public function trip()
+    {
+        return $this->belongsTo(Trip::class, 'tripid');
+    }
 }

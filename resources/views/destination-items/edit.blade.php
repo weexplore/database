@@ -45,79 +45,13 @@
                                 <h3 class="text-lg font-medium text-gray-900">Core Details</h3>
                             </div>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div class="md:col-span-2">
-                                    <label for="destinationid" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Destination
-                                    </label>
-                                    <select name="destinationid"
-                                            id="destinationid"
-                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                        @foreach($destinations as $destination)
-                                            <option value="{{ $destination->id }}"
-                                                @selected((string) old('destinationid', $destinationItem->destinationid) === (string) $destination->id)>
-                                                {{ $destination->destinationname }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <div class="md:col-span-2">
-                                    <label for="placeid" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Linked Place
-                                    </label>
-                                    <select name="placeid"
-                                            id="placeid"
-                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                        <option value="">None</option>
-                                        @foreach($places as $place)
-                                            <option value="{{ $place->id }}"
-                                                @selected((string) old('placeid', $destinationItem->placeid) === (string) $place->id)>
-                                                {{ $place->placename }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <div class="md:col-span-2">
-                                    <label for="itemname" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Item Name
-                                    </label>
-                                    <input type="text"
-                                           name="itemname"
-                                           id="itemname"
-                                           value="{{ old('itemname', $destinationItem->itemname) }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                           required>
-                                </div>
-
-                                <div>
-                                    <label for="itemtype" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Item Type
-                                    </label>
-                                    <select name="itemtype"
-                                            id="itemtype"
-                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                        @foreach($itemTypeOptions as $value => $label)
-                                            <option value="{{ $value }}"
-                                                @selected(old('itemtype', $destinationItem->itemtype) === $value)>
-                                                {{ $label }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label for="sortorder" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Sort Order
-                                    </label>
-                                    <input type="number"
-                                           name="sortorder"
-                                           id="sortorder"
-                                           value="{{ old('sortorder', $destinationItem->sortorder) }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                </div>
-                            </div>
+                            @include('destination-items._form', [
+                                'destinationItem' => $destinationItem,
+                                'destinations' => $destinations,
+                                'places' => $places,
+                                'itemTypes' => $itemTypes,
+                                'selectedDestinationId' => $selectedDestinationId ?? null,
+                            ])
                         </div>
 
                         {{-- Location & Contact --}}
@@ -240,10 +174,10 @@
                                     </button>
 
                                     <a href="#"
-                                    id="open-in-google-maps"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                                       id="open-in-google-maps"
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-semibold text-gray-700 hover:bg-gray-50">
                                         Open in Google Maps
                                     </a>
                                 </div>
@@ -285,106 +219,6 @@
                                         id="internetsearch"
                                         value="{{ old('internetsearch', $destinationItem->internetsearch) }}"
                                         class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Notes & Costs --}}
-                        <div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-6">
-                            <div>
-                                <h3 class="text-lg font-medium text-gray-900">Notes & Costs</h3>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div class="md:col-span-2">
-                                    <label for="shortdescription" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Short description
-                                    </label>
-                                    <textarea name="shortdescription"
-                                              id="shortdescription"
-                                              rows="3"
-                                              class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('shortdescription', $destinationItem->shortdescription) }}</textarea>
-                                </div>
-
-                                <div class="md:col-span-2">
-                                    <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Notes
-                                    </label>
-                                    <textarea name="notes"
-                                              id="notes"
-                                              rows="4"
-                                              class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('notes', $destinationItem->notes) }}</textarea>
-                                </div>
-
-                                <div>
-                                    <label for="estimatedcostperperson" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Estimated cost per person
-                                    </label>
-                                    <input type="number"
-                                           step="0.01"
-                                           name="estimatedcostperperson"
-                                           id="estimatedcostperperson"
-                                           value="{{ old('estimatedcostperperson', $destinationItem->estimatedcostperperson) }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                </div>
-
-                                <div>
-                                    <label for="estimatedtotalcost" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Estimated total cost
-                                    </label>
-                                    <input type="number"
-                                           step="0.01"
-                                           name="estimatedtotalcost"
-                                           id="estimatedtotalcost"
-                                           value="{{ old('estimatedtotalcost', $destinationItem->estimatedtotalcost) }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                </div>
-
-                                <div>
-                                    <label for="recommendedstayminutes" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Recommended stay (minutes)
-                                    </label>
-                                    <input type="number"
-                                           name="recommendedstayminutes"
-                                           id="recommendedstayminutes"
-                                           value="{{ old('recommendedstayminutes', $destinationItem->recommendedstayminutes) }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                </div>
-
-                                <div class="md:col-span-2">
-                                    <label for="caravanaccessnotes" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Caravan access notes
-                                    </label>
-                                    <textarea name="caravanaccessnotes"
-                                              id="caravanaccessnotes"
-                                              rows="3"
-                                              class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('caravanaccessnotes', $destinationItem->caravanaccessnotes) }}</textarea>
-                                </div>
-
-                                <div class="flex items-center gap-2">
-                                    <input type="hidden" name="bookingrequired" value="0">
-                                    <input type="checkbox"
-                                           id="bookingrequired"
-                                           name="bookingrequired"
-                                           value="1"
-                                           class="rounded border-gray-300 text-blue-600 shadow-sm"
-                                           @checked((bool) old('bookingrequired', $destinationItem->bookingrequired))>
-                                    <label for="bookingrequired" class="text-sm text-gray-700">
-                                        Booking required
-                                    </label>
-                                </div>
-
-                                <div class="flex items-center gap-2">
-                                    <input type="hidden" name="isactive" value="0">
-                                    <input type="checkbox"
-                                           id="isactive"
-                                           name="isactive"
-                                           value="1"
-                                           class="rounded border-gray-300 text-blue-600 shadow-sm"
-                                           @checked((bool) old('isactive', $destinationItem->isactive))>
-                                    <label for="isactive" class="text-sm text-gray-700">
-                                        Active
-                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -485,8 +319,10 @@
                                 <dd class="text-gray-900">{{ $destinationItem->id }}</dd>
                             </div>
                             <div class="flex justify-between gap-4">
-                                <dt class="text-gray-500">Type</dt>
-                                <dd class="text-gray-900">{{ $itemTypeOptions[$destinationItem->itemtype] ?? ($destinationItem->itemtype ?: '—') }}</dd>
+                                <dt class="text-gray-500">Types</dt>
+                                <dd class="text-gray-900">
+                                    {{ $destinationItem->itemTypes->pluck('typename')->join(', ') ?: '—' }}
+                                </dd>
                             </div>
                             <div class="flex justify-between gap-4">
                                 <dt class="text-gray-500">Created</dt>
@@ -502,6 +338,7 @@
             </div>
         </div>
     </div>
+
 <link rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
@@ -524,6 +361,10 @@ window.addEventListener('load', function () {
     const googleMapsLink = document.getElementById('open-in-google-maps');
     const mapElement = document.getElementById('destination-item-map');
 
+    const placeSelect = document.getElementById('placeid');
+    const address1Input = document.getElementById('addressline1');
+    const address3Input = document.getElementById('addressline3');
+
     if (!latInput || !lngInput || !mapElement) {
         return;
     }
@@ -534,6 +375,97 @@ window.addEventListener('load', function () {
         }
         return;
     }
+
+    let searchTouchedManually = false;
+
+    function coordsAreBlank() {
+        return latInput.value.trim() === '' && lngInput.value.trim() === '';
+    }
+
+    function buildPreferredSearchText() {
+        const parts = [];
+
+        const addr1 = address1Input ? address1Input.value.trim() : '';
+        const addr3 = address3Input ? address3Input.value.trim() : '';
+
+        if (addr1 !== '') {
+            parts.push(addr1);
+        }
+        if (addr3 !== '') {
+            parts.push(addr3);
+        }
+
+        if (parts.length > 0) {
+            return parts.join(', ');
+        }
+
+        if (placeSelect && placeSelect.value) {
+            const opt = placeSelect.options[placeSelect.selectedIndex];
+            if (opt) {
+                const placeName = opt.text.trim();
+                if (placeName !== '') {
+                    return placeName;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    function shouldAutoFillSearch() {
+        return searchInput && coordsAreBlank();
+    }
+
+    function syncSearchFromContext(force = false) {
+        if (!searchInput) return;
+        if (!shouldAutoFillSearch()) return;
+
+        const preferred = buildPreferredSearchText();
+        const current = searchInput.value.trim();
+
+        if (preferred === '') {
+            return;
+        }
+
+        if (
+            force ||
+            !searchTouchedManually ||
+            current === '' ||
+            current === preferred
+        ) {
+            searchInput.value = preferred;
+        }
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            const preferred = buildPreferredSearchText();
+            const current = searchInput.value.trim();
+            searchTouchedManually = current !== '' && current !== preferred;
+        });
+    }
+
+    if (placeSelect) {
+        placeSelect.addEventListener('change', function () {
+            searchTouchedManually = false;
+            syncSearchFromContext();
+        });
+    }
+
+    if (address1Input) {
+        address1Input.addEventListener('input', function () {
+            syncSearchFromContext();
+        });
+    }
+
+    if (address3Input) {
+        address3Input.addEventListener('input', function () {
+            syncSearchFromContext();
+        });
+    }
+
+    // initial sync on load
+    syncSearchFromContext(true);
 
     const hasCoords = latInput.value !== '' && lngInput.value !== '';
     const defaultLat = parseFloat(latInput.value || '-37.8136');

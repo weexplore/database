@@ -393,4 +393,46 @@
             });
         })();
     </script>
+    <script>
+    (() => {
+        const forms = document.querySelectorAll('[data-dirty-form]');
+
+        forms.forEach((form) => {
+            let isDirty = false;
+
+            form.querySelectorAll('input, select, textarea').forEach((field) => {
+                field.addEventListener('change', () => isDirty = true);
+                field.addEventListener('input', () => isDirty = true);
+            });
+
+            form.addEventListener('submit', () => isDirty = false);
+
+            window.addEventListener('beforeunload', (event) => {
+                if (!isDirty) return;
+                event.preventDefault();
+                event.returnValue = '';
+            });
+
+            // Auto-calc Estimated Total Cost from Estimated Litres and Expected Price / Litre
+            const litresInput = form.querySelector('#estimatedlitres');
+            const priceInput  = form.querySelector('#expectedpriceperlitre');
+            const totalInput  = form.querySelector('#estimatedtotalcost');
+
+            if (litresInput && priceInput && totalInput) {
+                function recalcEstimatedTotal() {
+                    const litres = parseFloat(litresInput.value);
+                    const price  = parseFloat(priceInput.value);
+
+                    if (!isNaN(litres) && !isNaN(price) && litres > 0 && price > 0) {
+                        const total = litres * price;
+                        totalInput.value = total.toFixed(2);
+                    }
+                }
+
+                litresInput.addEventListener('input', recalcEstimatedTotal);
+                priceInput.addEventListener('input', recalcEstimatedTotal);
+            }
+        });
+    })();
+</script>
 </x-app-layout>

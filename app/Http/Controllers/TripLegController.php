@@ -36,7 +36,10 @@ class TripLegController extends Controller
         $places = Place::orderBy('placename')->get();
         $destinations = Destination::orderBy('destinationname')->get();
         $destinationItems = DestinationItem::query()
-            ->with(['destination', 'place'])
+            ->with([
+                'destination.place',
+                'place',
+            ])
             ->where('isactive', 1)
             ->orderBy('itemname')
             ->get();
@@ -146,7 +149,10 @@ class TripLegController extends Controller
         $places = Place::orderBy('placename')->get();
         $destinations = Destination::orderBy('destinationname')->get();
         $destinationItems = DestinationItem::query()
-            ->with(['destination', 'place'])
+            ->with([
+                'destination.place',
+                'place',
+            ])
             ->where('isactive', 1)
             ->orderBy('itemname')
             ->get();

@@ -12,20 +12,29 @@ class FuelStop extends Model
     public const CREATED_AT = 'createdat';
     public const UPDATED_AT = 'updatedat';
 
-    protected $fillable = [
-        'placeid',
-        'stopname',
-        'brandname',
-        'fueltypesavailable',
-        'hashighflowdiesel',
-        'hasadblue',
-        'hascarwash',
-        'hasairwater',
-        'caravanaccessnotes',
-        'openingnotes',
-        'generalnotes',
-        'isactive',
-    ];
+protected $fillable = [
+    'placeid',
+    'addressline1',
+    'addressline2',
+    'addressline3',
+    'postcode',
+    'latitude',
+    'longitude',
+    'website',
+    'telephone',
+    'internetsearch',
+    'stopname',
+    'brandname',
+    'fueltypesavailable',
+    'hashighflowdiesel',
+    'hasadblue',
+    'hascarwash',
+    'hasairwater',
+    'caravanaccessnotes',
+    'openingnotes',
+    'generalnotes',
+    'isactive',
+];
 
     protected $casts = [
         'hashighflowdiesel' => 'boolean',

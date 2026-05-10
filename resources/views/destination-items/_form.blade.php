@@ -2,7 +2,6 @@
     $currentDestinationId = old('destinationid', $selectedDestinationId ?? ($destinationItem->destinationid ?? ''));
     $currentPlaceId = old('placeid', $destinationItem->placeid ?? '');
     $currentItemName = old('itemname', $destinationItem->itemname ?? '');
-    $currentItemType = old('itemtype', $destinationItem->itemtype ?? '');
     $currentShortDescription = old('shortdescription', $destinationItem->shortdescription ?? '');
     $currentNotes = old('notes', $destinationItem->notes ?? '');
     $currentEstimatedCostPerPerson = old('estimatedcostperperson', $destinationItem->estimatedcostperperson ?? '');
@@ -10,8 +9,24 @@
     $currentRecommendedStayMinutes = old('recommendedstayminutes', $destinationItem->recommendedstayminutes ?? '');
     $currentSortOrder = old('sortorder', $destinationItem->sortorder ?? '');
     $currentCaravanAccessNotes = old('caravanaccessnotes', $destinationItem->caravanaccessnotes ?? '');
+    $currentDisabilityAccessNotes = old('disabilityaccessnotes', $destinationItem->disabilityaccessnotes ?? '');
     $currentBookingRequired = old('bookingrequired', $destinationItem->bookingrequired ?? false);
     $currentIsActive = old('isactive', $destinationItem->isactive ?? true);
+
+    // itemTypes (many-to-many)
+    $relatedTypeIds = [];
+
+    if (old('itemtype_ids')) {
+        $relatedTypeIds = (array) old('itemtype_ids');
+    } elseif (isset($destinationItem) && $destinationItem->relationLoaded('itemTypes')) {
+        $relatedTypeIds = $destinationItem->itemTypes->pluck('id')->all();
+    } elseif (isset($destinationItem)) {
+        $relatedTypeIds = $destinationItem->itemTypes()->pluck('destination_item_types.id')->all();
+    }
+
+    $currentItemTypeIds = collect($relatedTypeIds)
+        ->map(fn ($id) => (string) $id)
+        ->all();
 @endphp
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -50,7 +65,7 @@
         </select>
     </div>
 
-    <div>
+    <div class="md:col-span-2">
         <label for="itemname" class="block text-sm font-medium text-gray-700">
             Item name
         </label>
@@ -62,21 +77,29 @@
                required>
     </div>
 
-    <div>
-        <label for="itemtype" class="block text-sm font-medium text-gray-700">
-            Item type
+    <div class="md:col-span-2">
+        <label class="block text-sm font-medium text-gray-700">
+            Item types
         </label>
-        <select id="itemtype"
-                name="itemtype"
-                class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-            <option value="">None</option>
-            @foreach($itemTypes as $value => $label)
-                <option value="{{ $value }}"
-                    @selected((string) $currentItemType === (string) $value)>
-                    {{ $label }}
-                </option>
-            @endforeach
-        </select>
+        <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+@foreach($itemTypes as $itemType)
+    @php
+        $itemTypeId = is_object($itemType) ? $itemType->id : null;
+        $itemTypeName = is_object($itemType) ? $itemType->typename : (string) $itemType;
+    @endphp
+
+    @if($itemTypeId)
+        <label class="flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox"
+                name="itemtype_ids[]"
+                value="{{ $itemTypeId }}"
+                class="rounded border-gray-300 text-blue-600 shadow-sm"
+                @checked(in_array((string) $itemTypeId, $currentItemTypeIds, true))>
+            <span>{{ $itemTypeName }}</span>
+        </label>
+    @endif
+@endforeach
+        </div>
     </div>
 
     <div class="md:col-span-2">
@@ -153,6 +176,16 @@
                   name="caravanaccessnotes"
                   rows="3"
                   class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">{{ $currentCaravanAccessNotes }}</textarea>
+    </div>
+
+    <div class="md:col-span-2">
+        <label for="disabilityaccessnotes" class="block text-sm font-medium text-gray-700">
+            Disability access notes
+        </label>
+        <textarea id="disabilityaccessnotes"
+                  name="disabilityaccessnotes"
+                  rows="3"
+                  class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">{{ $currentDisabilityAccessNotes }}</textarea>
     </div>
 
     <div class="flex items-center gap-2">
