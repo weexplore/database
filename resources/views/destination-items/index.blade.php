@@ -132,8 +132,8 @@
                                     </td>
                                     <td class="px-4 py-3">{{ $item->destination?->destinationname }}</td>
                                     <td class="px-4 py-3">
-                                        {{ $item->itemTypes->pluck('typename')->join(', ') ?: '—' }}
-                                    </td>
+                                    {{ $item->itemTypes->pluck('typename')->join(', ') ?: '—' }}
+                                </td>
                                     <td class="px-4 py-3">{{ $item->place?->placename }}</td>
                                     <td class="px-4 py-3">{{ $item->bookingrequired ? 'Yes' : 'No' }}</td>
                                     <td class="px-4 py-3">{{ $item->isactive ? 'Yes' : 'No' }}</td>
@@ -154,18 +154,6 @@
                                             class="px-3 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200">
                                                 Edit
                                             </a>
-
-                                            <form method="POST"
-                                                action="{{ route('destination-items.destroy', $item) }}"
-                                                onsubmit="return confirm('Delete this destination item?');"
-                                                class="inline">
-                                                @csrf
-                                                @method('DELETE')
-                                                <input type="hidden" name="return_to" value="{{ $returnTo }}">
-                                                <button type="submit" class="px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200">
-                                                    Delete
-                                                </button>
-                                            </form>
                                         </div>
                                     </td>
                                 </tr>

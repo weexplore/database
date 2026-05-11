@@ -17,7 +17,8 @@ class TripFuelEstimateController extends Controller
     {
         $fuelTypes = config('fuel.fuel_types');
 
-        $tripLegs = TripLeg::where('tripid', $trip->id)
+        $tripLegs = TripLeg::with(['fromPlace', 'toPlace'])
+            ->where('tripid', $trip->id)
             ->orderBy('sortorder')
             ->orderBy('legnumber')
             ->orderBy('id')
@@ -31,7 +32,13 @@ class TripFuelEstimateController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        $tripFuelEstimates = FuelPriceEstimate::with(['tripLeg', 'fuelStop.place', 'place', 'sourceObservation'])
+        $tripFuelEstimates = FuelPriceEstimate::with([
+                'tripLeg.fromPlace',
+                'tripLeg.toPlace',
+                'fuelStop.place',
+                'place',
+                'sourceObservation',
+            ])
             ->where('tripid', $trip->id)
             ->when($request->filled('triplegid'), fn ($query) => $query->where('triplegid', $request->triplegid))
             ->when($request->filled('fueltype'), fn ($query) => $query->where('fueltype', $request->fueltype))

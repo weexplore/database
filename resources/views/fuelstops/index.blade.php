@@ -321,18 +321,6 @@
                                             class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50">
                                                 Edit
                                             </a>
-
-                                            <form method="POST"
-                                                action="{{ route('fuel-stops.destroy', $fuelStop) }}"
-                                                onsubmit="return confirm('Delete this fuel stop?');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <input type="hidden" name="return_to" value="{{ request()->fullUrl() }}">
-                                                <button type="submit"
-                                                        class="inline-flex items-center px-3 py-1.5 border border-red-300 rounded-md text-xs font-medium text-red-700 bg-white hover:bg-red-50">
-                                                    Delete
-                                                </button>
-                                            </form>
                                         </div>
                                     </td>
                                 </tr>

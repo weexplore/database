@@ -212,13 +212,6 @@
                                                 Open
                                             </a>
 
-                                            <button type="button"
-                                                    class="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs delete-destination-btn"
-                                                    data-id="{{ $destination->id }}"
-                                                    data-name="{{ $destination->destinationname }}"
-                                                    data-action="{{ route('destinations.destroy', $destination->id) }}">
-                                                Delete
-                                            </button>
                                         </td>
                                     </tr>
                                 @empty
@@ -317,6 +310,7 @@
                     'query' => request()->only(['placeid', 'destinationtype', 'featured', 'search', 'page']),
                 ])
             </div>
+            
 
             <div>
                 {{ $destinations->links() }}

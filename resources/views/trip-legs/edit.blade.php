@@ -252,6 +252,7 @@
             const toPlaceSelect = document.getElementById('toplaceid');
             const fromDestinationItemSelect = document.getElementById('fromdestinationitemid');
             const destinationItemSelect = document.getElementById('destinationitemid');
+            const distanceKmInput = document.getElementById('distancekm');
 
             function getSelectedCoords(select) {
                 if (!select) return null;
@@ -475,6 +476,17 @@
 
                     const distanceKm = (route.distance / 1000).toFixed(1);
                     const durationMinutes = Math.round(route.duration / 60);
+
+                    if (
+                        distanceKmInput &&
+                        (
+                            distanceKmInput.value === '' ||
+                            distanceKmInput.value === null ||
+                            Number(distanceKmInput.value) === 0
+                        )
+                    ) {
+                        distanceKmInput.value = distanceKm;
+                    }
 
                     const viaLabel = legPoints.length
                         ? ` via ${legPoints.map(point => point.name).join(', ')}`

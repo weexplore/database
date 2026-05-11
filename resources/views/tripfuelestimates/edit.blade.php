@@ -50,11 +50,23 @@
                                 id="triplegid"
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 <option value="">Select leg</option>
-                                @foreach ($tripLegs as $tripLeg)
-                                    <option value="{{ $tripLeg->id }}" @selected(old('triplegid', $fuelEstimate->triplegid) == $tripLeg->id)>
-                                        {{ $tripLeg->sequencenumber ? 'Leg ' . $tripLeg->sequencenumber : 'Leg ' . $tripLeg->id }}
-                                    </option>
-                                @endforeach
+@foreach ($tripLegs as $tripLeg)
+    @php
+        $legLabel =
+            $tripLeg->title
+            ?: trim(
+                collect([
+                    optional($tripLeg->fromPlace)->placename,
+                    optional($tripLeg->toPlace)->placename,
+                ])->filter()->implode(' → ')
+            )
+            ?: ('Leg ' . ($tripLeg->legnumber ?? $tripLeg->id));
+    @endphp
+
+    <option value="{{ $tripLeg->id }}" @selected(old('triplegid', $fuelEstimate->triplegid) == $tripLeg->id)>
+        {{ $legLabel }}
+    </option>
+@endforeach
                             </select>
                         </div>
 
@@ -260,9 +272,10 @@
             });
         })();
     </script>
-    <script>
+   <script>
     (() => {
         const forms = document.querySelectorAll('[data-dirty-form]');
+        const tripDefaultConsumption = {{ json_encode((float) ($trip->defaultfuelconsumptionlper100km ?? 0)) }};
 
         forms.forEach((form) => {
             let isDirty = false;
@@ -280,25 +293,48 @@
                 event.returnValue = '';
             });
 
-            // Auto-calc Estimated Total Cost from Estimated Litres and Expected Price / Litre
+            const distanceInput = form.querySelector('#estimateddistancekm');
             const litresInput = form.querySelector('#estimatedlitres');
-            const priceInput  = form.querySelector('#expectedpriceperlitre');
-            const totalInput  = form.querySelector('#estimatedtotalcost');
+            const priceInput = form.querySelector('#expectedpriceperlitre');
+            const totalInput = form.querySelector('#estimatedtotalcost');
 
-            if (litresInput && priceInput && totalInput) {
-                function recalcEstimatedTotal() {
-                    const litres = parseFloat(litresInput.value);
-                    const price  = parseFloat(priceInput.value);
+            function recalcEstimatedTotal() {
+                const litres = parseFloat(litresInput?.value);
+                const price = parseFloat(priceInput?.value);
 
-                    if (!isNaN(litres) && !isNaN(price) && litres > 0 && price > 0) {
-                        const total = litres * price;
-                        totalInput.value = total.toFixed(2);
-                    }
+                if (!isNaN(litres) && !isNaN(price) && litres >= 0 && price >= 0) {
+                    totalInput.value = (litres * price).toFixed(2);
+                } else if (totalInput) {
+                    totalInput.value = '';
+                }
+            }
+
+            function recalcEstimatedLitres() {
+                const distance = parseFloat(distanceInput?.value);
+
+                if (!isNaN(distance) && distance >= 0 && tripDefaultConsumption > 0) {
+                    litresInput.value = ((distance / 100) * tripDefaultConsumption).toFixed(3);
+                } else if (litresInput) {
+                    litresInput.value = '';
                 }
 
-                litresInput.addEventListener('input', recalcEstimatedTotal);
-                priceInput.addEventListener('input', recalcEstimatedTotal);
+                recalcEstimatedTotal();
             }
+
+            if (distanceInput && litresInput) {
+                distanceInput.addEventListener('input', recalcEstimatedLitres);
+                distanceInput.addEventListener('change', recalcEstimatedLitres);
+            }
+
+            if (litresInput && priceInput && totalInput) {
+                litresInput.addEventListener('input', recalcEstimatedTotal);
+                litresInput.addEventListener('change', recalcEstimatedTotal);
+                priceInput.addEventListener('input', recalcEstimatedTotal);
+                priceInput.addEventListener('change', recalcEstimatedTotal);
+            }
+
+            recalcEstimatedLitres();
+            recalcEstimatedTotal();
         });
     })();
 </script>

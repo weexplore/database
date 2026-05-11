@@ -224,6 +224,31 @@
                             </button>
                         </div>
                     </form>
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-red-200">
+                        <div class="px-4 py-3 border-b border-red-200 bg-red-50">
+                            <h3 class="text-sm font-semibold text-red-800">Delete Destination</h3>
+                            <p class="mt-1 text-xs text-red-700">
+                                This permanently removes this destination record.
+                            </p>
+                        </div>
+
+                        <div class="p-4">
+                            <form method="POST"
+                                action="{{ route('destinations.destroy', $destination) }}"
+                                onsubmit="return confirm('Delete this destination? This cannot be undone.');">
+                                @csrf
+                                @method('DELETE')
+                                <input type="hidden" name="return_to" value="{{ $returnTo }}">
+
+                                <div class="flex items-center justify-end">
+                                    <button type="submit"
+                                            class="inline-flex items-center px-4 py-2 border border-red-300 rounded-md text-xs font-semibold text-red-700 bg-white uppercase tracking-widest hover:bg-red-50">
+                                        Delete Destination
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
 
                 {{-- Sidebar --}}
@@ -326,13 +351,13 @@
                                 </p>
                             @endif
 
-<a href="{{ route('destination-items.create-from-destination', [
-        'destination' => $destination,
-        'return_to' => url()->full(),
-    ]) }}"
-    class="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-700 rounded hover:bg-green-100 text-xs">
-    + Add Destination Item
-</a>
+                            <a href="{{ route('destination-items.create-from-destination', [
+                                    'destination' => $destination,
+                                    'return_to' => url()->full(),
+                                ]) }}"
+                                class="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-700 rounded hover:bg-green-100 text-xs">
+                                + Add Destination Item
+                            </a>
                         </div>
                     </div>
 

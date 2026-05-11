@@ -345,16 +345,7 @@
                                                 class="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-sm"
                                             >
                                                 Edit
-                                            </a>
-                                            <button
-                                                type="button"
-                                                class="px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm js-delete-record"
-                                                data-id="{{ $place->id }}"
-                                                data-name="{{ $place->placename }}"
-                                                data-action="{{ route('places.destroy', $place->id) }}"
-                                            >
-                                                Delete
-                                            </button>
+                                            </a>                                           
                                         </td>
 
                                         <input type="hidden" name="existing[{{ $place->id }}][addressline1]" value="{{ old("existing.{$place->id}.addressline1", $place->addressline1) }}">

@@ -153,6 +153,7 @@ class TripController extends Controller
     public function edit(Trip $trip)
     {
         $trip->load(['travellers', 'tripTravellerLinks']);
+
         $travellers = Traveller::query()
             ->where('isactive', 1)
             ->orderBy('displayname')
@@ -163,11 +164,14 @@ class TripController extends Controller
             ->map(fn ($id) => (int) $id)
             ->all();
 
+        $calculatedEstimatedDistance = (float) $trip->legs()->sum('distancekm');
+
         return view('trips.edit', [
             'trip' => $trip,
             'travellers' => $travellers,
             'selectedTravellers' => $selectedTravellers,
             'statusOptions' => $this->statusOptions,
+            'calculatedEstimatedDistance' => $calculatedEstimatedDistance,
         ]);
     }
 

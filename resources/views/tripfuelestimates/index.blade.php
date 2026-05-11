@@ -55,7 +55,19 @@
                                 <option value="">All legs</option>
                                 @foreach ($tripLegs as $tripLeg)
                                     <option value="{{ $tripLeg->id }}" @selected((string) request('triplegid') === (string) $tripLeg->id)>
-                                        {{ $tripLeg->legnumber ? 'Leg ' . $tripLeg->legnumber : 'Leg ' . $tripLeg->id }}
+                                        @php
+                                            $legLabel =
+                                                $tripLeg->title
+                                                ?: trim(
+                                                    collect([
+                                                        optional($tripLeg->fromPlace)->placename,
+                                                        optional($tripLeg->toPlace)->placename,
+                                                    ])->filter()->implode(' → ')
+                                                )
+                                                ?: ('Leg ' . ($tripLeg->legnumber ?? $tripLeg->id));
+                                        @endphp
+
+                                        {{ $legLabel }}
                                     </option>
                                 @endforeach
                             </select>
@@ -137,8 +149,23 @@
                                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                     <option value="">Select leg</option>
                                     @foreach ($tripLegs as $tripLeg)
-                                        <option value="{{ $tripLeg->id }}" @selected(old('triplegid') == $tripLeg->id)>
-                                            {{ $tripLeg->legnumber ? 'Leg ' . $tripLeg->legnumber : '—' }}
+                                        @php
+                                            $legLabel =
+                                                $tripLeg->title
+                                                ?: trim(
+                                                    collect([
+                                                        optional($tripLeg->fromPlace)->placename,
+                                                        optional($tripLeg->toPlace)->placename,
+                                                    ])->filter()->implode(' → ')
+                                                )
+                                                ?: ('Leg ' . ($tripLeg->legnumber ?? $tripLeg->id));
+                                        @endphp
+                                        <option
+                                            value="{{ $tripLeg->id }}"
+                                            data-distancekm="{{ $tripLeg->distancekm ?? '' }}"
+                                            @selected(old('triplegid') == $tripLeg->id)
+                                        >
+                                            {{ $legLabel }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -207,7 +234,7 @@
                                     type="number"
                                     name="expectedpriceperlitre"
                                     id="expectedpriceperlitre"
-                                    value="{{ old('expectedpriceperlitre') }}"
+                                    value="{{ old('expectedpriceperlitre', $trip->defaultfuelpriceperlitre) }}"
                                     step="0.0001"
                                     min="0"
                                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
@@ -311,7 +338,21 @@
                                         {{ optional($fuelEstimate->estimatedate)->format('Y-m-d') ?? '—' }}
                                     </td>
                                     <td class="px-4 py-3 align-top text-gray-700">
-                                        {{ $fuelEstimate->tripLeg?->legnumber ? 'Leg ' . $fuelEstimate->tripLeg->legnumber : '—' }}
+                                        @php
+                                            $leg = $fuelEstimate->tripLeg;
+
+                                            $legLabel =
+                                                $leg?->title
+                                                ?: trim(
+                                                    collect([
+                                                        optional($leg?->fromPlace)->placename,
+                                                        optional($leg?->toPlace)->placename,
+                                                    ])->filter()->implode(' → ')
+                                                )
+                                                ?: ($leg ? 'Leg ' . ($leg->legnumber ?? $leg->id) : '—');
+                                        @endphp
+
+                                        {{ $legLabel }}
                                     </td>
                                     <td class="px-4 py-3 align-top text-gray-900 font-medium">
                                         {{ $fuelEstimate->fuelStop?->stopname ?? '—' }}
@@ -337,18 +378,9 @@
                                     <td class="px-4 py-3 align-top text-right">
                                         <div class="flex items-center justify-end gap-2">
                                             <a href="{{ route('trips.fuel-estimates.edit', [$trip, $fuelEstimate]) }}"
-                                               class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50">
+                                            class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50">
                                                 Edit
                                             </a>
-
-                                            <form method="POST" action="{{ route('trips.fuel-estimates.destroy', [$trip, $fuelEstimate]) }}" onsubmit="return confirm('Delete this trip fuel estimate?');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit"
-                                                        class="inline-flex items-center px-3 py-1.5 border border-red-300 rounded-md text-xs font-medium text-red-700 bg-white hover:bg-red-50">
-                                                    Delete
-                                                </button>
-                                            </form>
                                         </div>
                                     </td>
                                 </tr>
@@ -394,45 +426,69 @@
         })();
     </script>
     <script>
-    (() => {
-        const forms = document.querySelectorAll('[data-dirty-form]');
+        (() => {
+            const forms = document.querySelectorAll('[data-dirty-form]');
+            const tripDefaultConsumption = {{ json_encode((float) ($trip->defaultfuelconsumptionlper100km ?? 0)) }};
 
-        forms.forEach((form) => {
-            let isDirty = false;
+            forms.forEach((form) => {
+                let isDirty = false;
 
-            form.querySelectorAll('input, select, textarea').forEach((field) => {
-                field.addEventListener('change', () => isDirty = true);
-                field.addEventListener('input', () => isDirty = true);
-            });
+                form.querySelectorAll('input, select, textarea').forEach((field) => {
+                    field.addEventListener('change', () => isDirty = true);
+                    field.addEventListener('input', () => isDirty = true);
+                });
 
-            form.addEventListener('submit', () => isDirty = false);
+                form.addEventListener('submit', () => isDirty = false);
 
-            window.addEventListener('beforeunload', (event) => {
-                if (!isDirty) return;
-                event.preventDefault();
-                event.returnValue = '';
-            });
+                window.addEventListener('beforeunload', (event) => {
+                    if (!isDirty) return;
+                    event.preventDefault();
+                    event.returnValue = '';
+                });
 
-            // Auto-calc Estimated Total Cost from Estimated Litres and Expected Price / Litre
-            const litresInput = form.querySelector('#estimatedlitres');
-            const priceInput  = form.querySelector('#expectedpriceperlitre');
-            const totalInput  = form.querySelector('#estimatedtotalcost');
+                const distanceInput = form.querySelector('#estimateddistancekm');
+                const litresInput = form.querySelector('#estimatedlitres');
+                const priceInput = form.querySelector('#expectedpriceperlitre');
+                const totalInput = form.querySelector('#estimatedtotalcost');
 
-            if (litresInput && priceInput && totalInput) {
                 function recalcEstimatedTotal() {
-                    const litres = parseFloat(litresInput.value);
-                    const price  = parseFloat(priceInput.value);
+                    const litres = parseFloat(litresInput?.value);
+                    const price = parseFloat(priceInput?.value);
 
-                    if (!isNaN(litres) && !isNaN(price) && litres > 0 && price > 0) {
-                        const total = litres * price;
-                        totalInput.value = total.toFixed(2);
+                    if (!isNaN(litres) && !isNaN(price) && litres >= 0 && price >= 0) {
+                        totalInput.value = (litres * price).toFixed(2);
+                    } else if (totalInput) {
+                        totalInput.value = '';
                     }
                 }
 
-                litresInput.addEventListener('input', recalcEstimatedTotal);
-                priceInput.addEventListener('input', recalcEstimatedTotal);
-            }
-        });
-    })();
-</script>
+                function recalcEstimatedLitres() {
+                    const distance = parseFloat(distanceInput?.value);
+
+                    if (!isNaN(distance) && distance >= 0 && tripDefaultConsumption > 0) {
+                        litresInput.value = ((distance / 100) * tripDefaultConsumption).toFixed(3);
+                    } else if (litresInput) {
+                        litresInput.value = '';
+                    }
+
+                    recalcEstimatedTotal();
+                }
+
+                if (distanceInput && litresInput) {
+                    distanceInput.addEventListener('input', recalcEstimatedLitres);
+                    distanceInput.addEventListener('change', recalcEstimatedLitres);
+                }
+
+                if (litresInput && priceInput && totalInput) {
+                    litresInput.addEventListener('input', recalcEstimatedTotal);
+                    litresInput.addEventListener('change', recalcEstimatedTotal);
+                    priceInput.addEventListener('input', recalcEstimatedTotal);
+                    priceInput.addEventListener('change', recalcEstimatedTotal);
+                }
+
+                recalcEstimatedLitres();
+                recalcEstimatedTotal();
+            });
+        })();
+    </script>
 </x-app-layout>

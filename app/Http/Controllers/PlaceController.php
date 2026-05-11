@@ -359,7 +359,11 @@ public function edit(Request $request, Place $place)
 {
     $place->load([
         'destinations' => fn ($query) => $query
-            ->with(['items' => fn ($itemQuery) => $itemQuery->orderBy('itemname')])
+            ->with([
+                'items' => fn ($itemQuery) => $itemQuery
+                    ->with('itemTypes')   // ← add this
+                    ->orderBy('itemname'),
+            ])
             ->orderBy('destinationname'),
         'fuelStops' => fn ($query) => $query->orderBy('stopname'),
         'tripStays' => fn ($query) => $query
@@ -408,17 +412,20 @@ public function edit(Request $request, Place $place)
         ->orderBy('regionname')
         ->get();
 
-    return view('places.edit', compact(
-        'place',
-        'countries',
-        'states',
-        'regions',
-        'placeTypes',
-        'selectedCountryId',
-        'selectedStateId',
-        'selectedRegionId',
-        'destinationItems'
-    ));
+$itemTypeOptions = $this->destinationItemTypeOptions();
+
+return view('places.edit', compact(
+    'place',
+    'countries',
+    'states',
+    'regions',
+    'placeTypes',
+    'selectedCountryId',
+    'selectedStateId',
+    'selectedRegionId',
+    'destinationItems',
+    'itemTypeOptions'
+));
 }
 
 public function update(Request $request, Place $place)
@@ -646,6 +653,20 @@ private function placeDuplicateKey(?string $placename, $countryId, $stateId, ?st
         (string) ($stateId ?? ''),
         $this->normaliseText($locality) ?? '',
     ]);
+}
+private function destinationItemTypeOptions(): array
+{
+    return [
+        'attraction' => 'Attraction',
+        'walk' => 'Walk',
+        'dump_point' => 'Dump Point',
+        'water_point' => 'Water Point',
+        'museum' => 'Museum',
+        'drive' => 'Drive',
+        'campground' => 'Campground',
+        'lookout' => 'Lookout',
+        'other' => 'Other',
+    ];
 }
 
 }

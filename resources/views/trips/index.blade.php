@@ -184,13 +184,7 @@
                                                 Open
                                             </a>
 
-                                            <button type="button"
-                                                    class="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs delete-trip-btn"
-                                                    data-id="{{ $trip->id }}"
-                                                    data-name="{{ $trip->tripname }}"
-                                                    data-action="{{ route('trips.destroy', $trip->id) }}">
-                                                Delete
-                                            </button>
+
                                         </td>
                                     </tr>
                                 @empty
