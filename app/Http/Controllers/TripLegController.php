@@ -231,8 +231,8 @@ class TripLegController extends Controller
             'fromplaceid' => ['nullable', 'integer', 'exists:places,id'],
             'toplaceid' => ['nullable', 'integer', 'exists:places,id'],
             'destinationid' => ['nullable', 'integer', 'exists:destinations,id'],
-            'destinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'], // NEW
-            'fromdestinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
+            'destinationitemid' => ['nullable', 'integer', 'exists:destination_items,id'],
+            'fromdestinationitemid' => ['nullable', 'integer', 'exists:destination_items,id'],
             'title' => ['nullable', 'string', 'max:200'],
             'description' => ['nullable', 'string'],
             'distancekm' => ['nullable', 'numeric', 'min:0'],
@@ -246,6 +246,15 @@ class TripLegController extends Controller
             'vehicles.*.vehicleid' => ['nullable', 'integer', 'exists:vehicles,id'],
             'vehicles.*.vehiclerole' => ['nullable', 'string', 'max:50'],
             'vehicles.*.sortorder' => ['nullable', 'integer', 'min:0'],
+            'leg_points' => ['nullable', 'array'],
+            'leg_points.*.id' => ['nullable', 'integer'],
+            'leg_points.*.sequence_no' => ['nullable', 'integer', 'min:1'],
+            'leg_points.*.pointtype' => ['nullable', 'string', 'max:50'],
+            'leg_points.*.title' => ['nullable', 'string', 'max:255'],
+            'leg_points.*.placeid' => ['nullable', 'integer', 'exists:places,id'],
+            'leg_points.*.destinationid' => ['nullable', 'integer', 'exists:destinations,id'],
+            'leg_points.*.destinationitemid' => ['nullable', 'integer', 'exists:destination_items,id'],
+            'leg_points.*.notes' => ['nullable', 'string'],
         ]);
 
         $tripLeg->update(collect($validated)->except('vehicles')->toArray());
@@ -263,6 +272,42 @@ class TripLegController extends Controller
                 'vehiclerole' => $row['vehiclerole'] ?? null,
                 'sortorder' => $row['sortorder'] ?? null,
             ];
+        }
+
+        $legPointRows = collect($validated['leg_points'] ?? [])
+            ->filter(function ($row) {
+                return !empty($row['placeid'])
+                    || !empty($row['destinationitemid'])
+                    || !empty($row['title'])
+                    || !empty($row['notes']);
+            })
+            ->values();
+
+        $existingIds = $tripLeg->legPoints()->pluck('id')->all();
+        $submittedIds = $legPointRows->pluck('id')->filter()->map(fn ($id) => (int) $id)->all();
+
+        $idsToDelete = array_diff($existingIds, $submittedIds);
+
+        if (!empty($idsToDelete)) {
+            $tripLeg->legPoints()->whereIn('id', $idsToDelete)->delete();
+        }
+
+        foreach ($legPointRows as $index => $row) {
+            $payload = [
+                'sequence_no' => $row['sequence_no'] ?? ($index + 1),
+                'pointtype' => $row['pointtype'] ?? 'route_anchor',
+                'title' => $row['title'] ?? null,
+                'placeid' => $row['placeid'] ?: null,
+                'destinationid' => $row['destinationid'] ?: null,
+                'destinationitemid' => $row['destinationitemid'] ?: null,
+                'notes' => $row['notes'] ?? null,
+            ];
+
+            if (!empty($row['id'])) {
+                $tripLeg->legPoints()->where('id', $row['id'])->update($payload);
+            } else {
+                $tripLeg->legPoints()->create($payload);
+            }
         }
 
         $tripLeg->vehicles()->sync($vehicleSync);

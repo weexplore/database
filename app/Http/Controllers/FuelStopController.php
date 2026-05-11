@@ -82,34 +82,33 @@ public function edit(Request $request, FuelStop $fuelStop)
     }
 
     public function update(Request $request, FuelStop $fuelStop)
-    {
-        $validated = $this->validateFuelStop($request);
+{
+    $validated = $this->validateFuelStop($request);
 
-        $validated['fueltypesavailable'] = implode(',', $validated['fueltypesavailable'] ?? []);
-        $validated['hashighflowdiesel'] = $request->boolean('hashighflowdiesel');
-        $validated['hasadblue'] = $request->boolean('hasadblue');
-        $validated['hascarwash'] = $request->boolean('hascarwash');
-        $validated['hasairwater'] = $request->boolean('hasairwater');
-        $validated['isactive'] = $request->boolean('isactive');
+    $validated['fueltypesavailable'] = implode(',', $validated['fueltypesavailable'] ?? []);
+    $validated['hashighflowdiesel'] = $request->boolean('hashighflowdiesel');
+    $validated['hasadblue'] = $request->boolean('hasadblue');
+    $validated['hascarwash'] = $request->boolean('hascarwash');
+    $validated['hasairwater'] = $request->boolean('hasairwater');
+    $validated['isactive'] = $request->boolean('isactive');
 
-        $fuelStop->update($validated);
+    $fuelStop->update($validated);
 
-        $returnTo = $request->input('return_to');
+    $saveAction = $request->input('save_action', 'stay');
+    $returnTo = $request->input('return_to');
 
-        if ($returnTo) {
-            return redirect($returnTo)->with('success', 'Fuel stop updated.');
-        }
+if ($saveAction === 'stay') {
+    return redirect()
+        ->route('fuel-stops.edit', [
+            'fuel_stop' => $fuelStop->id,
+            'return_to' => $returnTo,
+        ])
+        ->with('success', 'Fuel stop updated.');
+}
 
-        if ($request->input('save_action') === 'index') {
-            return redirect()
-                ->route('fuel-stops.index')
-                ->with('success', 'Fuel stop updated.');
-        }
-
-        return redirect()
-            ->route('fuel-stops.edit', $fuelStop)
-            ->with('success', 'Fuel stop updated.');
-    }
+    return redirect($returnTo ?: route('fuel-stops.index'))
+        ->with('success', 'Fuel stop updated.');
+}
 
     public function destroy(Request $request, FuelStop $fuelStop)
     {

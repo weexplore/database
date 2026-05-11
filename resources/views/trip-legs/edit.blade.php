@@ -175,6 +175,71 @@
                 });
             }
 
+            const legPointRows = document.getElementById('leg-point-rows');
+            const addLegPointRowButton = document.getElementById('add-leg-point-row');
+
+            function reindexLegPointRows() {
+                if (!legPointRows) return;
+
+                legPointRows.querySelectorAll('.leg-point-row').forEach((row, index) => {
+                    row.querySelectorAll('input, select, textarea').forEach((field) => {
+                        field.name = field.name.replace(/leg_points\[\d+\]/, `leg_points[${index}]`);
+                    });
+                });
+            }
+
+            function removeEmptyLegPointMessage() {
+                if (!legPointRows) return;
+
+                const emptyMessage = legPointRows.querySelector('.border-dashed');
+                if (emptyMessage) {
+                    emptyMessage.remove();
+                }
+            }
+
+            if (addLegPointRowButton && legPointRows) {
+                addLegPointRowButton.addEventListener('click', function () {
+                    const index = legPointRows.querySelectorAll('.leg-point-row').length;
+                    const template = document.getElementById('leg-point-row-template');
+
+                    if (!template) return;
+
+                    const html = template.innerHTML
+                        .replaceAll('__INDEX__', index)
+                        .replaceAll('__SEQ__', index + 1);
+
+                    const tempWrapper = document.createElement('div');
+                    tempWrapper.innerHTML = html.trim();
+
+                    const row = tempWrapper.firstElementChild;
+                    removeEmptyLegPointMessage();
+                    legPointRows.appendChild(row);
+
+                    isDirty = true;
+                    document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
+                });
+
+                legPointRows.addEventListener('click', function (event) {
+                    const button = event.target.closest('.remove-leg-point-row');
+                    if (!button) return;
+
+                    button.closest('.leg-point-row').remove();
+                    reindexLegPointRows();
+                    isDirty = true;
+                    document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
+                });
+
+                legPointRows.addEventListener('change', function () {
+                    isDirty = true;
+                    document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
+                });
+
+                legPointRows.addEventListener('input', function () {
+                    isDirty = true;
+                    document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
+                });
+            }
+
             const mapElement = document.getElementById('trip-leg-map');
             const summaryElement = document.getElementById('trip-leg-map-summary');
             const googleMapsLink = document.getElementById('trip-leg-open-in-google-maps');
@@ -214,11 +279,64 @@
                 return getSelectedCoords(destinationItemSelect) || getSelectedCoords(toPlaceSelect);
             }
 
-            function updateGoogleMapsLink(from, to) {
+            function getSelectedOptionCoords(select) {
+                if (!select) return null;
+
+                const option = select.options[select.selectedIndex];
+                if (!option || !option.value) return null;
+
+                const lat = parseFloat(option.dataset.lat);
+                const lng = parseFloat(option.dataset.lng);
+
+                if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+
+                return {
+                    name: option.text.trim(),
+                    lat: lat,
+                    lng: lng,
+                };
+            }
+
+            function getLegPointCoords() {
+                if (!legPointRows) return [];
+
+                return Array.from(legPointRows.querySelectorAll('.leg-point-row'))
+                    .map((row) => {
+                        const sequenceInput = row.querySelector('input[name*="[sequence_no]"]');
+                        const destinationItemSelect = row.querySelector('.leg-point-destination-item');
+                        const placeSelect = row.querySelector('.leg-point-place');
+
+                        const destinationItemPoint = getSelectedOptionCoords(destinationItemSelect);
+                        const placePoint = getSelectedOptionCoords(placeSelect);
+                        const chosenPoint = destinationItemPoint || placePoint;
+
+                        if (!chosenPoint) {
+                            return null;
+                        }
+
+                        return {
+                            sequence: parseInt(sequenceInput?.value || '9999', 10),
+                            name: chosenPoint.name,
+                            lat: chosenPoint.lat,
+                            lng: chosenPoint.lng,
+                        };
+                    })
+                    .filter(Boolean)
+                    .sort((a, b) => a.sequence - b.sequence);
+            }
+
+            function updateGoogleMapsLink(from, to, legPoints = []) {
                 if (!googleMapsLink) return;
 
-                if (from && to) {
-                    googleMapsLink.href = `https://www.google.com/maps/dir/${from.lat},${from.lng}/${to.lat},${to.lng}/`;
+                const points = [
+                    ...(from ? [from] : []),
+                    ...legPoints,
+                    ...(to ? [to] : []),
+                ];
+
+                if (points.length >= 2) {
+                    const path = points.map(point => `${point.lat},${point.lng}`).join('/');
+                    googleMapsLink.href = `https://www.google.com/maps/dir/${path}/`;
                     googleMapsLink.classList.remove('pointer-events-none', 'opacity-50');
                 } else if (from) {
                     googleMapsLink.href = `https://www.google.com/maps?q=${from.lat},${from.lng}`;
@@ -246,20 +364,12 @@
                 attribution: '&copy; OpenStreetMap contributors'
             }).addTo(map);
 
-            let fromMarker = null;
-            let toMarker = null;
+            let routeMarkers = [];
             let routeLayer = null;
 
             function clearRoute() {
-                if (fromMarker) {
-                    map.removeLayer(fromMarker);
-                    fromMarker = null;
-                }
-
-                if (toMarker) {
-                    map.removeLayer(toMarker);
-                    toMarker = null;
-                }
+                routeMarkers.forEach(marker => map.removeLayer(marker));
+                routeMarkers = [];
 
                 if (routeLayer) {
                     map.removeLayer(routeLayer);
@@ -276,42 +386,49 @@
             async function refreshMap() {
                 const from = getCurrentFromPoint();
                 const to = getCurrentToPoint();
+                const legPoints = getLegPointCoords();
 
                 clearRoute();
-                updateGoogleMapsLink(from, to);
+                updateGoogleMapsLink(from, to, legPoints);
 
-                if (!from && !to) {
+                const routePoints = [
+                    ...(from ? [{ ...from, role: 'from' }] : []),
+                    ...legPoints.map(point => ({ ...point, role: 'via' })),
+                    ...(to ? [{ ...to, role: 'to' }] : []),
+                ];
+
+                if (routePoints.length === 0) {
                     if (summaryElement) {
                         summaryElement.textContent = 'Select a start point and an end point with coordinates to display the route preview.';
                     }
                     return;
                 }
 
-                if (from) {
-                    fromMarker = L.marker([from.lat, from.lng])
-                        .addTo(map)
-                        .bindPopup(`<strong>From</strong><br>${from.name}`);
-                }
+                routePoints.forEach((point, index) => {
+                    let label = 'Point';
 
-                if (to) {
-                    toMarker = L.marker([to.lat, to.lng])
-                        .addTo(map)
-                        .bindPopup(`<strong>To</strong><br>${to.name}`);
-                }
-
-                if (from && !to) {
-                    map.setView([from.lat, from.lng], 10);
-                    if (summaryElement) {
-                        summaryElement.textContent = 'Only the start point has coordinates available. Select an end point to preview the leg.';
+                    if (point.role === 'from') {
+                        label = 'From';
+                    } else if (point.role === 'to') {
+                        label = 'To';
+                    } else {
+                        label = `Via ${index}`;
                     }
-                    return;
-                }
 
-                if (!from && to) {
-                    map.setView([to.lat, to.lng], 10);
+                    const marker = L.marker([point.lat, point.lng])
+                        .addTo(map)
+                        .bindPopup(`<strong>${label}</strong><br>${point.name}`);
+
+                    routeMarkers.push(marker);
+                });
+
+                if (routePoints.length === 1) {
+                    map.setView([routePoints[0].lat, routePoints[0].lng], 10);
+
                     if (summaryElement) {
-                        summaryElement.textContent = 'Only the end point has coordinates available. Select a start point to preview the leg.';
+                        summaryElement.textContent = 'Only one point has coordinates available. Add at least a start and end point to preview the route.';
                     }
+
                     return;
                 }
 
@@ -319,9 +436,12 @@
                     summaryElement.textContent = 'Loading routed road preview...';
                 }
 
+                const coordString = routePoints
+                    .map(point => `${point.lng},${point.lat}`)
+                    .join(';');
+
                 const osrmUrl =
-                    `https://router.project-osrm.org/route/v1/driving/` +
-                    `${from.lng},${from.lat};${to.lng},${to.lat}` +
+                    `https://router.project-osrm.org/route/v1/driving/${coordString}` +
                     `?overview=full&geometries=geojson&steps=false`;
 
                 try {
@@ -356,17 +476,20 @@
                     const distanceKm = (route.distance / 1000).toFixed(1);
                     const durationMinutes = Math.round(route.duration / 60);
 
+                    const viaLabel = legPoints.length
+                        ? ` via ${legPoints.map(point => point.name).join(', ')}`
+                        : '';
+
                     setSummaryHtml(`
-                        <span class="font-medium text-gray-900">${from.name}</span>
+                        <span class="font-medium text-gray-900">${from ? from.name : 'Start'}</span>
                         <span class="text-gray-400"> to </span>
-                        <span class="font-medium text-gray-900">${to.name}</span>
-                        <span class="text-gray-500"> — routed via roads, ${distanceKm} km, about ${durationMinutes} min</span>
+                        <span class="font-medium text-gray-900">${to ? to.name : 'End'}</span>
+                        <span class="text-gray-500">${viaLabel} — routed via roads, ${distanceKm} km, about ${durationMinutes} min</span>
                     `);
                 } catch (error) {
-                    routeLayer = L.polyline([
-                        [from.lat, from.lng],
-                        [to.lat, to.lng]
-                    ], {
+                    const latLngs = routePoints.map(point => [point.lat, point.lng]);
+
+                    routeLayer = L.polyline(latLngs, {
                         color: '#2563eb',
                         weight: 4,
                         opacity: 0.6,
@@ -375,10 +498,15 @@
 
                     map.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
 
+                    const viaLabel = legPoints.length
+                        ? ` via ${legPoints.map(point => point.name).join(', ')}`
+                        : '';
+
                     setSummaryHtml(`
-                        <span class="font-medium text-gray-900">${from.name}</span>
+                        <span class="font-medium text-gray-900">${from ? from.name : 'Start'}</span>
                         <span class="text-gray-400"> to </span>
-                        <span class="font-medium text-gray-900">${to.name}</span>
+                        <span class="font-medium text-gray-900">${to ? to.name : 'End'}</span>
+                        <span class="text-gray-500">${viaLabel}</span>
                         <span class="text-amber-600"> — routing unavailable, showing straight-line fallback</span>
                     `);
                 }
@@ -389,6 +517,8 @@
                     select.addEventListener('change', refreshMap);
                 }
             });
+
+            document.addEventListener('trip-leg:selection-updated', refreshMap);
 
             refreshMap();
 

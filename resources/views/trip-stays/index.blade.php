@@ -171,31 +171,37 @@
                                             {{ $stay->stayname ?: '—' }}
                                         </td>
                                         <td class="px-4 py-3">
-                                            {{ $stay->staytype ? ucwords(str_replace('_', ' ', $stay->staytype)) : '—' }}
+                                            @php
+                                                $typeValue = $stay->staytype;
+                                            @endphp
+
+                                            {{ $typeValue !== null && isset($stayTypes[$typeValue])
+                                                ? $stayTypes[$typeValue]
+                                                : '—' }}
                                         </td>
                                         <td class="px-4 py-3">
                                             {{ $stay->place?->placename ?? '—' }}
                                         </td>
-<td class="px-4 py-3">
-    @if($stay->tripLeg)
-        <div class="text-sm text-gray-900">
-            {{ $stay->tripLeg->fromPlace?->placename ?? '—' }}
-            –
-            {{ $stay->tripLeg->toPlace?->placename ?? '—' }}
-        </div>
-        <div class="text-xs text-gray-500">
-            @if($stay->tripLeg->startdate || $stay->tripLeg->enddate)
-                {{ $stay->tripLeg->startdate ? $stay->tripLeg->startdate->format('d/m/Y') : '—' }}
-                –
-                {{ $stay->tripLeg->enddate ? $stay->tripLeg->enddate->format('d/m/Y') : '—' }}
-            @else
-                —
-            @endif
-        </div>
-    @else
-        —
-    @endif
-</td>
+                                        <td class="px-4 py-3">
+                                            @if($stay->tripLeg)
+                                                <div class="text-sm text-gray-900">
+                                                    {{ $stay->tripLeg->fromPlace?->placename ?? '—' }}
+                                                    –
+                                                    {{ $stay->tripLeg->toPlace?->placename ?? '—' }}
+                                                </div>
+                                                <div class="text-xs text-gray-500">
+                                                    @if($stay->tripLeg->startdate || $stay->tripLeg->enddate)
+                                                        {{ $stay->tripLeg->startdate ? $stay->tripLeg->startdate->format('d/m/Y') : '—' }}
+                                                        –
+                                                        {{ $stay->tripLeg->enddate ? $stay->tripLeg->enddate->format('d/m/Y') : '—' }}
+                                                    @else
+                                                        —
+                                                    @endif
+                                                </div>
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
                                         <td class="px-4 py-3">
                                             <div>{{ $stay->checkindate ? \Illuminate\Support\Carbon::parse($stay->checkindate)->format('d/m/Y') : '—' }}</div>
                                             <div class="text-xs text-gray-500">{{ $stay->checkoutdate ? \Illuminate\Support\Carbon::parse($stay->checkoutdate)->format('d/m/Y') : '—' }}</div>

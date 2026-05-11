@@ -151,7 +151,6 @@ public function create(Request $request)
         'longitude' => $data['longitude'] ?? null,
         'internetsearch' => $data['internetsearch'] ?? null,
         'itemname' => $data['itemname'],
-        $item->itemTypes()->sync($data['itemtype_ids'] ?? []),
         'shortdescription' => $data['shortdescription'] ?? null,
         'notes' => $data['notes'] ?? null,
         'estimatedcostperperson' => $data['estimatedcostperperson'] ?? null,
@@ -162,6 +161,9 @@ public function create(Request $request)
         'sortorder' => $data['sortorder'] ?? null,
         'isactive' => array_key_exists('isactive', $data) ? !empty($data['isactive']) : true,
     ]);
+
+    // Sync item types AFTER the item exists
+    $item->itemTypes()->sync($data['itemtype_ids'] ?? []);
 
     $returnTo = $request->input('return_to');
 

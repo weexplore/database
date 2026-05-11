@@ -114,23 +114,16 @@
 document.addEventListener('DOMContentLoaded', function () {
     const placeSelect = document.getElementById('placeid');
     const destinationSelect = document.getElementById('destinationid');
-    const destinationItemSelect = document.getElementById('destinationitemid');
+    const toggleAll = document.getElementById('related_toggle_all');
+    const relatedRows = Array.from(document.querySelectorAll('.related-destination-item-row'));
 
-    if (!placeSelect || !destinationSelect || !destinationItemSelect) {
+    if (!placeSelect || !destinationSelect) {
         return;
     }
 
     const destinationOptions = Array.from(destinationSelect.options).map(option => ({
         value: option.value,
         text: option.text,
-        placeId: option.dataset.placeId || '',
-        selected: option.selected,
-    }));
-
-    const destinationItemOptions = Array.from(destinationItemSelect.options).map(option => ({
-        value: option.value,
-        text: option.text,
-        destinationId: option.dataset.destinationId || '',
         placeId: option.dataset.placeId || '',
         selected: option.selected,
     }));
@@ -152,10 +145,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 option.dataset.placeId = item.placeId;
             }
 
-            if (item.destinationId) {
-                option.dataset.destinationId = item.destinationId;
-            }
-
             if (String(item.value) === String(selectedValue)) {
                 option.selected = true;
             }
@@ -168,21 +157,19 @@ document.addEventListener('DOMContentLoaded', function () {
         const selectedPlaceId = placeSelect.value;
         const currentDestinationId = destinationSelect.value;
 
-        let filtered = destinationOptions.filter(option => option.value === '');
+        const filtered = destinationOptions.filter(option => {
+            if (!option.value) return false;
+            if (!selectedPlaceId) return true;
+            return String(option.placeId) === String(selectedPlaceId);
+        });
 
-        filtered = filtered.concat(
-            destinationOptions.filter(option => {
-                if (!option.value) return false;
-                if (!selectedPlaceId) return true;
-                return String(option.placeId) === String(selectedPlaceId);
-            })
+        const destinationStillValid = filtered.some(
+            option => String(option.value) === String(currentDestinationId)
         );
-
-        const destinationStillValid = filtered.some(option => String(option.value) === String(currentDestinationId));
 
         rebuildSelect(
             destinationSelect,
-            filtered.filter(option => option.value !== ''),
+            filtered,
             'None',
             destinationStillValid ? currentDestinationId : ''
         );
@@ -192,41 +179,32 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function filterDestinationItems() {
+    function filterRelatedDestinationItems() {
         const selectedPlaceId = placeSelect.value;
         const selectedDestinationId = destinationSelect.value;
-        const currentDestinationItemId = destinationItemSelect.value;
 
-        let filtered = destinationItemOptions.filter(option => option.value === '');
+        relatedRows.forEach(row => {
+            const rowPlaceId = row.dataset.placeId || '';
+            const rowDestinationId = row.dataset.destinationId || '';
 
-        filtered = filtered.concat(
-            destinationItemOptions.filter(option => {
-                if (!option.value) return false;
+            let visible = true;
 
-                if (selectedDestinationId) {
-                    return String(option.destinationId) === String(selectedDestinationId);
-                }
+            if (selectedDestinationId) {
+                visible = String(rowDestinationId) === String(selectedDestinationId);
+            } else if (selectedPlaceId) {
+                visible = String(rowPlaceId) === String(selectedPlaceId);
+            }
 
-                if (selectedPlaceId) {
-                    return String(option.placeId) === String(selectedPlaceId);
-                }
+            row.style.display = visible ? '' : 'none';
 
-                return true;
-            })
-        );
+            const checkbox = row.querySelector('.related-destination-item-checkbox');
+            if (checkbox && !visible) {
+                checkbox.checked = false;
+            }
+        });
 
-        const itemStillValid = filtered.some(option => String(option.value) === String(currentDestinationItemId));
-        const itemStillValid = filtered.some(option => String(option.value) === String(currentDestinationItemId));delete
-
-        rebuildSelect(
-            destinationItemSelect,
-            filtered.filter(option => option.value !== ''),
-            'None',
-            itemStillValid ? currentDestinationItemId : ''
-        );
-
-        if (!itemStillValid) {
-            destinationItemSelect.value = '';
+        if (toggleAll) {
+            toggleAll.checked = false;
         }
     }
 
@@ -242,17 +220,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
     placeSelect.addEventListener('change', function () {
         filterDestinations();
-        filterDestinationItems();
+        filterRelatedDestinationItems();
     });
 
     destinationSelect.addEventListener('change', function () {
         syncPlaceFromDestination();
         filterDestinations();
-        filterDestinationItems();
+        filterRelatedDestinationItems();
     });
 
+    if (toggleAll) {
+        toggleAll.addEventListener('change', function () {
+            const visibleCheckboxes = relatedRows
+                .filter(row => row.style.display !== 'none')
+                .map(row => row.querySelector('.related-destination-item-checkbox'))
+                .filter(Boolean);
+
+            visibleCheckboxes.forEach(checkbox => {
+                checkbox.checked = toggleAll.checked;
+            });
+        });
+    }
+
     filterDestinations();
-    filterDestinationItems();
+    filterRelatedDestinationItems();
 });
 </script>
 </x-app-layout>

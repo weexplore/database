@@ -139,7 +139,7 @@
         <div class="mt-6">
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
                 <h3 class="text-sm font-semibold text-gray-900">
-                    Also add related destination items
+                    Destination Items
                 </h3>
                 <p class="text-xs text-gray-500">
                     After saving this planning item, separate rows will be created for any checked destination items

@@ -240,6 +240,7 @@ class TripStayController extends Controller
             'description' => ['nullable', 'string'],
             'woulduseagain' => ['nullable', 'boolean'],
             'reviewnotes' => ['nullable', 'string'],
+            'destinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
         ]);
 
         $validated['isaccommodationpaid'] = $request->boolean('isaccommodationpaid');

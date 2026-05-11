@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $pageTitle ?? 'Caravan Travel Planner' }}</title>
+    <title>{{ $pageTitle ?? 'WeExplore Database' }}</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -27,12 +27,7 @@
                     <a href="{{ url('/') }}" 
                        class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
                               {{ request()->is('/') ? 'border-b-2 border-white text-white' : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
-                        Dashboard
-                    </a>
-                    <a href="{{ route('travellers.index') }}" 
-                       class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
-                              {{ request()->is('travellers*') ? 'border-b-2 border-white text-white' : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
-                        Travellers
+                        Travel Planning
                     </a>
                     <a href="{{ route('trips.index') }}" 
                        class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
@@ -43,11 +38,6 @@
                        class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
                               {{ request()->is('places*') ? 'border-b-2 border-white text-white' : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
                         Places
-                    </a>
-                    <a href="{{ route('regions.index') }}" 
-                       class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
-                              {{ request()->is('regions*') ? 'border-b-2 border-white text-white' : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
-                        Regions
                     </a>
                 </div>
             </div>

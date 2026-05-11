@@ -220,6 +220,258 @@
         </div>
     </div>
 </div>
+@php
+    $selectedLegPoints = old('leg_points');
+
+    if ($selectedLegPoints === null && isset($tripLeg) && $tripLeg?->exists) {
+        $selectedLegPoints = $tripLeg->legPoints
+            ->sortBy('sequence_no')
+            ->map(function ($point) {
+                return [
+                    'id' => $point->id,
+                    'sequence_no' => $point->sequence_no,
+                    'pointtype' => $point->pointtype,
+                    'placeid' => $point->placeid,
+                    'destinationid' => $point->destinationid,
+                    'destinationitemid' => $point->destinationitemid,
+                    'title' => $point->title,
+                    'notes' => $point->notes,
+                    'planneddate' => optional($point->planneddate)->format('Y-m-d'),
+                    'starttime' => $point->starttime,
+                    'endtime' => $point->endtime,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    $selectedLegPoints = is_array($selectedLegPoints) ? array_values($selectedLegPoints) : [];
+@endphp
+
+<div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-6">
+    <div class="flex items-center justify-between gap-4">
+        <div>
+            <h3 class="text-lg font-medium text-gray-900">Leg Points</h3>
+            <p class="mt-1 text-sm text-gray-500">
+                Add route anchors and planned stops between the start and end of this leg.
+            </p>
+        </div>
+    </div>
+
+    <div id="leg-point-rows" class="space-y-4">
+        @forelse($selectedLegPoints as $index => $point)
+            <div class="border border-gray-200 rounded-lg p-4 leg-point-row space-y-4">
+                <input type="hidden" name="leg_points[{{ $index }}][id]" value="{{ $point['id'] ?? '' }}">
+
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Seq</label>
+                        <input type="number"
+                               name="leg_points[{{ $index }}][sequence_no]"
+                               value="{{ $point['sequence_no'] ?? ($index + 1) }}"
+                               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                               min="1">
+                    </div>
+
+                    <div class="md:col-span-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Point Type</label>
+                        <select name="leg_points[{{ $index }}][pointtype]" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                            <option value="route_anchor" @selected(($point['pointtype'] ?? 'route_anchor') === 'route_anchor')>Route Anchor</option>
+                            <option value="planned_stop" @selected(($point['pointtype'] ?? '') === 'planned_stop')>Planned Stop</option>
+                        </select>
+                    </div>
+
+                    <div class="md:col-span-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                        <input type="text"
+                               name="leg_points[{{ $index }}][title]"
+                               value="{{ $point['title'] ?? '' }}"
+                               class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    </div>
+
+                    <div class="md:col-span-1 flex items-end">
+                        <button type="button"
+                                class="remove-leg-point-row inline-flex items-center px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-xs w-full justify-center">
+                            Remove
+                        </button>
+                    </div>
+
+                    <div class="md:col-span-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Place</label>
+                        <select name="leg_points[{{ $index }}][placeid]" class="leg-point-place w-full rounded-md border-gray-300 shadow-sm text-sm">
+                            <option value="">Select place</option>
+                            @foreach($places as $place)
+                                <option value="{{ $place->id }}"
+                                        data-lat="{{ $place->latitude ?? '' }}"
+                                        data-lng="{{ $place->longitude ?? '' }}"
+                                        @selected((string) ($point['placeid'] ?? '') === (string) $place->id)>
+                                    {{ $place->placename }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="md:col-span-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Destination</label>
+                        <select name="leg_points[{{ $index }}][destinationid]" class="leg-point-destination w-full rounded-md border-gray-300 shadow-sm text-sm">
+                            <option value="">Select destination</option>
+                            @foreach($destinations as $destination)
+                                <option value="{{ $destination->id }}"
+                                        data-place-id="{{ $destination->placeid ?? '' }}"
+                                        @selected((string) ($point['destinationid'] ?? '') === (string) $destination->id)>
+                                    {{ $destination->destinationname }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="md:col-span-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Destination Item</label>
+                        <select name="leg_points[{{ $index }}][destinationitemid]" class="leg-point-destination-item w-full rounded-md border-gray-300 shadow-sm text-sm">
+                            <option value="">Select destination item</option>
+                            @foreach($destinationItems as $destinationItem)
+                                @php
+                                    $resolvedPlaceId = $destinationItem->placeid ?? $destinationItem->destination?->placeid;
+                                    $resolvedLat = $destinationItem->latitude ?? $destinationItem->place?->latitude ?? $destinationItem->destination?->place?->latitude;
+                                    $resolvedLng = $destinationItem->longitude ?? $destinationItem->place?->longitude ?? $destinationItem->destination?->place?->longitude;
+                                @endphp
+                                <option value="{{ $destinationItem->id }}"
+                                        data-destination-id="{{ $destinationItem->destinationid ?? '' }}"
+                                        data-place-id="{{ $resolvedPlaceId ?? '' }}"
+                                        data-lat="{{ $resolvedLat ?? '' }}"
+                                        data-lng="{{ $resolvedLng ?? '' }}"
+                                        @selected((string) ($point['destinationitemid'] ?? '') === (string) $destinationItem->id)>
+                                    {{ $destinationItem->itemname }}
+                                    @if($destinationItem->destination?->destinationname)
+                                        - {{ $destinationItem->destination->destinationname }}
+                                    @endif
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+            
+
+                    <div class="md:col-span-12">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <textarea name="leg_points[{{ $index }}][notes]"
+                                  rows="2"
+                                  class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ $point['notes'] ?? '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+        @empty
+            <div class="border border-dashed border-gray-300 rounded-lg p-4 text-sm text-gray-500">
+                No leg points added yet.
+            </div>
+        @endforelse
+    </div>
+    <template id="leg-point-row-template">
+    <div class="border border-gray-200 rounded-lg p-4 leg-point-row space-y-4">
+        <input type="hidden" name="leg_points[__INDEX__][id]" value="">
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Seq</label>
+                <input type="number"
+                       name="leg_points[__INDEX__][sequence_no]"
+                       value="__SEQ__"
+                       class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                       min="1">
+            </div>
+
+            <div class="md:col-span-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Point Type</label>
+                <select name="leg_points[__INDEX__][pointtype]" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <option value="route_anchor">Route Anchor</option>
+                    <option value="planned_stop">Planned Stop</option>
+                </select>
+            </div>
+
+            <div class="md:col-span-6">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input type="text"
+                       name="leg_points[__INDEX__][title]"
+                       value=""
+                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+            </div>
+
+            <div class="md:col-span-1 flex items-end">
+                <button type="button"
+                        class="remove-leg-point-row inline-flex items-center px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-xs w-full justify-center">
+                    Remove
+                </button>
+            </div>
+
+            <div class="md:col-span-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Place</label>
+                <select name="leg_points[__INDEX__][placeid]" class="leg-point-place w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <option value="">Select place</option>
+                    @foreach($places as $place)
+                        <option value="{{ $place->id }}"
+                                data-lat="{{ $place->latitude ?? '' }}"
+                                data-lng="{{ $place->longitude ?? '' }}">
+                            {{ $place->placename }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="md:col-span-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Destination</label>
+                <select name="leg_points[__INDEX__][destinationid]" class="leg-point-destination w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <option value="">Select destination</option>
+                    @foreach($destinations as $destination)
+                        <option value="{{ $destination->id }}"
+                                data-place-id="{{ $destination->placeid ?? '' }}">
+                            {{ $destination->destinationname }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="md:col-span-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Destination Item</label>
+                <select name="leg_points[__INDEX__][destinationitemid]" class="leg-point-destination-item w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <option value="">Select destination item</option>
+                    @foreach($destinationItems as $destinationItem)
+                        @php
+                            $resolvedPlaceId = $destinationItem->placeid ?? $destinationItem->destination?->placeid;
+                            $resolvedLat = $destinationItem->latitude ?? $destinationItem->place?->latitude ?? $destinationItem->destination?->place?->latitude;
+                            $resolvedLng = $destinationItem->longitude ?? $destinationItem->place?->longitude ?? $destinationItem->destination?->place?->longitude;
+                        @endphp
+                        <option value="{{ $destinationItem->id }}"
+                                data-destination-id="{{ $destinationItem->destinationid ?? '' }}"
+                                data-place-id="{{ $resolvedPlaceId ?? '' }}"
+                                data-lat="{{ $resolvedLat ?? '' }}"
+                                data-lng="{{ $resolvedLng ?? '' }}">
+                            {{ $destinationItem->itemname }}
+                            @if($destinationItem->destination?->destinationname)
+                                - {{ $destinationItem->destination->destinationname }}
+                            @endif
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="md:col-span-12">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea name="leg_points[__INDEX__][notes]"
+                          rows="2"
+                          class="w-full rounded-md border-gray-300 shadow-sm text-sm"></textarea>
+            </div>
+        </div>
+    </div>
+</template>
+
+    <div>
+        <button type="button"
+                id="add-leg-point-row"
+                class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+            Add Leg Point
+        </button>
+    </div>
+</div>
 
 <div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-6">
     <div>

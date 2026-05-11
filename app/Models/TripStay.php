@@ -34,6 +34,7 @@ class TripStay extends Model
         'description',
         'woulduseagain',
         'reviewnotes',
+        'destinationitemid', // add this
     ];
 
     protected $casts = [

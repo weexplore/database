@@ -42,14 +42,20 @@ Route::prefix('trips/{trip}')->group(function () {
         Route::get('/', [TripPlanItemController::class, 'index'])->name('index');
         Route::get('/create', [TripPlanItemController::class, 'create'])->name('create');
         Route::post('/', [TripPlanItemController::class, 'store'])->name('store');
-        Route::get('/{tripPlanItem}/edit', [TripPlanItemController::class, 'edit'])->name('edit');
-        Route::put('/{tripPlanItem}', [TripPlanItemController::class, 'update'])->name('update');
-        Route::delete('/{tripPlanItem}', [TripPlanItemController::class, 'destroy'])->name('destroy');
+
+        Route::get('/generate', [TripPlanItemController::class, 'generatePreview'])->name('generate');
+        Route::post('/generate', [TripPlanItemController::class, 'generateApply'])->name('generate.apply');
+        Route::post('/generated/rollback', [TripPlanItemController::class, 'rollbackGenerated'])->name('generated.rollback');
+
         Route::post('/resequence', [TripPlanItemController::class, 'resequence'])->name('resequence');
         Route::post('/bulk-update', [TripPlanItemController::class, 'bulkUpdate'])->name('bulk-update');
         Route::post('/renumber', [TripPlanItemController::class, 'renumber'])->name('renumber');
         Route::post('/bulk-add-destination-items', [TripPlanItemController::class, 'bulkAddDestinationItems'])
             ->name('bulk-add-destination-items');
+
+        Route::get('/{tripPlanItem}/edit', [TripPlanItemController::class, 'edit'])->name('edit');
+        Route::put('/{tripPlanItem}', [TripPlanItemController::class, 'update'])->name('update');
+        Route::delete('/{tripPlanItem}', [TripPlanItemController::class, 'destroy'])->name('destroy');
     });
 
     // your existing legs/stays/items/bookings/etc here...

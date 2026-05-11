@@ -23,190 +23,317 @@
     $currentSortOrder = old('sortorder', $tripItem->sortorder ?? '');
 @endphp
 
-<div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-6">
-    <div>
-        <label for="triplegid" class="block text-sm font-medium text-gray-700">Trip leg</label>
-        <select id="triplegid" name="triplegid" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-            <option value="">None</option>
-            @foreach($tripLegs as $tripLeg)
-                <option value="{{ $tripLeg->id }}" @selected((string) $currentTripLegId === (string) $tripLeg->id)>
-                    {{ $tripLeg->fromPlace?->placename ?? 'Unknown start' }}
-                    -
-                    {{ $tripLeg->toPlace?->placename ?? 'Unknown end' }}
-                    @if($tripLeg->startdate)
-                        - {{ $tripLeg->startdate->format('d/m/Y') }}
-                    @endif
-                </option>
-            @endforeach
-        </select>
+<div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 space-y-6">
+    {{-- Core details --}}
+    <div class="space-y-4">
+        <div>
+            <h3 class="text-lg font-medium text-gray-900">Core details</h3>
+            <p class="mt-1 text-xs text-gray-500">
+                Main planning details for this trip item.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div>
+                <label for="itemtype" class="block text-sm font-medium text-gray-700 mb-1">Item type</label>
+                <select id="itemtype" name="itemtype"
+                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <option value="">Select</option>
+                    @foreach($itemTypeOptions as $value => $label)
+                        <option value="{{ $value }}" @selected((string) $currentItemType === (string) $value)>
+                            {{ $label }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select id="status" name="status"
+                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <option value="">Select</option>
+                    @foreach($itemStatusOptions as $value => $label)
+                        <option value="{{ $value }}" @selected((string) $currentStatus === (string) $value)>
+                            {{ $label }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label for="itemdate" class="block text-sm font-medium text-gray-700 mb-1">Item date</label>
+                <input type="date" id="itemdate" name="itemdate"
+                       value="{{ $currentItemDate }}"
+                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+            </div>
+
+            <div>
+                <label for="sortorder" class="block text-sm font-medium text-gray-700 mb-1">Sort order</label>
+                <input type="number" id="sortorder" name="sortorder"
+                       value="{{ $currentSortOrder }}"
+                       class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                       min="0">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="startdatetime" class="block text-sm font-medium text-gray-700 mb-1">Start date/time</label>
+                <input type="datetime-local" id="startdatetime" name="startdatetime"
+                       value="{{ $currentStartDateTime }}"
+                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+            </div>
+
+            <div>
+                <label for="enddatetime" class="block text-sm font-medium text-gray-700 mb-1">End date/time</label>
+                <input type="datetime-local" id="enddatetime" name="enddatetime"
+                       value="{{ $currentEndDateTime }}"
+                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+            </div>
+        </div>
+
+        <div class="flex flex-wrap gap-6">
+            <label class="inline-flex items-center gap-2">
+                <input type="hidden" name="isfullday" value="0">
+                <input type="checkbox" id="isfullday" name="isfullday" value="1"
+                       class="rounded border-gray-300 text-blue-600 shadow-sm"
+                       @checked((bool) $currentIsFullDay)>
+                <span class="text-sm text-gray-700">Full day item</span>
+            </label>
+
+            <label class="inline-flex items-center gap-2">
+                <input type="hidden" name="allocateasdailycost" value="0">
+                <input type="checkbox" id="allocateasdailycost" name="allocateasdailycost" value="1"
+                       class="rounded border-gray-300 text-blue-600 shadow-sm"
+                       @checked((bool) $currentAllocateAsDailyCost)>
+                <span class="text-sm text-gray-700">Allocate as daily cost</span>
+            </label>
+        </div>
+
+        <div>
+            <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <input type="text" id="title" name="title"
+                   value="{{ $currentTitle }}"
+                   class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm"
+                   required>
+        </div>
+
+        <div>
+            <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea id="description" name="description" rows="3"
+                      class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">{{ $currentDescription }}</textarea>
+        </div>
     </div>
 
-    <div>
-        <label for="tripstayid" class="block text-sm font-medium text-gray-700">Trip stay</label>
-        <select id="tripstayid" name="tripstayid" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-            <option value="">None</option>
-            @foreach($tripStays as $tripStay)
-                <option value="{{ $tripStay->id }}" @selected((string) $currentTripStayId === (string) $tripStay->id)>
-                    {{ $tripStay->stayname }}
-                </option>
-            @endforeach
-        </select>
+    {{-- Links and context --}}
+    <div class="space-y-4">
+        <div>
+            <h3 class="text-lg font-medium text-gray-900">Links and context</h3>
+            <p class="mt-1 text-xs text-gray-500">
+                Connect this item to the leg, stay, destination, place, and booking.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="triplegid" class="block text-sm font-medium text-gray-700 mb-1">Trip leg</label>
+                <select id="triplegid" name="triplegid"
+                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <option value="">None</option>
+                    @foreach($tripLegs as $tripLeg)
+                        <option value="{{ $tripLeg->id }}" @selected((string) $currentTripLegId === (string) $tripLeg->id)>
+                            {{ $tripLeg->fromPlace?->placename ?? 'Unknown start' }}
+                            -
+                            {{ $tripLeg->toPlace?->placename ?? 'Unknown end' }}
+                            @if($tripLeg->startdate)
+                                - {{ $tripLeg->startdate->format('d/m/Y') }}
+                            @endif
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label for="tripstayid" class="block text-sm font-medium text-gray-700 mb-1">Trip stay</label>
+                <select id="tripstayid" name="tripstayid"
+                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <option value="">None</option>
+                    @foreach($tripStays as $tripStay)
+                        <option value="{{ $tripStay->id }}" @selected((string) $currentTripStayId === (string) $tripStay->id)>
+                            {{ $tripStay->stayname }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label for="destinationid" class="block text-sm font-medium text-gray-700 mb-1">Destination</label>
+                <select id="destinationid" name="destinationid"
+                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <option value="">None</option>
+                    @foreach($destinations as $destination)
+                        <option value="{{ $destination->id }}" @selected((string) $currentDestinationId === (string) $destination->id)>
+                            {{ $destination->destinationname }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label for="destinationitemid" class="block text-sm font-medium text-gray-700 mb-1">Destination item</label>
+                <select id="destinationitemid" name="destinationitemid"
+                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <option value="">None</option>
+                    @foreach($destinationItems as $destinationItem)
+                        <option value="{{ $destinationItem->id }}" @selected((string) $currentDestinationItemId === (string) $destinationItem->id)>
+                            {{ $destinationItem->itemname }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label for="placeid" class="block text-sm font-medium text-gray-700 mb-1">Place</label>
+                <select id="placeid" name="placeid"
+                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <option value="">None</option>
+                    @foreach($places as $place)
+                        <option value="{{ $place->id }}" @selected((string) $currentPlaceId === (string) $place->id)>
+                            {{ $place->placename }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label for="bookingid" class="block text-sm font-medium text-gray-700 mb-1">Booking</label>
+                <select id="bookingid" name="bookingid"
+                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <option value="">None</option>
+                    @foreach($bookings as $booking)
+                        <option value="{{ $booking->id }}" @selected((string) $currentBookingId === (string) $booking->id)>
+                            {{ $booking->providername ?: 'Booking #' . $booking->id }}
+                            @if($booking->bookingtype)
+                                - {{ $bookingTypes[$booking->bookingtype] ?? ucfirst(str_replace('_', ' ', $booking->bookingtype)) }}
+                            @endif
+                            @if($booking->startdate)
+                                - {{ $booking->startdate->format('d/m/Y') }}
+                            @endif
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
     </div>
 
-    <div>
-        <label for="destinationid" class="block text-sm font-medium text-gray-700">Destination</label>
-        <select id="destinationid" name="destinationid" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-            <option value="">None</option>
-            @foreach($destinations as $destination)
-                <option value="{{ $destination->id }}" @selected((string) $currentDestinationId === (string) $destination->id)>
-                    {{ $destination->destinationname }}
-                </option>
-            @endforeach
-        </select>
+    {{-- People and cost --}}
+    <div class="space-y-4">
+        <div>
+            <h3 class="text-lg font-medium text-gray-900">People and cost</h3>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div>
+                <label for="peoplecount" class="block text-sm font-medium text-gray-700 mb-1">People count</label>
+                <input type="number" id="peoplecount" name="peoplecount"
+                       value="{{ $currentPeopleCount }}"
+                       class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                       min="1">
+            </div>
+
+            <div>
+                <label for="estimatedcostperperson" class="block text-sm font-medium text-gray-700 mb-1">Est. cost per person</label>
+                <input type="number" step="0.01" id="estimatedcostperperson" name="estimatedcostperperson"
+                       value="{{ $currentEstimatedCostPerPerson }}"
+                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+            </div>
+
+            <div>
+                <label for="estimatedtotalcost" class="block text-sm font-medium text-gray-700 mb-1">Est. total cost</label>
+                <input type="number" step="0.01" id="estimatedtotalcost" name="estimatedtotalcost"
+                       value="{{ $currentEstimatedTotalCost }}"
+                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+            </div>
+
+            <div>
+                <label for="actualcost" class="block text-sm font-medium text-gray-700 mb-1">Actual cost</label>
+                <input type="number" step="0.01" id="actualcost" name="actualcost"
+                       value="{{ $currentActualCost }}"
+                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+            </div>
+        </div>
     </div>
 
-    <div>
-        <label for="destinationitemid" class="block text-sm font-medium text-gray-700">Destination item</label>
-        <select id="destinationitemid" name="destinationitemid" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-            <option value="">None</option>
-            @foreach($destinationItems as $destinationItem)
-                <option value="{{ $destinationItem->id }}" @selected((string) $currentDestinationItemId === (string) $destinationItem->id)>
-                    {{ $destinationItem->itemname }}
-                </option>
-            @endforeach
-        </select>
-    </div>
-
-    <div>
-        <label for="placeid" class="block text-sm font-medium text-gray-700">Place</label>
-        <select id="placeid" name="placeid" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-            <option value="">None</option>
-            @foreach($places as $place)
-                <option value="{{ $place->id }}" @selected((string) $currentPlaceId === (string) $place->id)>
-                    {{ $place->placename }}
-                </option>
-            @endforeach
-        </select>
-    </div>
-
-    <div>
-        <label for="bookingid" class="block text-sm font-medium text-gray-700">Booking</label>
-        <select id="bookingid" name="bookingid" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-            <option value="">None</option>
-            @foreach($bookings as $booking)
-                <option value="{{ $booking->id }}" @selected((string) $currentBookingId === (string) $booking->id)>
-                    {{ $booking->providername ?: 'Booking #' . $booking->id }}
-                    @if($booking->bookingtype)
-                        - {{ $bookingTypes[$booking->bookingtype] ?? ucfirst(str_replace('_', ' ', $booking->bookingtype)) }}
-                    @endif
-                    @if($booking->startdate)
-                        - {{ $booking->startdate->format('d/m/Y') }}
-                    @endif
-                </option>
-            @endforeach
-        </select>
-    </div>
-
-    <div>
-        <label for="itemdate" class="block text-sm font-medium text-gray-700">Item date</label>
-        <input type="date" id="itemdate" name="itemdate" value="{{ $currentItemDate }}" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-    </div>
-
-    <div>
-        <label for="itemtype" class="block text-sm font-medium text-gray-700">Item type</label>
-        <select id="itemtype" name="itemtype" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-            <option value="">Select</option>
-            @foreach($itemTypeOptions as $value => $label)
-                <option value="{{ $value }}" @selected((string) $currentItemType === (string) $value)>
-                    {{ $label }}
-                </option>
-            @endforeach
-        </select>
-    </div>
-
-    <div>
-        <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
-        <select id="status" name="status" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-            <option value="">Select</option>
-            @foreach($itemStatusOptions as $value => $label)
-                <option value="{{ $value }}" @selected((string) $currentStatus === (string) $value)>
-                    {{ $label }}
-                </option>
-            @endforeach
-        </select>
-    </div>
-
-    <div>
-        <label for="priority" class="block text-sm font-medium text-gray-700">Priority</label>
-        <select id="priority" name="priority" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-            <option value="">Select</option>
-            @foreach($priorityOptions as $value => $label)
-                <option value="{{ $value }}" @selected((string) $currentPriority === (string) $value)>
-                    {{ $label }}
-                </option>
-            @endforeach
-        </select>
-    </div>
-
-    <div class="md:col-span-2">
-        <label for="title" class="block text-sm font-medium text-gray-700">Title</label>
-        <input type="text" id="title" name="title" value="{{ $currentTitle }}" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm" required>
-    </div>
-
-    <div class="md:col-span-2">
-        <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
-        <textarea id="description" name="description" rows="3" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">{{ $currentDescription }}</textarea>
-    </div>
-
-    <div>
-        <label for="startdatetime" class="block text-sm font-medium text-gray-700">Start date/time</label>
-        <input type="datetime-local" id="startdatetime" name="startdatetime" value="{{ $currentStartDateTime }}" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-    </div>
-
-    <div>
-        <label for="enddatetime" class="block text-sm font-medium text-gray-700">End date/time</label>
-        <input type="datetime-local" id="enddatetime" name="enddatetime" value="{{ $currentEndDateTime }}" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-    </div>
-
-    <div>
-        <label for="peoplecount" class="block text-sm font-medium text-gray-700">People count</label>
-        <input type="number" id="peoplecount" name="peoplecount" value="{{ $currentPeopleCount }}" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm" min="1">
-    </div>
-
-    <div>
-        <label for="sortorder" class="block text-sm font-medium text-gray-700">Sort order</label>
-        <input type="number" id="sortorder" name="sortorder" value="{{ $currentSortOrder }}" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm" min="0">
-    </div>
-
-    <div>
-        <label for="estimatedcostperperson" class="block text-sm font-medium text-gray-700">Estimated cost per person</label>
-        <input type="number" step="0.01" id="estimatedcostperperson" name="estimatedcostperperson" value="{{ $currentEstimatedCostPerPerson }}" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-    </div>
-
-    <div>
-        <label for="estimatedtotalcost" class="block text-sm font-medium text-gray-700">Estimated total cost</label>
-        <input type="number" step="0.01" id="estimatedtotalcost" name="estimatedtotalcost" value="{{ $currentEstimatedTotalCost }}" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-    </div>
-
-    <div>
-        <label for="actualcost" class="block text-sm font-medium text-gray-700">Actual cost</label>
-        <input type="number" step="0.01" id="actualcost" name="actualcost" value="{{ $currentActualCost }}" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-    </div>
-
-    <div class="flex items-center gap-2 pt-7">
-        <input type="hidden" name="isfullday" value="0">
-        <input type="checkbox" id="isfullday" name="isfullday" value="1" class="rounded border-gray-300 text-blue-600 shadow-sm" @checked((bool) $currentIsFullDay)>
-        <label for="isfullday" class="text-sm text-gray-700">Full day item</label>
-    </div>
-
-    <div class="flex items-center gap-2">
-        <input type="hidden" name="allocateasdailycost" value="0">
-        <input type="checkbox" id="allocateasdailycost" name="allocateasdailycost" value="1" class="rounded border-gray-300 text-blue-600 shadow-sm" @checked((bool) $currentAllocateAsDailyCost)>
-        <label for="allocateasdailycost" class="text-sm text-gray-700">Allocate as daily cost</label>
-    </div>
-
-    <div class="md:col-span-2">
+    {{-- Internal notes --}}
+    <div class="space-y-2">
         <label for="notesinternal" class="block text-sm font-medium text-gray-700">Internal notes</label>
-        <textarea id="notesinternal" name="notesinternal" rows="4" class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">{{ $currentNotesInternal }}</textarea>
+        <textarea id="notesinternal" name="notesinternal" rows="4"
+                  class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">{{ $currentNotesInternal }}</textarea>
     </div>
 </div>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const peopleInput = document.getElementById('peoplecount');
+        const perPersonInput = document.getElementById('estimatedcostperperson');
+        const totalInput = document.getElementById('estimatedtotalcost');
+
+        if (!peopleInput || !perPersonInput || !totalInput) {
+            return;
+        }
+
+        function toNumber(el) {
+            const value = parseFloat(el.value);
+            return Number.isFinite(value) ? value : null;
+        }
+
+        function formatMoney(value) {
+            if (!Number.isFinite(value)) return '';
+            return value.toFixed(2);
+        }
+
+        function recalcFromPerPerson() {
+            const people = toNumber(peopleInput);
+            const perPerson = toNumber(perPersonInput);
+
+            if (!people || people <= 0 || perPerson === null) {
+                return;
+            }
+
+            const total = people * perPerson;
+            totalInput.value = formatMoney(total);
+        }
+
+        function recalcFromTotal() {
+            const people = toNumber(peopleInput);
+            const total = toNumber(totalInput);
+
+            if (!people || people <= 0 || total === null) {
+                return;
+            }
+
+            const perPerson = total / people;
+            perPersonInput.value = formatMoney(perPerson);
+        }
+
+        // When people or per-person change, prefer recalculating total
+        peopleInput.addEventListener('input', function () {
+            if (perPersonInput.value !== '') {
+                recalcFromPerPerson();
+            } else if (totalInput.value !== '') {
+                recalcFromTotal();
+            }
+        });
+
+        perPersonInput.addEventListener('input', function () {
+            recalcFromPerPerson();
+        });
+
+        // When total changes, recalc per-person
+        totalInput.addEventListener('input', function () {
+            recalcFromTotal();
+        });
+    });
+</script>
+@endpush

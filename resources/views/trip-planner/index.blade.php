@@ -1,27 +1,21 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <div>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                    Trip Planner - {{ $trip->tripname }}
-                </h2>
-                <p class="mt-1 text-sm text-gray-500">
-                    Plan places, destinations, and destination items in sequence before creating legs and stays.
-                </p>
-            </div>
+<div class="flex items-center gap-2">
+    <a href="{{ route('trips.edit', $trip) }}"
+       class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
+        Back to Trip
+    </a>
 
-            <div class="flex items-center gap-2">
-                <a href="{{ route('trips.edit', $trip) }}"
-                   class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
-                    Back to Trip
-                </a>
+    <a href="{{ route('trips.planner.generate', ['trip' => $trip->id, 'return_to' => url()->full()]) }}"
+       class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm">
+        Generate Legs & Stays
+    </a>
 
-                <a href="{{ route('trips.planner.create', ['trip' => $trip->id]) }}"
-                   class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-                    Add Planning Item
-                </a>
-            </div>
-        </div>
+    <a href="{{ route('trips.planner.create', ['trip' => $trip->id]) }}"
+       class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+        Add Planning Item
+    </a>
+</div>
     </x-slot>
 
     <div class="py-6">
@@ -263,116 +257,141 @@
 
     {{-- Keep only the script that supports the Add Planning Item form --}}
     <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const placeSelect = document.getElementById('placeid');
-        const destinationSelect = document.getElementById('destinationid');
-        const destinationItemSelect = document.getElementById('destinationitemid');
+document.addEventListener('DOMContentLoaded', function () {
+    const placeSelect = document.getElementById('placeid');
+    const destinationSelect = document.getElementById('destinationid');
+    const toggleAll = document.getElementById('related_toggle_all');
+    const relatedRows = Array.from(document.querySelectorAll('.related-destination-item-row'));
 
-        if (!placeSelect || !destinationSelect || !destinationItemSelect) {
-            return;
-        }
+    if (!placeSelect || !destinationSelect) {
+        return;
+    }
 
-        const destinationOptions = Array.from(destinationSelect.options).map(option => ({
-            value: option.value,
-            text: option.text,
-            placeId: option.dataset.placeId || '',
-            selected: option.selected,
-        }));
+    const destinationOptions = Array.from(destinationSelect.options).map(option => ({
+        value: option.value,
+        text: option.text,
+        placeId: option.dataset.placeId || '',
+        selected: option.selected,
+    }));
 
-        const destinationItemOptions = Array.from(destinationItemSelect.options).map(option => ({
-            value: option.value,
-            text: option.text,
-            destinationId: option.dataset.destinationId || '',
-            placeId: option.dataset.placeId || '',
-            selected: option.selected,
-        }));
+    function rebuildSelect(select, options, placeholder = 'None', selectedValue = '') {
+        select.innerHTML = '';
 
-        function rebuildSelect(select, options, placeholder = 'None', selectedValue = '') {
-            select.innerHTML = '';
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = placeholder;
+        select.appendChild(placeholderOption);
 
-            const placeholderOption = document.createElement('option');
-            placeholderOption.value = '';
-            placeholderOption.textContent = placeholder;
-            select.appendChild(placeholderOption);
+        options.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.value;
+            option.textContent = item.text;
 
-            options.forEach(item => {
-                const option = document.createElement('option');
-                option.value = item.value;
-                option.textContent = item.text;
-
-                if (item.placeId) option.dataset.placeId = item.placeId;
-                if (item.destinationId) option.dataset.destinationId = item.destinationId;
-                if (String(item.value) === String(selectedValue)) option.selected = true;
-
-                select.appendChild(option);
-            });
-        }
-
-        function filterDestinations() {
-            const selectedPlaceId = placeSelect.value;
-            const currentDestinationId = destinationSelect.value;
-
-            const filtered = destinationOptions.filter(option => {
-                if (!option.value) return false;
-                if (!selectedPlaceId) return true;
-                return String(option.placeId) === String(selectedPlaceId);
-            });
-
-            const destinationStillValid = filtered.some(option => String(option.value) === String(currentDestinationId));
-
-            rebuildSelect(destinationSelect, filtered, 'None', destinationStillValid ? currentDestinationId : '');
-
-            if (!destinationStillValid) {
-                destinationSelect.value = '';
+            if (item.placeId) {
+                option.dataset.placeId = item.placeId;
             }
-        }
 
-        function filterDestinationItems() {
-            const selectedPlaceId = placeSelect.value;
-            const selectedDestinationId = destinationSelect.value;
-            const currentDestinationItemId = destinationItemSelect.value;
-
-            const filtered = destinationItemOptions.filter(option => {
-                if (!option.value) return false;
-                if (selectedDestinationId) return String(option.destinationId) === String(selectedDestinationId);
-                if (selectedPlaceId) return String(option.placeId) === String(selectedPlaceId);
-                return true;
-            });
-
-            const itemStillValid = filtered.some(option => String(option.value) === String(currentDestinationItemId));
-
-            rebuildSelect(destinationItemSelect, filtered, 'None', itemStillValid ? currentDestinationItemId : '');
-
-            if (!itemStillValid) {
-                destinationItemSelect.value = '';
+            if (String(item.value) === String(selectedValue)) {
+                option.selected = true;
             }
-        }
 
-        function syncPlaceFromDestination() {
-            const selectedDestination = destinationSelect.options[destinationSelect.selectedIndex];
-            if (!selectedDestination) return;
+            select.appendChild(option);
+        });
+    }
 
-            const destinationPlaceId = selectedDestination.dataset.placeId || '';
-            if (destinationPlaceId && !placeSelect.value) {
-                placeSelect.value = destinationPlaceId;
-            }
-        }
+    function filterDestinations() {
+        const selectedPlaceId = placeSelect.value;
+        const currentDestinationId = destinationSelect.value;
 
-        placeSelect.addEventListener('change', function () {
-            filterDestinations();
-            filterDestinationItems();
+        const filtered = destinationOptions.filter(option => {
+            if (!option.value) return false;
+            if (!selectedPlaceId) return true;
+            return String(option.placeId) === String(selectedPlaceId);
         });
 
-        destinationSelect.addEventListener('change', function () {
-            syncPlaceFromDestination();
-            filterDestinations();
-            filterDestinationItems();
+        const destinationStillValid = filtered.some(
+            option => String(option.value) === String(currentDestinationId)
+        );
+
+        rebuildSelect(
+            destinationSelect,
+            filtered,
+            'None',
+            destinationStillValid ? currentDestinationId : ''
+        );
+
+        if (!destinationStillValid) {
+            destinationSelect.value = '';
+        }
+    }
+
+    function filterRelatedDestinationItems() {
+        const selectedPlaceId = placeSelect.value;
+        const selectedDestinationId = destinationSelect.value;
+
+        relatedRows.forEach(row => {
+            const rowPlaceId = row.dataset.placeId || '';
+            const rowDestinationId = row.dataset.destinationId || '';
+
+            let visible = true;
+
+            if (selectedDestinationId) {
+                visible = String(rowDestinationId) === String(selectedDestinationId);
+            } else if (selectedPlaceId) {
+                visible = String(rowPlaceId) === String(selectedPlaceId);
+            }
+
+            row.style.display = visible ? '' : 'none';
+
+            const checkbox = row.querySelector('.related-destination-item-checkbox');
+            if (checkbox && !visible) {
+                checkbox.checked = false;
+            }
         });
 
+        if (toggleAll) {
+            toggleAll.checked = false;
+        }
+    }
+
+    function syncPlaceFromDestination() {
+        const selectedDestination = destinationSelect.options[destinationSelect.selectedIndex];
+        if (!selectedDestination) return;
+
+        const destinationPlaceId = selectedDestination.dataset.placeId || '';
+        if (destinationPlaceId && !placeSelect.value) {
+            placeSelect.value = destinationPlaceId;
+        }
+    }
+
+    placeSelect.addEventListener('change', function () {
         filterDestinations();
-        filterDestinationItems();
+        filterRelatedDestinationItems();
     });
-    </script>
+
+    destinationSelect.addEventListener('change', function () {
+        syncPlaceFromDestination();
+        filterDestinations();
+        filterRelatedDestinationItems();
+    });
+
+    if (toggleAll) {
+        toggleAll.addEventListener('change', function () {
+            const visibleCheckboxes = relatedRows
+                .filter(row => row.style.display !== 'none')
+                .map(row => row.querySelector('.related-destination-item-checkbox'))
+                .filter(Boolean);
+
+            visibleCheckboxes.forEach(checkbox => {
+                checkbox.checked = toggleAll.checked;
+            });
+        });
+    }
+
+    filterDestinations();
+    filterRelatedDestinationItems();
+});
+</script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const deleteForm = document.getElementById('delete-trip-plan-item-form');

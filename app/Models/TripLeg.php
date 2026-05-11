@@ -144,4 +144,9 @@ protected $casts = [
     {
         return $this->belongsTo(DestinationItem::class, 'destinationitemid');
     }
+    public function legPoints(): HasMany
+    {
+        return $this->hasMany(TripLegPoint::class, 'triplegid')
+            ->orderBy('sequence_no');
+    }
 }

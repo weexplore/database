@@ -86,4 +86,8 @@ class Destination extends Model
     {
         return $this->hasMany(\App\Models\DestinationItem::class, 'destinationid');
     }
+    public function tripLegPoints(): HasMany
+    {
+        return $this->hasMany(TripLegPoint::class, 'destinationid');
+    }
 }

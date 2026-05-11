@@ -419,3 +419,218 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 </script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('trip-stay-create-form') || document.getElementById('trip-stay-edit-form');
+    if (!form) return;
+
+    const placeSelect = document.getElementById('placeid');
+    const usePlaceButton = document.getElementById('trip-stay-use-place-button');
+    const usePreviousButton = document.getElementById('trip-stay-use-previous-button');
+    const status = document.getElementById('trip-stay-prefill-status');
+    const placeSummary = document.getElementById('trip-stay-place-summary');
+
+    const checkinInput = document.getElementById('checkindate');
+    const checkoutInput = document.getElementById('checkoutdate');
+    const nightsInput = document.getElementById('nights');
+    const costPerNightInput = document.getElementById('costpernight');
+    const estimatedTotalCostInput = document.getElementById('estimatedtotalcost');
+
+    function selectedPlaceId() {
+        return placeSelect && placeSelect.value ? placeSelect.value : null;
+    }
+
+    function showStatus(message, isError = false) {
+        if (!status) return;
+        status.textContent = message || '';
+        status.className = isError ? 'text-xs text-red-600' : 'text-xs text-gray-500';
+    }
+
+    function setValue(id, value, overwriteOnlyIfBlank = true) {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        if (el.type === 'checkbox') {
+            if (!overwriteOnlyIfBlank || el.checked === false) {
+                el.checked = !!value;
+            }
+            return;
+        }
+
+        if (!overwriteOnlyIfBlank || !el.value) {
+            el.value = value ?? '';
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+
+    function parseLocalDate(value) {
+        if (!value) return null;
+        const parts = value.split('-');
+        if (parts.length !== 3) return null;
+
+        const year = Number(parts[0]);
+        const month = Number(parts[1]) - 1;
+        const day = Number(parts[2]);
+
+        const date = new Date(year, month, day);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function calculateNights() {
+        if (!checkinInput || !checkoutInput || !nightsInput) return;
+
+        const checkin = parseLocalDate(checkinInput.value);
+        const checkout = parseLocalDate(checkoutInput.value);
+
+        if (!checkin || !checkout) return;
+
+        const millisecondsPerDay = 1000 * 60 * 60 * 24;
+        const diff = Math.round((checkout - checkin) / millisecondsPerDay);
+
+        if (diff >= 0) {
+            nightsInput.value = diff;
+            nightsInput.dispatchEvent(new Event('input', { bubbles: true }));
+            nightsInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+
+    function calculateEstimatedTotal() {
+        if (!nightsInput || !costPerNightInput || !estimatedTotalCostInput) return;
+
+        const nights = parseFloat(nightsInput.value);
+        const costPerNight = parseFloat(costPerNightInput.value);
+
+        if (Number.isFinite(nights) && Number.isFinite(costPerNight)) {
+            estimatedTotalCostInput.value = (nights * costPerNight).toFixed(2);
+        }
+    }
+
+    checkinInput?.addEventListener('change', function () {
+        calculateNights();
+        calculateEstimatedTotal();
+    });
+
+    checkoutInput?.addEventListener('change', function () {
+        calculateNights();
+        calculateEstimatedTotal();
+    });
+
+    nightsInput?.addEventListener('input', calculateEstimatedTotal);
+    costPerNightInput?.addEventListener('input', calculateEstimatedTotal);
+
+    calculateNights();
+    calculateEstimatedTotal();
+
+    if (usePlaceButton) {
+        usePlaceButton.addEventListener('click', function () {
+            const placeid = selectedPlaceId();
+            if (!placeid) {
+                showStatus('Select a place first.', true);
+                return;
+            }
+
+            usePlaceButton.disabled = true;
+            showStatus('Loading place details...');
+
+            fetch("{{ route('trips.stays.prefill-from-place', $trip) }}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ placeid }),
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed');
+                return response.json();
+            })
+            .then(data => {
+                if (data.fields) {
+                    setValue('stayname', data.fields.stayname, true);
+                    setValue('description', data.fields.description, true);
+                }
+
+                if (data.place && placeSummary) {
+                    placeSummary.classList.remove('hidden');
+                    placeSummary.innerHTML = `
+                        <div class="font-semibold text-gray-900">${data.place.placename || 'Place'}</div>
+                        <div class="mt-1 text-gray-600">
+                            ${data.place.placetype || '—'}${data.place.locality ? ' • ' + data.place.locality : ''}
+                        </div>
+                        ${data.place.accessnotes ? `<div class="mt-2"><span class="font-medium text-gray-800">Access:</span> ${data.place.accessnotes}</div>` : ''}
+                        ${data.place.generalnotes ? `<div class="mt-1"><span class="font-medium text-gray-800">Notes:</span> ${data.place.generalnotes}</div>` : ''}
+                    `;
+                }
+
+                showStatus('Place details applied where fields were blank.');
+            })
+            .catch(() => {
+                showStatus('Could not load place details.', true);
+            })
+            .finally(() => {
+                usePlaceButton.disabled = false;
+            });
+        });
+    }
+
+    if (usePreviousButton) {
+        usePreviousButton.addEventListener('click', function () {
+            const placeid = selectedPlaceId();
+            if (!placeid) {
+                showStatus('Select a place first.', true);
+                return;
+            }
+
+            usePreviousButton.disabled = true;
+            showStatus('Looking for previous stay...');
+
+            fetch("{{ route('trips.stays.prefill-from-previous-stay', $trip) }}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ placeid }),
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed');
+                return response.json();
+            })
+            .then(data => {
+                if (!data.found) {
+                    showStatus(data.message || 'No previous stay found.', true);
+                    return;
+                }
+
+                if (data.fields) {
+                    setValue('stayname', data.fields.stayname, false);
+                    setValue('staytype', data.fields.staytype, false);
+                    setValue('costpernight', data.fields.costpernight, false);
+                    setValue('estimatedtotalcost', data.fields.estimatedtotalcost, false);
+                    setValue('travelledfromplaceid', data.fields.travelledfromplaceid, false);
+                    setValue('distancetravelledkm', data.fields.distancetravelledkm, false);
+                    setValue('description', data.fields.description, false);
+
+                    const paidCheckbox = document.getElementById('isaccommodationpaid');
+                    if (paidCheckbox && typeof data.fields.isaccommodationpaid !== 'undefined') {
+                        paidCheckbox.checked = !!data.fields.isaccommodationpaid;
+                    }
+                }
+
+                calculateNights();
+                calculateEstimatedTotal();
+                showStatus('Previous stay values copied.');
+            })
+            .catch(() => {
+                showStatus('Could not load previous stay.', true);
+            })
+            .finally(() => {
+                usePreviousButton.disabled = false;
+            });
+        });
+    }
+});
+</script>

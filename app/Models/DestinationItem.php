@@ -140,4 +140,8 @@ public function itemTypes()
         'destination_item_type_id'
     )->orderBy('sortorder')->orderBy('typename');
 }
+public function tripLegPoints(): HasMany
+{
+    return $this->hasMany(TripLegPoint::class, 'destinationitemid');
+}
 }
