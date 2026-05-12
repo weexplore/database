@@ -108,12 +108,22 @@
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                                         Model
                                     </th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Fuel type
+                                    </th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        L/100km
+                                    </th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Tank litres
+                                    </th>
                                     <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">
                                         Active
                                     </th>
                                     <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">
                                         Actions
                                     </th>
+
                                 </tr>
                             </thead>
 
@@ -168,6 +178,40 @@
                                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm"
                                                    placeholder="Model">
                                         </td>
+
+                                        <td class="px-3 py-2">
+                                            <select name="existing[{{ $vehicle->id }}][fueltype]"
+                                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                <option value="">-</option>
+                                                @foreach($fuelTypes as $fuelType)
+                                                    <option value="{{ $fuelType }}"
+                                                        @selected(old("existing.{$vehicle->id}.fueltype", $vehicle->fueltype) === $fuelType)>
+                                                        {{ ucfirst($fuelType) }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </td>
+
+                                        <td class="px-3 py-2">
+                                            <input type="number"
+                                                name="existing[{{ $vehicle->id }}][defaultfuelconsumptionlper100km]"
+                                                value="{{ old("existing.{$vehicle->id}.defaultfuelconsumptionlper100km", $vehicle->defaultfuelconsumptionlper100km) }}"
+                                                class="w-28 rounded-md border-gray-300 shadow-sm text-sm"
+                                                step="0.0001"
+                                                min="0"
+                                                placeholder="e.g. 12.5000">
+                                        </td>
+
+                                        <td class="px-3 py-2">
+                                            <input type="number"
+                                                name="existing[{{ $vehicle->id }}][fueltankcapacitylitres]"
+                                                value="{{ old("existing.{$vehicle->id}.fueltankcapacitylitres", $vehicle->fueltankcapacitylitres) }}"
+                                                class="w-28 rounded-md border-gray-300 shadow-sm text-sm"
+                                                step="0.01"
+                                                min="0"
+                                                placeholder="e.g. 80.00">
+                                        </td>
+
 
                                         {{-- Active --}}
                                         <td class="px-3 py-2 text-center">
@@ -243,6 +287,38 @@
                                                value="{{ old('new.model') }}"
                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
                                                placeholder="Model">
+                                    </td>
+
+                                    <td class="px-3 py-2">
+                                        <select name="new[fueltype]"
+                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                            <option value="">Select fuel</option>
+                                            @foreach($fuelTypes as $fuelType)
+                                                <option value="{{ $fuelType }}" @selected(old('new.fueltype') === $fuelType)>
+                                                    {{ ucfirst($fuelType) }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </td>
+
+                                    <td class="px-3 py-2">
+                                        <input type="number"
+                                            name="new[defaultfuelconsumptionlper100km]"
+                                            value="{{ old('new.defaultfuelconsumptionlper100km') }}"
+                                            class="w-28 rounded-md border-gray-300 shadow-sm text-sm"
+                                            step="0.0001"
+                                            min="0"
+                                            placeholder="L/100km">
+                                    </td>
+
+                                    <td class="px-3 py-2">
+                                        <input type="number"
+                                            name="new[fueltankcapacitylitres]"
+                                            value="{{ old('new.fueltankcapacitylitres') }}"
+                                            class="w-28 rounded-md border-gray-300 shadow-sm text-sm"
+                                            step="0.01"
+                                            min="0"
+                                            placeholder="Tank L">
                                     </td>
 
                                     <td class="px-3 py-2 text-center">

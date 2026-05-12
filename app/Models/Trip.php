@@ -119,4 +119,17 @@ class Trip extends Model
             ->orderBy('sequence_no')
             ->orderBy('id');
     }
+
+    public function tripVehicles()
+    {
+        return $this->hasMany(TripVehicle::class, 'tripid')
+            ->orderByRaw('COALESCE(sortorder, 999999), id');
+    }
+
+    public function defaultTripVehicles()
+    {
+        return $this->hasMany(TripVehicle::class, 'tripid')
+            ->where('isdefaultforlegs', 1)
+            ->orderByRaw('COALESCE(sortorder, 999999), id');
+    }
 }

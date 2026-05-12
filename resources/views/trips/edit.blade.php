@@ -269,6 +269,118 @@
                     </div>
                 </div>
 
+                <div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-6">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900">Default Vehicles</h3>
+                        <p class="mt-1 text-sm text-gray-500">
+                            These vehicles are the default setup for this trip and will be copied to new trip legs.
+                        </p>
+                    </div>
+
+                    @php
+                        $oldTripVehicles = old('tripvehicles');
+                        $tripVehicleRows = is_array($oldTripVehicles)
+                            ? $oldTripVehicles
+                            : $trip->tripVehicles->map(function ($tripVehicle) {
+                                return [
+                                    'vehicleid' => $tripVehicle->vehicleid,
+                                    'vehiclerole' => $tripVehicle->vehiclerole,
+                                    'sortorder' => $tripVehicle->sortorder,
+                                    'isdefaultforlegs' => $tripVehicle->isdefaultforlegs,
+                                    'notes' => $tripVehicle->notes,
+                                ];
+                            })->values()->all();
+
+                        if (empty($tripVehicleRows)) {
+                            $tripVehicleRows = [
+                                ['vehicleid' => '', 'vehiclerole' => 'towvehicle', 'sortorder' => 1, 'isdefaultforlegs' => 1, 'notes' => ''],
+                                ['vehicleid' => '', 'vehiclerole' => 'caravan', 'sortorder' => 2, 'isdefaultforlegs' => 1, 'notes' => ''],
+                            ];
+                        }
+                    @endphp
+
+                    <div class="space-y-4">
+                        @foreach($tripVehicleRows as $index => $row)
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start border border-gray-200 rounded-lg p-4">
+                                <div class="md:col-span-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Vehicle
+                                    </label>
+                                    <select name="tripvehicles[{{ $index }}][vehicleid]"
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                        <option value="">Select vehicle</option>
+                                        @foreach($vehicles as $vehicle)
+                                            <option value="{{ $vehicle->id }}"
+                                                @selected((string) ($row['vehicleid'] ?? '') === (string) $vehicle->id)>
+                                                {{ $vehicle->vehiclename }}
+                                                @if($vehicle->registrationnumber)
+                                                    ({{ $vehicle->registrationnumber }})
+                                                @endif
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div class="md:col-span-3">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Role
+                                    </label>
+                                    <select name="tripvehicles[{{ $index }}][vehiclerole]"
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                        <option value="">Select role</option>
+                                        @foreach($vehicleRoleOptions as $role)
+                                            <option value="{{ $role }}"
+                                                @selected(($row['vehiclerole'] ?? '') === $role)>
+                                                {{ ucfirst(str_replace('vehicle', ' vehicle', $role)) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Sort Order
+                                    </label>
+                                    <input type="number"
+                                        name="tripvehicles[{{ $index }}][sortorder]"
+                                        value="{{ $row['sortorder'] ?? '' }}"
+                                        min="1"
+                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                </div>
+
+                                <div class="md:col-span-3">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Use for new legs
+                                    </label>
+                                    <div class="flex items-center h-10">
+                                        <input type="hidden" name="tripvehicles[{{ $index }}][isdefaultforlegs]" value="0">
+                                        <input type="checkbox"
+                                            name="tripvehicles[{{ $index }}][isdefaultforlegs]"
+                                            value="1"
+                                            class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                            @checked(!empty($row['isdefaultforlegs']))>
+                                    </div>
+                                </div>
+
+                                <div class="md:col-span-12">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Notes
+                                    </label>
+                                    <input type="text"
+                                        name="tripvehicles[{{ $index }}][notes]"
+                                        value="{{ $row['notes'] ?? '' }}"
+                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                        placeholder="Optional notes for this trip vehicle setup">
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <p class="text-xs text-gray-500">
+                        Keep one row for the tow vehicle and one for the caravan where applicable.
+                    </p>
+                </div>
+
                 {{-- Travellers --}}
                 <div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-6">
                     <div>

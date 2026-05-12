@@ -702,6 +702,25 @@ public function generateApply(Request $request, Trip $trip)
             ->with('error', 'Generation is only available while the trip status is Planned.');
     }
 
+    $trip->load([
+        'tripVehicles' => function ($query) {
+            $query->where('isdefaultforlegs', 1)
+                ->orderByRaw('COALESCE(sortorder, 999999), id');
+        },
+    ]);
+
+    $defaultVehicleSync = $trip->tripVehicles
+        ->filter(fn ($tripVehicle) => !empty($tripVehicle->vehicleid))
+        ->mapWithKeys(function ($tripVehicle) {
+            return [
+                $tripVehicle->vehicleid => [
+                    'vehiclerole' => $tripVehicle->vehiclerole ?? null,
+                    'sortorder' => $tripVehicle->sortorder ?? null,
+                ],
+            ];
+        })
+        ->all();
+
     $candidates = $this->buildGenerationCandidates($trip);
 
     $candidateLegs = $candidates['candidateLegs'];
@@ -724,6 +743,7 @@ public function generateApply(Request $request, Trip $trip)
         $candidateStayItems,
         $candidateTripItems,
         $candidateLegPoints,
+        $defaultVehicleSync,
         &$createdLegsCount,
         &$createdStaysCount,
         &$createdItemsCount,
@@ -778,6 +798,10 @@ public function generateApply(Request $request, Trip $trip)
                 'sortorder' => $fromItem->sequence_no ?? null,
                 'plannerstatus' => 'generated',
             ]);
+
+            if (!empty($defaultVehicleSync)) {
+                $leg->vehicles()->sync($defaultVehicleSync);
+            }
 
             $generatedLegs->push([
                 'model' => $leg,

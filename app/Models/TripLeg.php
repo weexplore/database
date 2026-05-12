@@ -101,11 +101,11 @@ protected $casts = [
         return $this->hasMany(TripLegVehicle::class, 'triplegid');
     }
 
-    public function vehicles(): BelongsToMany
+    public function vehicles()
     {
-        return $this->belongsToMany(Vehicle::class, 'triplegvehicles', 'triplegid', 'vehicleid')
+        return $this->belongsToMany(\App\Models\Vehicle::class, 'triplegvehicles', 'triplegid', 'vehicleid')
             ->withPivot(['vehiclerole', 'sortorder'])
-            ->withTimestamps('createdat', 'updatedat');
+            ->orderByRaw('COALESCE(triplegvehicles.sortorder, 999999), vehicles.id');
     }
 
     public function planItems(): HasMany

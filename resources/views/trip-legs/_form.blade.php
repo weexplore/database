@@ -544,25 +544,41 @@
     </div>
 </div>
 
-@php
-    $selectedVehicles = old('vehicles');
+        @php
+            $selectedVehicles = old('vehicles');
 
-    if ($selectedVehicles === null && isset($tripLeg) && $tripLeg?->exists) {
-        $selectedVehicles = $tripLeg->vehicles
-            ->sortBy(fn ($vehicle) => $vehicle->pivot->sortorder ?? 9999)
-            ->map(function ($vehicle) {
-                return [
-                    'vehicleid' => $vehicle->id,
-                    'vehiclerole' => $vehicle->pivot->vehiclerole,
-                    'sortorder' => $vehicle->pivot->sortorder,
-                ];
-            })
-            ->values()
-            ->all();
-    }
+            if ($selectedVehicles === null && isset($tripLeg) && $tripLeg?->exists && $tripLeg->relationLoaded('vehicles') && $tripLeg->vehicles->isNotEmpty()) {
+                $selectedVehicles = $tripLeg->vehicles
+                    ->map(function ($vehicle) {
+                        return [
+                            'vehicleid' => $vehicle->id,
+                            'vehiclerole' => $vehicle->pivot->vehiclerole,
+                            'sortorder' => $vehicle->pivot->sortorder,
+                        ];
+                    })
+                    ->values()
+                    ->all();
+            }
 
-    $selectedVehicles = is_array($selectedVehicles) ? array_values($selectedVehicles) : [];
-@endphp
+            if (($selectedVehicles === null || $selectedVehicles === []) && $trip->relationLoaded('tripVehicles') && $trip->tripVehicles->isNotEmpty()) {
+                $selectedVehicles = $trip->tripVehicles
+                    ->where('isdefaultforlegs', 1)
+                    ->sortBy(function ($tripVehicle) {
+                        return $tripVehicle->sortorder ?? 999999;
+                    })
+                    ->map(function ($tripVehicle) {
+                        return [
+                            'vehicleid' => $tripVehicle->vehicleid,
+                            'vehiclerole' => $tripVehicle->vehiclerole,
+                            'sortorder' => $tripVehicle->sortorder,
+                        ];
+                    })
+                    ->values()
+                    ->all();
+            }
+
+            $selectedVehicles = is_array($selectedVehicles) ? array_values($selectedVehicles) : [];
+        @endphp
 
 <div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-6">
     <div class="flex items-center justify-between gap-4">
@@ -576,6 +592,39 @@
 
     <div class="space-y-4">
         <div id="vehicle-rows" class="space-y-3">
+            @php
+                // 1. If we just failed validation, use the submitted vehicles.
+                $oldVehicleRows = old('vehicles');
+
+                if (is_array($oldVehicleRows)) {
+                    $vehicleRows = $oldVehicleRows;
+                } elseif (isset($tripLeg) && $tripLeg->exists && $tripLeg->vehicles->isNotEmpty()) {
+                    // 2. Editing an existing leg with vehicles assigned.
+                    $vehicleRows = $tripLeg->vehicles->map(function ($vehicle) {
+                        return [
+                            'vehicleid' => $vehicle->id,
+                            'vehiclerole' => $vehicle->pivot->vehiclerole ?? '',
+                            'sortorder' => $vehicle->pivot->sortorder ?? '',
+                        ];
+                    })->values()->all();
+                } else {
+                    // 3. New leg (or leg with no specific vehicles) – seed from trip defaults.
+                    $vehicleRows = $trip->tripVehicles->map(function ($tripVehicle) {
+                        return [
+                            'vehicleid' => $tripVehicle->vehicleid,
+                            'vehiclerole' => $tripVehicle->vehiclerole ?? '',
+                            'sortorder' => $tripVehicle->sortorder ?? '',
+                        ];
+                    })->values()->all();
+
+                    // If there are no trip defaults at all, fall back to a single empty row.
+                    if ($vehicleRows === []) {
+                        $vehicleRows = [
+                            ['vehicleid' => '', 'vehiclerole' => '', 'sortorder' => 1],
+                        ];
+                    }
+                }
+            @endphp
             @forelse($selectedVehicles as $index => $selectedVehicle)
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-3 vehicle-row">
                     <div class="md:col-span-5">

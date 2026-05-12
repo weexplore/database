@@ -13,8 +13,16 @@ class TripLegVehicle extends Model
     protected $fillable = [
         'triplegid',
         'vehicleid',
+        'tripvehicleid',
         'vehiclerole',
+        'includedinfuelcalculation',
+        'fuelconsumptionoverridelper100km',
         'sortorder',
+    ];
+
+    protected $casts = [
+        'includedinfuelcalculation' => 'boolean',
+        'fuelconsumptionoverridelper100km' => 'decimal:4',
     ];
 
     public function tripLeg()
@@ -26,4 +34,9 @@ class TripLegVehicle extends Model
     {
         return $this->belongsTo(Vehicle::class, 'vehicleid');
     }
+
+    public function tripVehicle()
+{
+    return $this->belongsTo(TripVehicle::class, 'tripvehicleid');
+}
 }

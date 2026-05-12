@@ -146,6 +146,10 @@ class TripLegController extends Controller
     {
         abort_unless((int) $tripLeg->tripid === (int) $trip->id, 404);
 
+        $trip->load([
+            'tripVehicles.vehicle',
+        ]);
+
         $places = Place::orderBy('placename')->get();
         $destinations = Destination::orderBy('destinationname')->get();
         $destinationItems = DestinationItem::query()
@@ -215,47 +219,81 @@ class TripLegController extends Controller
             'from' => $from,
             'to' => $to,
         ];
-
-        return view('trip-legs.edit', compact('trip', 'tripLeg', 'places', 'destinations', 'destinationItems', 'vehicles', 'tripLegMap'));
+        return view('trip-legs.edit', compact(
+            'trip',
+            'tripLeg',
+            'places',
+            'destinations',
+            'destinationItems',
+            'vehicles',
+            'tripLegMap'
+        ));
     }
 
     public function update(Request $request, Trip $trip, TripLeg $tripLeg)
     {
         abort_unless((int) $tripLeg->tripid === (int) $trip->id, 404);
 
+        $trip->load([
+            'tripVehicles.vehicle',
+        ]);
+
+
+        $places = Place::orderBy('placename')->get();
+        $destinations = Destination::orderBy('destinationname')->get();
+        $destinationItems = DestinationItem::query()
+            ->with(['destination.place', 'place'])
+            ->where('isactive', 1)
+            ->orderBy('itemname')
+            ->get();
+        $vehicles = Vehicle::query()
+            ->where('isactive', 1)
+            ->orderBy('vehiclename')
+            ->orderBy('id')
+            ->get();
+
+        $tripLeg->load([
+            'fromPlace:id,placename,latitude,longitude',
+            'toPlace:id,placename,latitude,longitude',
+            'destination:id,destinationname,placeid',
+            'fromDestinationItem:id,itemname,latitude,longitude,destinationid,placeid',
+            'destinationItem:id,itemname,latitude,longitude,destinationid,placeid',
+            'vehicles',
+        ]);
+
         $validated = $request->validate([
-    'legnumber' => ['required', 'integer', 'min:1'],
-    'startdate' => ['nullable', 'date'],
-    'enddate' => ['nullable', 'date', 'after_or_equal:startdate'],
-    'nightsplanned' => ['nullable', 'integer', 'min:0'],
-    'fromplaceid' => ['nullable', 'integer', 'exists:places,id'],
-    'toplaceid' => ['nullable', 'integer', 'exists:places,id'],
-    'destinationid' => ['nullable', 'integer', 'exists:destinations,id'],
-    'destinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
-    'fromdestinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
-    'title' => ['nullable', 'string', 'max:200'],
-    'description' => ['nullable', 'string'],
-    'distancekm' => ['nullable', 'numeric', 'min:0'],
-    'elevationgainm' => ['nullable', 'numeric', 'min:0'],
-    'elevationlossm' => ['nullable', 'numeric', 'min:0'],
-    'drivingnotes' => ['nullable', 'string'],
-    'planningnotes' => ['nullable', 'string'],
-    'actualnotes' => ['nullable', 'string'],
-    'sortorder' => ['nullable', 'integer', 'min:0'],
-    'vehicles' => ['nullable', 'array'],
-    'vehicles.*.vehicleid' => ['nullable', 'integer', 'exists:vehicles,id'],
-    'vehicles.*.vehiclerole' => ['nullable', 'string', 'max:50'],
-    'vehicles.*.sortorder' => ['nullable', 'integer', 'min:0'],
-    'leg_points' => ['nullable', 'array'],
-    'leg_points.*.id' => ['nullable', 'integer'],
-    'leg_points.*.sequence_no' => ['nullable', 'integer', 'min:1'],
-    'leg_points.*.pointtype' => ['nullable', 'string', 'max:50'],
-    'leg_points.*.title' => ['nullable', 'string', 'max:255'],
-    'leg_points.*.placeid' => ['nullable', 'integer', 'exists:places,id'],
-    'leg_points.*.destinationid' => ['nullable', 'integer', 'exists:destinations,id'],
-    'leg_points.*.destinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
-    'leg_points.*.notes' => ['nullable', 'string'],
-]);
+        'legnumber' => ['required', 'integer', 'min:1'],
+        'startdate' => ['nullable', 'date'],
+        'enddate' => ['nullable', 'date', 'after_or_equal:startdate'],
+        'nightsplanned' => ['nullable', 'integer', 'min:0'],
+        'fromplaceid' => ['nullable', 'integer', 'exists:places,id'],
+        'toplaceid' => ['nullable', 'integer', 'exists:places,id'],
+        'destinationid' => ['nullable', 'integer', 'exists:destinations,id'],
+        'destinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
+        'fromdestinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
+        'title' => ['nullable', 'string', 'max:200'],
+        'description' => ['nullable', 'string'],
+        'distancekm' => ['nullable', 'numeric', 'min:0'],
+        'elevationgainm' => ['nullable', 'numeric', 'min:0'],
+        'elevationlossm' => ['nullable', 'numeric', 'min:0'],
+        'drivingnotes' => ['nullable', 'string'],
+        'planningnotes' => ['nullable', 'string'],
+        'actualnotes' => ['nullable', 'string'],
+        'sortorder' => ['nullable', 'integer', 'min:0'],
+        'vehicles' => ['nullable', 'array'],
+        'vehicles.*.vehicleid' => ['nullable', 'integer', 'exists:vehicles,id'],
+        'vehicles.*.vehiclerole' => ['nullable', 'string', 'max:50'],
+        'vehicles.*.sortorder' => ['nullable', 'integer', 'min:0'],
+        'leg_points' => ['nullable', 'array'],
+        'leg_points.*.id' => ['nullable', 'integer'],
+        'leg_points.*.sequence_no' => ['nullable', 'integer', 'min:1'],
+        'leg_points.*.pointtype' => ['nullable', 'string', 'max:50'],
+        'leg_points.*.title' => ['nullable', 'string', 'max:255'],
+        'leg_points.*.placeid' => ['nullable', 'integer', 'exists:places,id'],
+        'leg_points.*.destinationid' => ['nullable', 'integer', 'exists:destinations,id'],
+        'leg_points.*.destinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
+        'leg_points.*.notes' => ['nullable', 'string'],
+    ]);
 
         $tripLeg->update(collect($validated)->except('vehicles')->toArray());
 

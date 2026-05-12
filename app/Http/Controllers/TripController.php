@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Traveller;
 use App\Models\Trip;
+use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -151,29 +152,48 @@ class TripController extends Controller
     }
 
     public function edit(Trip $trip)
-    {
-        $trip->load(['travellers', 'tripTravellerLinks']);
+{
+    $trip->load([
+        'travellers',
+        'tripTravellerLinks',
+        'tripVehicles.vehicle',
+    ]);
 
-        $travellers = Traveller::query()
-            ->where('isactive', 1)
-            ->orderBy('displayname')
-            ->get();
+    $travellers = Traveller::query()
+        ->where('isactive', 1)
+        ->orderBy('displayname')
+        ->get();
 
-        $selectedTravellers = $trip->travellers
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
+    $vehicles = Vehicle::query()
+        ->where('isactive', 1)
+        ->orderBy('vehiclename')
+        ->get();
 
-        $calculatedEstimatedDistance = (float) $trip->legs()->sum('distancekm');
+    $selectedTravellers = $trip->travellers
+        ->pluck('id')
+        ->map(fn ($id) => (int) $id)
+        ->all();
 
-        return view('trips.edit', [
-            'trip' => $trip,
-            'travellers' => $travellers,
-            'selectedTravellers' => $selectedTravellers,
-            'statusOptions' => $this->statusOptions,
-            'calculatedEstimatedDistance' => $calculatedEstimatedDistance,
-        ]);
-    }
+    $calculatedEstimatedDistance = (float) $trip->legs()->sum('distancekm');
+
+    $vehicleRoleOptions = [
+        'towvehicle',
+        'caravan',
+        'trailer',
+        'supportvehicle',
+        'other',
+    ];
+
+    return view('trips.edit', [
+        'trip' => $trip,
+        'travellers' => $travellers,
+        'vehicles' => $vehicles,
+        'selectedTravellers' => $selectedTravellers,
+        'statusOptions' => $this->statusOptions,
+        'calculatedEstimatedDistance' => $calculatedEstimatedDistance,
+        'vehicleRoleOptions' => $vehicleRoleOptions,
+    ]);
+}
 
     public function update(Request $request, Trip $trip)
     {
@@ -201,6 +221,18 @@ class TripController extends Controller
             'islocked' => ['nullable', 'boolean'],
             'travellerids' => ['nullable', 'array'],
             'travellerids.*' => ['integer', 'exists:travellers,id'],
+            'tripvehicles' => ['nullable', 'array'],
+            'tripvehicles.*.vehicleid' => ['nullable', 'integer', 'exists:vehicles,id'],
+            'tripvehicles.*.vehiclerole' => ['nullable', 'string', Rule::in([
+                'towvehicle',
+                'caravan',
+                'trailer',
+                'supportvehicle',
+                'other',
+            ])],
+            'tripvehicles.*.sortorder' => ['nullable', 'integer', 'min:1', 'max:9999'],
+            'tripvehicles.*.isdefaultforlegs' => ['nullable', 'boolean'],
+            'tripvehicles.*.notes' => ['nullable', 'string'],
         ]);
 
         DB::transaction(function () use ($validated, $trip) {
@@ -238,7 +270,30 @@ class TripController extends Controller
                 $syncData[$travellerId] = [];
             }
 
+
             $trip->travellers()->sync($syncData);
+
+                        $tripVehicleRows = collect($validated['tripvehicles'] ?? [])
+                ->map(function ($row) {
+                    return [
+                        'vehicleid' => isset($row['vehicleid']) && $row['vehicleid'] !== '' ? (int) $row['vehicleid'] : null,
+                        'vehiclerole' => $row['vehiclerole'] ?? null,
+                        'sortorder' => isset($row['sortorder']) && $row['sortorder'] !== '' ? (int) $row['sortorder'] : null,
+                        'isdefaultforlegs' => (bool) ($row['isdefaultforlegs'] ?? false),
+                        'notes' => $row['notes'] ?? null,
+                    ];
+                })
+                ->filter(function ($row) {
+                    return !empty($row['vehicleid']);
+                })
+                ->values();
+
+            $trip->tripVehicles()->delete();
+
+            foreach ($tripVehicleRows as $row) {
+                $trip->tripVehicles()->create($row);
+            }
+
         });
 
         return redirect()
