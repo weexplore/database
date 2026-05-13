@@ -178,7 +178,21 @@ public function create(Request $request)
 
 public function edit(Request $request, DestinationItem $destinationItem)
 {
-    $destinationItem->load('itemTypes');
+    $destinationItem->load([
+        'destination',
+        'place',
+        'itemTypes',
+        'reviews' => function ($query) {
+            $query->latest('reviewdate')
+                ->latest('createdat');
+        },
+        'reviews.traveller',
+        'reviews.trip',
+        'attachments' => fn ($query) => $query
+            ->orderByDesc('isprimary')
+            ->orderByDesc('uploadedat')
+            ->orderByDesc('id'),
+    ]);
 
     $destinations = Destination::orderBy('destinationname')->get();
     $places = Place::orderBy('placename')->get();
@@ -189,6 +203,15 @@ public function edit(Request $request, DestinationItem $destinationItem)
         ->orderBy('sortorder')
         ->get();
 
+    $reviews = $destinationItem->reviews;
+    $reviewCount = $reviews->count();
+
+    $averageOverallRating = $reviewCount > 0
+        ? round($reviews->whereNotNull('ratingoverall')->avg('ratingoverall'), 1)
+        : null;
+
+    $latestReviews = $reviews->take(5);
+
     $returnTo = $request->input('return_to', route('destinations.edit', $destinationItem->destinationid));
 
     return view('destination-items.edit', compact(
@@ -196,7 +219,11 @@ public function edit(Request $request, DestinationItem $destinationItem)
         'destinations',
         'places',
         'itemTypes',
-        'returnTo'
+        'returnTo',
+        'reviews',
+        'reviewCount',
+        'averageOverallRating',
+        'latestReviews'
     ));
 }
 

@@ -336,4 +336,34 @@
         });
     });
 </script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const tripStaySelect = document.getElementById('tripstayid');
+        const perPersonInput = document.getElementById('estimatedcostperperson');
+        const totalInput = document.getElementById('estimatedtotalcost');
+        const actualInput = document.getElementById('actualcost');
+
+        if (!tripStaySelect || !perPersonInput || !totalInput || !actualInput) {
+            return;
+        }
+
+        function toggleStayCostFields() {
+            const hasStay = tripStaySelect.value !== '';
+
+            [perPersonInput, totalInput, actualInput].forEach(function (input) {
+                input.readOnly = hasStay;
+
+                if (hasStay) {
+                    input.value = '0.00';
+                    input.classList.add('bg-gray-100', 'text-gray-500');
+                } else {
+                    input.classList.remove('bg-gray-100', 'text-gray-500');
+                }
+            });
+        }
+
+        tripStaySelect.addEventListener('change', toggleStayCostFields);
+        toggleStayCostFields();
+    });
+</script>
 @endpush

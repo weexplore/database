@@ -164,36 +164,48 @@ class DestinationController extends Controller
             ->with('success', 'Destinations saved successfully.');
     }
 
-    public function edit(Destination $destination)
-    {
+public function edit(Request $request, Destination $destination)
+{
+    $destination->load([
+        'place',
+        'items' => fn ($query) => $query
+            ->with('itemTypes')
+            ->orderBy('itemname')
+            ->orderByRaw('COALESCE(sortorder, 999999)'),
+        'sources' => fn ($query) => $query
+            ->orderByRaw("CASE importstatus
+                WHEN 'pendingreview' THEN 1
+                WHEN 'approved' THEN 2
+                WHEN 'rejected' THEN 3
+                WHEN 'archived' THEN 4
+                ELSE 5
+            END")
+            ->orderByDesc('retrievedon')
+            ->orderByDesc('createdat'),
+        'attachments' => fn ($query) => $query
+            ->orderByDesc('isprimary')
+            ->orderByDesc('uploadedat')
+            ->orderByDesc('id'),
+    ]);
 
-        $destination->load([
-            'place',
-            'items' => fn ($query) => $query
-                ->with('itemTypes')
-                ->orderBy('itemname')
-                ->orderByRaw('COALESCE(sortorder, 999999)'),
-            'sources' => fn ($query) => $query
-                ->orderByRaw("CASE importstatus
-                    WHEN 'pendingreview' THEN 1
-                    WHEN 'approved' THEN 2
-                    WHEN 'rejected' THEN 3
-                    WHEN 'archived' THEN 4
-                    ELSE 5
-                END")
-                ->orderByDesc('retrievedon')
-                ->orderByDesc('createdat'),
-        ]);
+    $places = Place::orderBy('placename')->get();
+    $typeOptions = $this->typeOptions();
 
-        $places = Place::orderBy('placename')->get();
-        $typeOptions = $this->typeOptions();
+    $returnTo = $request->input('return_to', route('destinations.index', $request->only([
+        'placeid',
+        'destinationtype',
+        'featured',
+        'search',
+        'page',
+    ])));
 
-        return view('destinations.edit', compact(
-            'destination',
-            'places',
-            'typeOptions'
-        ));
-    }
+    return view('destinations.edit', compact(
+        'destination',
+        'places',
+        'typeOptions',
+        'returnTo'
+    ));
+}
 
     public function update(Request $request, Destination $destination)
     {

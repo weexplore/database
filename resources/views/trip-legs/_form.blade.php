@@ -738,6 +738,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function buildOptionCache(select) {
         if (!select) return [];
+
         return Array.from(select.options).map(option => ({
             value: option.value,
             text: option.text,
@@ -750,6 +751,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const fromDestinationItemOptions = buildOptionCache(fromDestinationItemSelect);
     const destinationItemOptions = buildOptionCache(destinationItemSelect);
+    const toPlaceOptions = buildOptionCache(toPlaceSelect);
 
     function rebuildSelect(select, options, placeholder, selectedValue) {
         if (!select) return;
@@ -770,7 +772,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (item.placeId) option.dataset.placeId = item.placeId;
             if (item.lat !== '') option.dataset.lat = item.lat;
             if (item.lng !== '') option.dataset.lng = item.lng;
-            if (String(item.value) === String(selectedValue)) option.selected = true;
+
+            if (String(item.value) === String(selectedValue)) {
+                option.selected = true;
+            }
 
             select.appendChild(option);
         });
@@ -784,9 +789,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const filtered = fromDestinationItemOptions.filter(option => {
             if (!option.value) return false;
+
             if (selectedFromPlaceId) {
                 return String(option.placeId) === String(selectedFromPlaceId);
             }
+
             return true;
         });
 
@@ -804,6 +811,41 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function filterToPlaces() {
+        if (!toPlaceSelect) return;
+
+        const selectedDestinationOption = destinationSelect
+            ? destinationSelect.options[destinationSelect.selectedIndex]
+            : null;
+
+        const selectedDestinationPlaceId = selectedDestinationOption?.dataset.placeId || '';
+        const currentValue = toPlaceSelect.value;
+
+        const filtered = toPlaceOptions.filter(option => {
+            if (!option.value) return false;
+
+            if (selectedDestinationPlaceId) {
+                return String(option.value) === String(selectedDestinationPlaceId);
+            }
+
+            return true;
+        });
+
+        const preferredValue = selectedDestinationPlaceId || currentValue;
+        const stillValid = filtered.some(option => String(option.value) === String(preferredValue));
+
+        rebuildSelect(
+            toPlaceSelect,
+            filtered,
+            'Select destination place',
+            stillValid ? preferredValue : ''
+        );
+
+        if (!stillValid) {
+            toPlaceSelect.value = '';
+        }
+    }
+
     function filterDestinationItems() {
         if (!destinationItemSelect) return;
 
@@ -813,12 +855,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const filtered = destinationItemOptions.filter(option => {
             if (!option.value) return false;
+
             if (selectedDestinationId) {
                 return String(option.destinationId) === String(selectedDestinationId);
             }
+
             if (selectedToPlaceId) {
                 return String(option.placeId) === String(selectedToPlaceId);
             }
+
             return true;
         });
 
@@ -838,62 +883,74 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function getSelectedText(select) {
         if (!select) return '';
+
         const option = select.options[select.selectedIndex];
         return option && option.value ? option.text.trim() : '';
     }
 
     let titleTouched = false;
 
-    if (titleInput && titleInput.value.trim() !== '') {
-        titleTouched = true;
-    }
-
-    function updateTitle() {
-        if (!titleInput || titleTouched) return;
-
-        const fromDestinationItemText = getSelectedText(fromDestinationItemSelect);
-        const fromPlaceText = getSelectedText(fromPlaceSelect);
-        const destinationItemText = getSelectedText(destinationItemSelect);
-        const toPlaceText = getSelectedText(toPlaceSelect);
-
-        const fromLabel = fromDestinationItemText || fromPlaceText;
-        const toLabel = destinationItemText || toPlaceText;
-
-        let computed = '';
-
-        if (fromLabel && toLabel) {
-            computed = `${fromLabel} - ${toLabel}`;
-        } else if (fromLabel) {
-            computed = fromLabel;
-        } else if (toLabel) {
-            computed = toLabel;
-        }
-
-        if (computed) {
-            titleInput.value = computed;
-        }
-    }
-
     if (titleInput) {
+        titleInput.dataset.lastAutoTitle = titleInput.value.trim();
+
         titleInput.addEventListener('input', function () {
-            titleTouched = titleInput.value.trim() !== '';
+            const currentValue = titleInput.value.trim();
+            const lastAutoTitle = titleInput.dataset.lastAutoTitle || '';
+
+            titleTouched = currentValue !== '' && currentValue !== lastAutoTitle;
         });
     }
 
+function updateTitle() {
+    if (!titleInput) return;
+
+    const fromDestinationItemText = getSelectedText(fromDestinationItemSelect);
+    const fromPlaceText = getSelectedText(fromPlaceSelect);
+    const destinationItemText = getSelectedText(destinationItemSelect);
+    const toPlaceText = getSelectedText(toPlaceSelect);
+    const destinationText = getSelectedText(destinationSelect);
+
+    const fromLabel = fromDestinationItemText || fromPlaceText;
+    const toLabel = destinationItemText || toPlaceText || destinationText;
+
+    let computed = '';
+
+    if (fromLabel && toLabel) {
+        computed = `${fromLabel} → ${toLabel}`;
+    } else if (fromLabel) {
+        computed = fromLabel;
+    } else if (toLabel) {
+        computed = toLabel;
+    }
+
+    const currentValue = titleInput.value.trim();
+    const lastAutoTitle = titleInput.dataset.lastAutoTitle || '';
+
+    if (!titleTouched || currentValue === '' || currentValue === lastAutoTitle) {
+        titleInput.value = computed;
+        titleInput.dataset.lastAutoTitle = computed;
+        titleTouched = false;
+    }
+}
+
     function refreshDependentUi() {
         filterFromDestinationItems();
+        filterToPlaces();
         filterDestinationItems();
         updateTitle();
         document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
     }
-    
 
     if (fromPlaceSelect) {
         fromPlaceSelect.addEventListener('change', refreshDependentUi);
     }
 
     if (toPlaceSelect) {
-        toPlaceSelect.addEventListener('change', refreshDependentUi);
+        toPlaceSelect.addEventListener('change', function () {
+            filterDestinationItems();
+            updateTitle();
+            document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
+        });
     }
 
     if (destinationSelect) {
@@ -915,6 +972,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     filterFromDestinationItems();
+    filterToPlaces();
     filterDestinationItems();
     updateTitle();
     document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));

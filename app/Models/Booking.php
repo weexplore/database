@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Attachment;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Booking extends Model
 {
@@ -83,5 +85,10 @@ class Booking extends Model
     public function place(): BelongsTo
     {
         return $this->belongsTo(Place::class, 'placeid');
+    }
+    public function attachments()
+    {
+        return $this->hasMany(Attachment::class, 'linkedid')
+            ->where('linkedtype', 'booking');
     }
 }

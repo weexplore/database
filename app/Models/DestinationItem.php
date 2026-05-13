@@ -3,6 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Review;
+use App\Models\Attachment;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -131,17 +134,24 @@ class DestinationItem extends Model
     {
         return $this->hasMany(DestinationSource::class, 'destinationitemid');
     }
-public function itemTypes()
-{
-    return $this->belongsToMany(
-        DestinationItemType::class,
-        'destinationitem_destination_item_type',
-        'destinationitem_id',
-        'destination_item_type_id'
-    )->orderBy('sortorder')->orderBy('typename');
-}
-public function tripLegPoints(): HasMany
-{
-    return $this->hasMany(TripLegPoint::class, 'destinationitemid');
-}
+    public function itemTypes()
+    {
+        return $this->belongsToMany(
+            DestinationItemType::class,
+            'destinationitem_destination_item_type',
+            'destinationitem_id',
+            'destination_item_type_id'
+        )->orderBy('sortorder')->orderBy('typename');
+    }
+    public function tripLegPoints(): HasMany
+    {
+        return $this->hasMany(TripLegPoint::class, 'destinationitemid');
+    }
+    
+    public function attachments()
+    {
+        return $this->hasMany(Attachment::class, 'linkedid')
+            ->where('linkedtype', 'destination_item');
+
+    }
 }

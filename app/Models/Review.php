@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Attachment;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -88,5 +90,10 @@ class Review extends Model
     public function place(): BelongsTo
     {
         return $this->belongsTo(Place::class, 'placeid');
+    }
+    public function attachments()
+    {
+        return $this->hasMany(Attachment::class, 'linkedid')
+            ->where('linkedtype', 'review');
     }
 }

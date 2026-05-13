@@ -336,6 +336,192 @@
                         </div>
                     @endif
 
+                    <div class="bg-white shadow-sm sm:rounded-lg">
+                        <div class="px-4 py-3 border-b border-gray-200">
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-900">Destination Item Reviews</h3>
+                                <p class="mt-1 text-xs text-gray-500">Reviews linked to this destination item</p>
+                            </div>
+                        </div>
+
+                        <div class="p-4 space-y-4">
+                            <dl class="space-y-3 text-sm">
+                                <div>
+                                    <dt class="text-gray-500">Review Count</dt>
+                                    <dd class="text-gray-900">{{ $reviewCount }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-gray-500">Average Overall Rating</dt>
+                                    <dd class="text-gray-900">
+                                        {{ $averageOverallRating !== null ? number_format($averageOverallRating, 1) . ' / 5' : '—' }}
+                                    </dd>
+                                </div>
+                            </dl>
+
+                            @if ($latestReviews->isNotEmpty())
+                                <div class="space-y-3">
+                                    @foreach ($latestReviews as $review)
+                                        <div class="border border-gray-200 rounded-md p-3">
+                                            <div class="flex items-start justify-between gap-3">
+                                                <div class="min-w-0">
+                                                    <div class="text-sm font-medium text-gray-900">
+                                                        {{ $review->title ?: 'Untitled review' }}
+                                                    </div>
+                                                    <div class="mt-1 text-xs text-gray-500">
+                                                        {{ optional($review->reviewdate)->format('d M Y') ?: 'No date' }}
+                                                        @if ($review->traveller)
+                                                            · {{ $review->traveller->fullname ?? $review->traveller->name ?? 'Traveller' }}
+                                                        @endif
+                                                    </div>
+                                                </div>
+
+                                                <div class="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                                                    {{ $review->ratingoverall ? $review->ratingoverall . '/5' : '—' }}
+                                                </div>
+                                            </div>
+
+                                            @if ($review->comments)
+                                                <p class="mt-2 text-xs text-gray-600 line-clamp-3">
+                                                    {{ \Illuminate\Support\Str::limit($review->comments, 140) }}
+                                                </p>
+                                            @endif
+
+                                            @if ($review->trip)
+                                                <div class="mt-2 text-xs text-gray-500">
+                                                    Trip: {{ $review->trip->tripname ?: '—' }}
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <p class="text-sm text-gray-500">No reviews are currently linked to this destination item.</p>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="xl:col-span-1 space-y-6">
+                        <div class="bg-white shadow-sm sm:rounded-lg">
+                            <div class="px-4 py-3 border-b border-gray-200">
+                                <div>
+                                    <h3 class="text-sm font-semibold text-gray-900">Attachments</h3>
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        {{ $destinationItem->attachments->count() }} linked record{{ $destinationItem->attachments->count() === 1 ? '' : 's' }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="p-4 space-y-4">
+                                <dl class="space-y-3 text-sm">
+                                    <div>
+                                        <dt class="text-gray-500">Linked record</dt>
+                                        <dd class="text-gray-900">{{ $destinationItem->itemname ?: 'Destination Item' }}</dd>
+                                    </div>
+
+                                    @if ($destinationItem->destination)
+                                        <div>
+                                            <dt class="text-gray-500">Destination</dt>
+                                            <dd class="text-gray-900">{{ $destinationItem->destination->destinationname ?: '—' }}</dd>
+                                        </div>
+                                    @endif
+
+                                    @if ($destinationItem->place)
+                                        <div>
+                                            <dt class="text-gray-500">Place</dt>
+                                            <dd class="text-gray-900">{{ $destinationItem->place->placename ?: '—' }}</dd>
+                                        </div>
+                                    @endif
+                                </dl>
+
+                                @if ($destinationItem->attachments->isNotEmpty())
+                                    <div class="space-y-3">
+                                        @foreach ($destinationItem->attachments as $attachment)
+                                            <div class="border border-gray-200 rounded-md px-3 py-2">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    {{ $attachment->description ?: $attachment->originalfilename ?: 'Attachment' }}
+                                                </div>
+
+                                                <div class="mt-1 text-xs text-gray-500">
+                                                    {{ $attachment->attachmenttype ?: 'File' }}
+                                                    @if ($attachment->uploadedat)
+                                                        · {{ \Illuminate\Support\Carbon::parse($attachment->uploadedat)->format('d M Y') }}
+                                                    @endif
+                                                    @if ($attachment->isprimary)
+                                                        · Primary
+                                                    @endif
+                                                </div>
+
+                                                <div class="mt-2 flex flex-wrap items-center gap-2">
+                                                    @if (Route::has('attachments.view'))
+                                                        <a href="{{ route('attachments.view', $attachment) }}"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        class="inline-flex items-center px-2.5 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-xs">
+                                                            View
+                                                        </a>
+                                                    @endif
+
+                                                    @if (Route::has('attachments.edit'))
+                                                        <a href="{{ route('attachments.edit', [
+                                                            'attachment' => $attachment,
+                                                            'return_to' => url()->full(),
+                                                        ]) }}"
+                                                        class="inline-flex items-center px-2.5 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-xs">
+                                                            Edit
+                                                        </a>
+                                                    @endif
+
+                                                    @if (Route::has('attachments.destroy'))
+                                                        <form method="POST"
+                                                            action="{{ route('attachments.destroy', $attachment) }}"
+                                                            onsubmit="return confirm('Delete this attachment? This cannot be undone.');"
+                                                            class="inline-flex">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <input type="hidden" name="return_to" value="{{ url()->full() }}">
+
+                                                            <button type="submit"
+                                                                    class="inline-flex items-center px-2.5 py-1.5 border border-red-300 rounded-md text-xs font-semibold text-red-700 bg-white hover:bg-red-50">
+                                                                Delete
+                                                            </button>
+                                                        </form>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <p class="text-sm text-gray-500">
+                                        No attachments are currently linked to this destination item.
+                                    </p>
+                                @endif
+
+                                @if (Route::has('attachments.index'))
+                                    <div class="flex flex-wrap gap-2">
+                                        <a href="{{ route('attachments.index', [
+                                            'linkedtype' => 'destination_item',
+                                            'linkedid' => $destinationItem->id,
+                                            'return_to' => url()->full(),
+                                        ]) }}"
+                                        class="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-sm">
+                                            View Attachments
+                                        </a>
+
+                                        <a href="{{ route('attachments.index', [
+                                            'linkedtype' => 'destination_item',
+                                            'linkedid' => $destinationItem->id,
+                                            'show_create' => 1,
+                                            'return_to' => url()->full(),
+                                        ]) }}"
+                                        class="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
+                                            Add Attachment
+                                        </a>
+                                    </div>
+                                @else
+                                    <p class="text-sm text-gray-500">Attachments module not yet enabled.</p>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
                         <h3 class="text-sm font-semibold text-gray-900">Record Summary</h3>
                         <dl class="mt-3 space-y-2 text-sm">

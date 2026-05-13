@@ -345,12 +345,13 @@
                                         </li>
                                     @endforeach
                                 </ul>
+                                
+
                             @else
                                 <p class="text-sm text-gray-500">
                                     No destination items are currently linked to this destination.
                                 </p>
                             @endif
-
                             <a href="{{ route('destination-items.create-from-destination', [
                                     'destination' => $destination,
                                     'return_to' => url()->full(),
@@ -358,8 +359,95 @@
                                 class="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-700 rounded hover:bg-green-100 text-xs">
                                 + Add Destination Item
                             </a>
+
                         </div>
                     </div>
+
+                    <div class="bg-white shadow-sm sm:rounded-lg">
+                        <div class="px-4 py-3 border-b border-gray-200">
+                            <h3 class="text-sm font-semibold text-gray-900">Attachments</h3>
+                            <p class="mt-1 text-xs text-gray-500">
+                                {{ $destination->attachments->count() }} linked record{{ $destination->attachments->count() === 1 ? '' : 's' }}
+                            </p>
+                        </div>
+
+                        <div class="p-4 space-y-4">
+                            @if ($destination->attachments->isNotEmpty())
+                                <div class="space-y-3">
+                                    @foreach ($destination->attachments as $attachment)
+                                        <div class="border border-gray-200 rounded-md px-3 py-2">
+                                            <div class="text-sm font-medium text-gray-900">
+                                                {{ $attachment->description ?: $attachment->originalfilename ?: 'Attachment' }}
+                                            </div>
+                                            <div class="mt-1 text-xs text-gray-500">
+                                                {{ $attachment->attachmenttype ?: 'File' }}
+                                                @if ($attachment->uploadedat)
+                                                    · {{ \Illuminate\Support\Carbon::parse($attachment->uploadedat)->format('d M Y') }}
+                                                @endif
+                                                @if ($attachment->isprimary)
+                                                    · Primary
+                                                @endif
+                                            </div>
+
+                                            <div class="mt-2 flex flex-wrap gap-2">
+                                                @if (Route::has('attachments.view'))
+                                                    <a href="{{ route('attachments.view', $attachment) }}"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    class="inline-flex items-center px-2.5 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-xs">
+                                                        View
+                                                    </a>
+                                                @endif
+
+                                                @if (Route::has('attachments.download'))
+                                                    <a href="{{ route('attachments.download', $attachment) }}"
+                                                    class="inline-flex items-center px-2.5 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-xs">
+                                                        Download
+                                                    </a>
+                                                @endif
+
+                                                @if (Route::has('attachments.edit'))
+                                                    <a href="{{ route('attachments.edit', [
+                                                            'attachment' => $attachment,
+                                                            'return_to' => url()->full(),
+                                                        ]) }}"
+                                                    class="inline-flex items-center px-2.5 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-xs">
+                                                        Edit
+                                                    </a>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <p class="text-sm text-gray-500">No attachments are currently linked to this destination.</p>
+                            @endif
+
+                            @if (Route::has('attachments.index'))
+                                <div class="flex flex-wrap gap-2">
+                                    <a href="{{ route('attachments.index', [
+                                        'linkedtype' => 'destination',
+                                        'linkedid' => $destination->id,
+                                        'return_to' => url()->full(),
+                                    ]) }}"
+                                    class="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-sm">
+                                        View Attachments
+                                    </a>
+
+                                    <a href="{{ route('attachments.index', [
+                                        'linkedtype' => 'destination',
+                                        'linkedid' => $destination->id,
+                                        'show_create' => 1,
+                                        'return_to' => url()->full(),
+                                    ]) }}"
+                                    class="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
+                                        Add Attachment
+                                    </a>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+
 
                     <div class="bg-white shadow-sm sm:rounded-lg">
                         <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">

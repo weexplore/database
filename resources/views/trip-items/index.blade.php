@@ -176,8 +176,17 @@
 
                                     <td class="px-4 py-3 align-top">
                                         @if($item->tripleg)
-                                            <div class="text-gray-900">Leg {{ $item->tripleg->legnumber }}</div>
+                                            <div class="text-gray-900">
+                                                {{ $item->tripleg->title ?: ('Leg ' . $item->tripleg->legnumber) }}
+                                            </div>
+
+                                            @if($item->tripleg->title && $item->tripleg->legnumber)
+                                                <div class="text-xs text-gray-500 mt-1">
+                                                    Leg {{ $item->tripleg->legnumber }}
+                                                </div>
+                                            @endif
                                         @endif
+
                                         @if($item->stay)
                                             <div class="text-xs text-gray-500 mt-1">{{ $item->stay->stayname }}</div>
                                         @endif

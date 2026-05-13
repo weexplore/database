@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Attachment;
 use App\Models\Destination;
 use App\Models\DestinationItem;
 use App\Models\Place;
@@ -100,7 +101,7 @@ class TripReviewController extends Controller
             ->with('success', 'Review added.');
     }
 
-    public function edit(Trip $trip, Review $review)
+    public function edit(Request $request, Trip $trip, Review $review)
     {
         abort_unless((int) $review->tripid === (int) $trip->id, 404);
 
@@ -122,16 +123,27 @@ class TripReviewController extends Controller
         $destinationItems = DestinationItem::orderBy('itemname')->get();
         $places = Place::orderBy('placename')->get();
 
+        $reviewAttachments = Attachment::query()
+            ->where('linkedtype', 'review')
+            ->where('linkedid', $review->id)
+            ->orderByDesc('isprimary')
+            ->orderByDesc('uploadedat')
+            ->orderByDesc('id')
+            ->get();
+
+        $returnTo = $request->input('return_to', route('trips.reviews.index', $trip));
+
         return view('tripreviews.edit', compact(
-            'trip',
             'review',
+            'trip',
             'travellers',
             'stays',
             'tripItems',
-            'tripLegs',
             'destinations',
             'destinationItems',
             'places',
+            'returnTo',
+            'reviewAttachments'
         ));
     }
 

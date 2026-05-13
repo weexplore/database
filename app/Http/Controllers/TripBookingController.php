@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Attachment;
 use App\Models\Booking;
 use App\Models\Destination;
 use App\Models\DestinationItem;
@@ -102,44 +103,83 @@ class TripBookingController extends Controller
             ->route('trips.bookings.index', $trip)
             ->with('success', 'Booking created successfully.');
     }
+    
 
-    public function edit(Trip $trip, Booking $booking)
-    {
-        abort_unless((int) $booking->tripid === (int) $trip->id, 404);
+public function edit(Request $request, Trip $trip, Booking $booking)
+{
+    abort_unless((int) $booking->tripid === (int) $trip->id, 404);
 
-        $bookingTypes = config('bookings.types', []);
-        $bookingStatuses = config('bookings.statuses', []);
-        $paymentStatuses = config('bookings.payment_statuses', []);
-        $currencies = config('bookings.currencies', []);
+    $bookingTypes = config('bookings.types', []);
+    $bookingStatuses = config('bookings.statuses', []);
+    $paymentStatuses = config('bookings.payment_statuses', []);
+    $currencies = config('bookings.currencies', []);
 
-        $stays = TripStay::where('tripid', $trip->id)
-            ->orderBy('checkindate')
-            ->orderBy('stayname')
-            ->get();
+    $stays = TripStay::where('tripid', $trip->id)
+        ->orderBy('checkindate')
+        ->orderBy('stayname')
+        ->get();
 
-        $tripItems = TripItem::where('tripid', $trip->id)
-            ->orderBy('startdatetime')
-            ->orderBy('title')
-            ->get();
+    $tripItems = TripItem::where('tripid', $trip->id)
+        ->orderBy('startdatetime')
+        ->orderBy('title')
+        ->get();
 
-        $destinations = Destination::orderBy('destinationname')->get();
-        $destinationItems = DestinationItem::orderBy('itemname')->get();
-        $places = Place::orderBy('placename')->get();
+    $destinationIds = $tripItems->pluck('destinationid')
+        ->filter()
+        ->push($booking->destinationid)
+        ->unique()
+        ->values();
 
-        return view('tripbookings.edit', compact(
-            'trip',
-            'booking',
-            'stays',
-            'tripItems',
-            'destinations',
-            'destinationItems',
-            'places',
-            'bookingTypes',
-            'bookingStatuses',
-            'paymentStatuses',
-            'currencies',
-        ));
-    }
+    $destinationItemIds = $tripItems->pluck('destinationitemid')
+        ->filter()
+        ->push($booking->destinationitemid)
+        ->unique()
+        ->values();
+
+    $placeIds = $stays->pluck('placeid')
+        ->filter()
+        ->push($booking->placeid)
+        ->unique()
+        ->values();
+
+    $destinations = Destination::whereIn('id', $destinationIds)
+        ->orderBy('destinationname')
+        ->get();
+
+    $destinationItems = DestinationItem::whereIn('id', $destinationItemIds)
+        ->orderBy('itemname')
+        ->get();
+
+    $places = Place::whereIn('id', $placeIds)
+        ->orderBy('placename')
+        ->get();
+
+    $bookingAttachments = Attachment::query()
+        ->where('linkedtype', 'booking')
+        ->where('linkedid', $booking->id)
+        ->orderByDesc('isprimary')
+        ->orderByDesc('uploadedat')
+        ->orderByDesc('id')
+        ->get();
+
+    $returnTo = $request->input('return_to', route('trips.bookings.index', $trip));
+
+    return view('tripbookings.edit', compact(
+        'trip',
+        'booking',
+        'bookingTypes',
+        'bookingStatuses',
+        'paymentStatuses',
+        'currencies',
+        'stays',
+        'tripItems',
+        'destinations',
+        'destinationItems',
+        'places',
+        'returnTo',
+        'bookingAttachments'
+    ));
+}
 
     public function update(Trip $trip, Request $request, Booking $booking)
     {
@@ -199,4 +239,41 @@ class TripBookingController extends Controller
             'paymentnotes' => ['nullable', 'string'],
         ]);
     }
+
+    protected function linkedRecordLabel(string $linkedType, $record): ?string
+{
+    if (! $record) {
+        return null;
+    }
+
+    return match ($linkedType) {
+        'booking' => $this->bookingLinkedLabel($record),
+        'destination' => $record->destinationname ?: 'Destination #'.$record->id,
+        'destination_item' => $record->itemname ?: 'Destination Item #'.$record->id,
+        'place' => $record->placename ?: 'Place #'.$record->id,
+        'trip_stay' => $record->stayname ?: 'Trip Stay #'.$record->id,
+        default => method_exists($record, 'getDisplayName')
+            ? $record->getDisplayName()
+            : null,
+    };
+}
+
+protected function bookingLinkedLabel($booking): string
+{
+    $parts = collect([
+        $booking->providername,
+        $booking->externalreference ? 'Ref '.$booking->externalreference : null,
+        $booking->startdate ? \Illuminate\Support\Carbon::parse($booking->startdate)->format('d M Y') : null,
+    ])->filter()->values();
+
+    if ($parts->isNotEmpty()) {
+        return $parts->implode(' - ');
+    }
+
+    if (!empty($booking->website)) {
+        return $booking->website;
+    }
+
+    return 'Booking #'.$booking->id;
+}
 }

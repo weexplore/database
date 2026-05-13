@@ -459,72 +459,72 @@
                     </div>
 
 
-<div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-    <div class="px-4 py-3 border-b border-gray-200">
-        <div>
-            <h3 class="text-sm font-semibold text-gray-900">
-                Destination Items
-            </h3>
-            <p class="mt-1 text-xs text-gray-500">
-                {{ $destinationItems->count() }} linked record{{ $destinationItems->count() === 1 ? '' : 's' }}
-            </p>
-        </div>
-    </div>
+                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                            <div class="px-4 py-3 border-b border-gray-200">
+                                <div>
+                                    <h3 class="text-sm font-semibold text-gray-900">
+                                        Destination Items
+                                    </h3>
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        {{ $destinationItems->count() }} linked record{{ $destinationItems->count() === 1 ? '' : 's' }}
+                                    </p>
+                                </div>
+                            </div>
 
-    <div class="p-4">
-        @if ($place->destinations->isNotEmpty())
-            <div class="space-y-4">
-                @foreach ($place->destinations as $destination)
-                    @php
-                        $types = $destination->items
-                            ->pluck('itemtype')
-                            ->filter()
-                            ->unique()
-                            ->map(fn ($type) => $itemTypeOptions[$type] ?? $type)
-                            ->values();
+                            <div class="p-4">
+                                @if ($place->destinations->isNotEmpty())
+                                    <div class="space-y-4">
+                                        @foreach ($place->destinations as $destination)
+                                            @php
+                                                $types = $destination->items
+                                                    ->pluck('itemtype')
+                                                    ->filter()
+                                                    ->unique()
+                                                    ->map(fn ($type) => $itemTypeOptions[$type] ?? $type)
+                                                    ->values();
 
-                        $typesLabel = $types->isNotEmpty()
-                            ? $types->join(', ')
-                            : '-';
-                    @endphp
+                                                $typesLabel = $types->isNotEmpty()
+                                                    ? $types->join(', ')
+                                                    : '-';
+                                            @endphp
 
-                    <div class="border border-gray-200 rounded-lg">
+                                            <div class="border border-gray-200 rounded-lg">
 
 
-                        <div class="p-3">
-                            @if ($destination->items->isNotEmpty())
-                                <ul class="space-y-2">
-                                    @foreach ($destination->items as $item)
-                                        <li>
-                                            <a href="{{ route('destination-items.edit', ['destinationItem' => $item, 'return_to' => url()->full()]) }}"
-                                               class="block border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                                <div class="text-sm font-medium text-gray-900">
-                                                    {{ $item->itemname }}
+                                                <div class="p-3">
+                                                    @if ($destination->items->isNotEmpty())
+                                                        <ul class="space-y-2">
+                                                            @foreach ($destination->items as $item)
+                                                                <li>
+                                                                    <a href="{{ route('destination-items.edit', ['destinationItem' => $item, 'return_to' => url()->full()]) }}"
+                                                                    class="block border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                                        <div class="text-sm font-medium text-gray-900">
+                                                                            {{ $item->itemname }}
+                                                                        </div>
+                                                                        <div class="mt-1 text-xs text-gray-500">
+                                                                            Type: {{ $item->itemTypes->pluck('typename')->join(', ') ?: '—' }}
+                                                                        </div>
+                                                                    </a>
+                                                                </li>
+                                                            @endforeach
+                                                        </ul>
+                                                    @else
+                                                        <p class="text-xs text-gray-500">
+                                                            No destination items linked to this destination.
+                                                        </p>
+                                                    @endif
                                                 </div>
-                                                <div class="mt-1 text-xs text-gray-500">
-                                                    Type: {{ $item->itemTypes->pluck('typename')->join(', ') ?: '—' }}
-                                                </div>
-                                            </a>
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            @else
-                                <p class="text-xs text-gray-500">
-                                    No destination items linked to this destination.
-                                </p>
-                            @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <p class="text-sm text-gray-500">
+                                        No destinations are currently linked to this place.
+                                    </p>
+                                @endif
+                            </div>
                         </div>
-                    </div>
-                @endforeach
-            </div>
-        @else
-            <p class="text-sm text-gray-500">
-                No destinations are currently linked to this place.
-            </p>
-        @endif
-    </div>
-</div>
-                    </div>
+
 
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="px-4 py-3 border-b border-gray-200">

@@ -236,6 +236,75 @@
                     </div>
                 </form>
             </div>
+            <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+                <div class="px-4 py-4 sm:px-6 border-b border-gray-200 flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900">Attachments</h2>
+                        <p class="text-sm text-gray-500">Files linked to this review.</p>
+                    </div>
+
+                    <a
+                        href="{{ route('attachments.index', [
+                            'linkedtype' => 'review',
+                            'linkedid' => $review->id,
+                            'trip_id' => $review->tripid,
+                            'show_create' => 1,
+                            'return_to' => request()->fullUrl(),
+                        ]) }}"
+                        class="inline-flex items-center rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-black"
+                    >
+                        Add attachment
+                    </a>
+                </div>
+
+                <div class="p-4 sm:p-6">
+                    @if($reviewAttachments->isEmpty())
+                        <p class="text-sm text-gray-500">No attachments added for this review yet.</p>
+                    @else
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left font-medium text-gray-600">File</th>
+                                        <th class="px-4 py-2 text-left font-medium text-gray-600">Type</th>
+                                        <th class="px-4 py-2 text-left font-medium text-gray-600">Uploaded</th>
+                                        <th class="px-4 py-2 text-left font-medium text-gray-600">Primary</th>
+                                        <th class="px-4 py-2 text-right font-medium text-gray-600">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 bg-white">
+                                    @foreach($reviewAttachments as $attachment)
+                                        <tr>
+                                            <td class="px-4 py-3">
+                                                <div class="font-medium text-gray-900">{{ $attachment->originalfilename }}</div>
+                                                @if($attachment->description)
+                                                    <div class="text-xs text-gray-500 mt-1">{{ $attachment->description }}</div>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-3 text-gray-700">
+                                                {{ $attachmentTypeOptions[$attachment->attachmenttype] ?? $attachment->attachmenttype }}
+                                            </td>
+                                            <td class="px-4 py-3 text-gray-700">
+                                                {{ optional($attachment->uploadedat)->format('d M Y H:i') }}
+                                            </td>
+                                            <td class="px-4 py-3 text-gray-700">
+                                                {{ $attachment->isprimary ? 'Yes' : 'No' }}
+                                            </td>
+                                            <td class="px-4 py-3 text-right">
+                                                <div class="flex items-center justify-end gap-2">
+                                                    <a href="{{ route('attachments.view', $attachment) }}" target="_blank" rel="noopener noreferrer" class="text-sm text-blue-600 hover:text-blue-800">View</a>
+                                                    <a href="{{ route('attachments.edit', ['attachment' => $attachment, 'return_to' => request()->fullUrl()]) }}" class="text-sm text-gray-700 hover:text-gray-900">Edit</a>
+                                                    <a href="{{ route('attachments.download', $attachment) }}" class="text-sm text-gray-700 hover:text-gray-900">Download</a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            </div>
         </div>
     </div>
 </x-app-layout>

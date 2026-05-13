@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CountryController;
 use App\Http\Controllers\DestinationController;
@@ -33,6 +34,19 @@ Route::prefix('places')->name('places.')->group(function () {
     Route::get('regions-for-country-state', [PlaceController::class, 'regionsForCountryState'])->name('regions-for-country-state');
     Route::post('bulk-save', [PlaceController::class, 'bulkSave'])->name('bulk-save');
 });
+
+    Route::resource('attachments', AttachmentController::class)
+        ->except(['show', 'create'])
+        ->names('attachments')
+        ->parameters([
+            'attachments' => 'attachment',
+        ]);
+
+    Route::get('/attachments/{attachment}/download', [AttachmentController::class, 'download'])
+        ->name('attachments.download');
+
+    Route::get('/attachments/{attachment}/view', [AttachmentController::class, 'view'])
+        ->name('attachments.view');
 
 Route::prefix('trips/{trip}')->group(function () {
     Route::get('/edit', [TripController::class, 'edit'])->name('trips.edit');
@@ -207,6 +221,8 @@ Route::prefix('trips/{trip}')->name('trips.')->group(function () {
         ->parameters([
             'reviews' => 'review',
         ]);
+
+        
 
    
 });

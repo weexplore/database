@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Attachment;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -89,5 +91,10 @@ class Destination extends Model
     public function tripLegPoints(): HasMany
     {
         return $this->hasMany(TripLegPoint::class, 'destinationid');
+    }
+    public function attachments()
+    {
+        return $this->hasMany(Attachment::class, 'linkedid')
+            ->where('linkedtype', 'destination');
     }
 }

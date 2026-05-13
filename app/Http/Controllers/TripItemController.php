@@ -172,6 +172,12 @@ class TripItemController extends Controller
             'sortorder' => ['nullable', 'integer', 'min:0'],
         ]);
 
+        if (!empty($data['tripstayid'])) {
+            $data['estimatedcostperperson'] = 0;
+            $data['estimatedtotalcost'] = 0;
+            $data['actualcost'] = 0;
+        }
+
         $validated['tripid'] = $trip->id;
         $validated['isfullday'] = $request->boolean('isfullday');
         $validated['allocateasdailycost'] = $request->boolean('allocateasdailycost');
@@ -261,6 +267,12 @@ class TripItemController extends Controller
             'notesinternal' => ['nullable', 'string'],
             'sortorder' => ['nullable', 'integer', 'min:0'],
         ]);
+
+        if (!empty($data['tripstayid'])) {
+            $data['estimatedcostperperson'] = 0;
+            $data['estimatedtotalcost'] = 0;
+            $data['actualcost'] = 0;
+        }
 
         $validated['isfullday'] = $request->boolean('isfullday');
         $validated['allocateasdailycost'] = $request->boolean('allocateasdailycost');
