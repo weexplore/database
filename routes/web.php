@@ -26,6 +26,16 @@ use App\Http\Controllers\TripReportController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\TripPlanItemController;
 
+use App\Http\Controllers\BibleBookController;
+use App\Http\Controllers\BibleVersionController;
+use App\Http\Controllers\ExchangeController;
+use App\Http\Controllers\InstrumentTypeController;
+use App\Http\Controllers\InvestmentDashboardController;
+use App\Http\Controllers\KnowledgeDomainController;
+use App\Http\Controllers\KnowledgeTagController;
+use App\Http\Controllers\PortfolioController;
+use App\Http\Controllers\ResearchDashboardController;
+
 
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -74,6 +84,39 @@ Route::prefix('trips/{trip}')->group(function () {
 
     // your existing legs/stays/items/bookings/etc here...
 });
+
+Route::get('/research', [ResearchDashboardController::class, 'index'])->name('research.index');
+Route::get('/investments', [InvestmentDashboardController::class, 'index'])->name('investments.index');
+
+Route::resource('knowledge-domains', KnowledgeDomainController::class)
+    ->only(['index', 'destroy']);
+Route::post('/knowledge-domains/bulk-save', [KnowledgeDomainController::class, 'bulkSave'])
+    ->name('knowledge-domains.bulk-save');
+
+Route::get('/knowledge-tags', [KnowledgeTagController::class, 'index'])->name('knowledge-tags.index');
+Route::post('/knowledge-tags/bulk-save', [KnowledgeTagController::class, 'bulkSave'])->name('knowledge-tags.bulk-save');
+Route::delete('/knowledge-tags/{knowledgeTag}', [KnowledgeTagController::class, 'destroy'])->name('knowledge-tags.destroy');
+
+Route::get('/bible-versions', [BibleVersionController::class, 'index'])->name('bible-versions.index');
+Route::post('/bible-versions/bulk-save', [BibleVersionController::class, 'bulkSave'])->name('bible-versions.bulk-save');
+Route::delete('/bible-versions/{bibleVersion}', [BibleVersionController::class, 'destroy'])->name('bible-versions.destroy');
+
+Route::get('/bible-books', [BibleBookController::class, 'index'])->name('bible-books.index');
+Route::post('/bible-books/bulk-save', [BibleBookController::class, 'bulkSave'])->name('bible-books.bulk-save');
+Route::delete('/bible-books/{bibleBook}', [BibleBookController::class, 'destroy'])->name('bible-books.destroy');
+
+Route::get('/exchanges', [ExchangeController::class, 'index'])->name('exchanges.index');
+Route::post('/exchanges/bulk-save', [ExchangeController::class, 'bulkSave'])->name('exchanges.bulk-save');
+Route::delete('/exchanges/{exchange}', [ExchangeController::class, 'destroy'])->name('exchanges.destroy');
+
+Route::get('/instrument-types', [InstrumentTypeController::class, 'index'])->name('instrument-types.index');
+Route::post('/instrument-types/bulk-save', [InstrumentTypeController::class, 'bulkSave'])->name('instrument-types.bulk-save');
+Route::delete('/instrument-types/{instrumentType}', [InstrumentTypeController::class, 'destroy'])->name('instrument-types.destroy');
+
+Route::get('/portfolios', [PortfolioController::class, 'index'])->name('portfolios.index');
+Route::post('/portfolios/bulk-save', [PortfolioController::class, 'bulkSave'])->name('portfolios.bulk-save');
+Route::delete('/portfolios/{portfolio}', [PortfolioController::class, 'destroy'])->name('portfolios.destroy');
+
 
 
 Route::resource('places', PlaceController::class)->except(['show']);
@@ -222,7 +265,7 @@ Route::prefix('trips/{trip}')->name('trips.')->group(function () {
             'reviews' => 'review',
         ]);
 
-        
+      
 
    
 });

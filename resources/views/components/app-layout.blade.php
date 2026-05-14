@@ -39,6 +39,29 @@
                               {{ request()->is('places*') ? 'border-b-2 border-white text-white' : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
                         Places
                     </a>
+
+                    <a href="{{ route('research.index') }}"
+                    class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
+                            {{ request()->routeIs('research.*')
+                                || request()->routeIs('knowledge-domains.*')
+                                || request()->routeIs('knowledge-tags.*')
+                                || request()->routeIs('bible-versions.*')
+                                || request()->routeIs('bible-books.*')
+                                    ? 'border-b-2 border-white text-white'
+                                    : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
+                        Research
+                    </a>
+
+                    <a href="{{ route('investments.index') }}"
+                    class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
+                            {{ request()->routeIs('investments.*')
+                                || request()->routeIs('exchanges.*')
+                                || request()->routeIs('instrument-types.*')
+                                || request()->routeIs('portfolios.*')
+                                    ? 'border-b-2 border-white text-white'
+                                    : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
+                        Investments
+                    </a>
                 </div>
             </div>
         </nav>
