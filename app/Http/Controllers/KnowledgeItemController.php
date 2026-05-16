@@ -11,7 +11,11 @@ use App\Models\KnowledgeSource;
 use App\Models\KnowledgeReviewLog;
 use App\Models\KnowledgeRelationship;
 use App\Models\KnowledgeTag;
+use App\Models\Exchange;
+use App\Models\InstrumentType;
 use App\Models\Place;
+use App\Http\Controllers\InstrumentTransactionController;
+use App\Models\Portfolio;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -232,6 +236,13 @@ class KnowledgeItemController extends Controller
         'relationships.toItem',
         'bibleReferences.book',
         'bibleReferences.version',
+        'instrument.instrumentType',
+        'instrument.exchange',
+        'tags',
+        'instrument.aliases',
+        'instrument.priceObservations',
+        'instrument.corporateActions',
+        'instrument.transactions.portfolio',
     ]);
 
     $domainId = optional($knowledgeItem->primaryCategory)->domainid;
@@ -297,8 +308,6 @@ class KnowledgeItemController extends Controller
         ->orderBy('placename')
         ->orderBy('locality')
         ->get(['id', 'placename', 'locality', 'placetype']);
-
-    $knowledgeItem->load(['tags']);
     
 
     return view('knowledge.items.edit', [
@@ -335,6 +344,20 @@ class KnowledgeItemController extends Controller
             ->get(),
         'hasBibleTools' => $hasBibleTools,
         'hasInvestmentTools' => $hasInvestmentTools,
+        'instrumentTypes' => InstrumentType::query()
+            ->where('isactive', 1)
+            ->orderBy('typename')
+            ->get(),
+        'exchanges' => Exchange::query()
+            ->where('isactive', 1)
+            ->orderBy('exchangename')
+            ->get(),
+        'corporateActionTypeOptions' => InstrumentCorporateActionController::actionTypeOptions(),
+            'transactionTypeOptions' => InstrumentTransactionController::transactionTypeOptions(),
+        'portfolios' => Portfolio::query()
+            ->where('isactive', 1)
+            ->orderBy('portfolioname')
+            ->get(),
     ]);
 }
 
@@ -427,4 +450,24 @@ class KnowledgeItemController extends Controller
             ])
             ->with('success', 'Knowledge item deleted.');
     }
+
+    public function priceObservations(): HasMany
+    {
+        return $this->hasMany(InstrumentPriceObservation::class, 'instrumentid')
+            ->orderByDesc('observedon')
+            ->orderByDesc('id');
+    }
+
+    public function corporateActions(): HasMany
+    {
+        return $this->hasMany(InstrumentCorporateAction::class, 'instrumentid')
+            ->orderByDesc('actiondate')
+            ->orderByDesc('id');
+    }
+    public function transactions(): HasMany
+{
+    return $this->hasMany(InstrumentTransaction::class, 'instrumentid')
+        ->orderByDesc('transactiondate')
+        ->orderByDesc('id');
+}
 }

@@ -192,6 +192,11 @@
                     'knowledgeItem' => $knowledgeItem,
                 ])
             @endif
+            @if(($activeTab ?? 'details') === 'investments' && !empty($hasInvestmentTools))
+                @include('knowledge.items.partials.investments-panel', [
+                    'knowledgeItem' => $knowledgeItem,
+                ])
+            @endif
         </div>
     </div>
 

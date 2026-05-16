@@ -45,6 +45,11 @@ use App\Http\Controllers\KnowledgeItemReviewLogController;
 use App\Http\Controllers\KnowledgeItemAttachmentController;
 use App\Http\Controllers\KnowledgeItemRelationshipController;
 use App\Http\Controllers\KnowledgeAttachmentController;
+use App\Http\Controllers\InstrumentController;
+use App\Http\Controllers\InstrumentAliasController;
+use App\Http\Controllers\InstrumentPriceObservationController;
+use App\Http\Controllers\InstrumentCorporateActionController;
+use App\Http\Controllers\InstrumentTransactionController;
 
 
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
@@ -246,6 +251,77 @@ Route::delete('bible-references/{bibleReference}', [BibleReferenceController::cl
 
 Route::post('bible-references/{bibleReference}/fetch-passage', [BibleReferenceController::class, 'fetchPassage'])
     ->name('knowledge.items.bible-references.fetch-passage');
+
+Route::post(
+    '/knowledge-items/{knowledgeItem}/instrument',
+    [InstrumentController::class, 'storeForKnowledgeItem']
+)->name('knowledge.items.instrument.store');
+
+Route::put(
+    '/knowledge-items/{knowledgeItem}/instrument/{instrument}',
+    [InstrumentController::class, 'updateForKnowledgeItem']
+)->name('knowledge.items.instrument.update');
+
+Route::post(
+    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/aliases',
+    [InstrumentAliasController::class, 'storeForInstrument']
+)->name('knowledge.items.instrument.aliases.store');
+
+Route::put(
+    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/aliases/{alias}',
+    [InstrumentAliasController::class, 'updateForInstrument']
+)->name('knowledge.items.instrument.aliases.update');
+
+Route::delete(
+    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/aliases/{alias}',
+    [InstrumentAliasController::class, 'destroyForInstrument']
+)->name('knowledge.items.instrument.aliases.destroy');
+
+Route::post(
+    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/price-observations',
+    [InstrumentPriceObservationController::class, 'storeForInstrument']
+)->name('knowledge.items.instrument.price-observations.store');
+
+Route::put(
+    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/price-observations/{priceObservation}',
+    [InstrumentPriceObservationController::class, 'updateForInstrument']
+)->name('knowledge.items.instrument.price-observations.update');
+
+Route::delete(
+    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/price-observations/{priceObservation}',
+    [InstrumentPriceObservationController::class, 'destroyForInstrument']
+)->name('knowledge.items.instrument.price-observations.destroy');
+
+Route::post(
+    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/corporate-actions',
+    [InstrumentCorporateActionController::class, 'storeForInstrument']
+)->name('knowledge.items.instrument.corporate-actions.store');
+
+Route::put(
+    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/corporate-actions/{corporateAction}',
+    [InstrumentCorporateActionController::class, 'updateForInstrument']
+)->name('knowledge.items.instrument.corporate-actions.update');
+
+Route::delete(
+    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/corporate-actions/{corporateAction}',
+    [InstrumentCorporateActionController::class, 'destroyForInstrument']
+)->name('knowledge.items.instrument.corporate-actions.destroy');
+
+Route::post(
+    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/transactions',
+    [InstrumentTransactionController::class, 'storeForInstrument']
+)->name('knowledge.items.instrument.transactions.store');
+
+Route::put(
+    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/transactions/{transaction}',
+    [InstrumentTransactionController::class, 'updateForInstrument']
+)->name('knowledge.items.instrument.transactions.update');
+
+Route::delete(
+    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/transactions/{transaction}',
+    [InstrumentTransactionController::class, 'destroyForInstrument']
+)->name('knowledge.items.instrument.transactions.destroy');
+
 
 Route::resource('places', PlaceController::class)->except(['show']);
 

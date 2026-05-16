@@ -2,63 +2,119 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Instrument;
+use App\Models\InstrumentCorporateAction;
+use App\Models\KnowledgeItem;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+
 
 class InstrumentCorporateActionController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function storeForInstrument(Request $request, KnowledgeItem $knowledgeItem, Instrument $instrument): RedirectResponse
     {
-        //
+        $this->ensureInstrumentBelongsToKnowledgeItem($knowledgeItem, $instrument);
+
+        $data = $this->validateCorporateAction($request);
+
+        $instrument->corporateActions()->create($data);
+
+        return redirect()
+            ->route('knowledge.items.edit', [
+                'knowledgeItem' => $knowledgeItem,
+                'tab' => 'investments',
+            ])
+            ->with('success', 'Corporate action added.');
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
+    public function updateForInstrument(
+        Request $request,
+        KnowledgeItem $knowledgeItem,
+        Instrument $instrument,
+        InstrumentCorporateAction $corporateAction
+    ): RedirectResponse {
+        $this->ensureInstrumentBelongsToKnowledgeItem($knowledgeItem, $instrument);
+        $this->ensureCorporateActionBelongsToInstrument($instrument, $corporateAction);
+
+        $data = $this->validateCorporateAction($request);
+
+        $corporateAction->update($data);
+
+        return redirect()
+            ->route('knowledge.items.edit', [
+                'knowledgeItem' => $knowledgeItem,
+                'tab' => 'investments',
+            ])
+            ->with('success', 'Corporate action updated.');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
+    public function destroyForInstrument(
+        KnowledgeItem $knowledgeItem,
+        Instrument $instrument,
+        InstrumentCorporateAction $corporateAction
+    ): RedirectResponse {
+        $this->ensureInstrumentBelongsToKnowledgeItem($knowledgeItem, $instrument);
+        $this->ensureCorporateActionBelongsToInstrument($instrument, $corporateAction);
+
+        $corporateAction->delete();
+
+        return redirect()
+            ->route('knowledge.items.edit', [
+                'knowledgeItem' => $knowledgeItem,
+                'tab' => 'investments',
+            ])
+            ->with('success', 'Corporate action deleted.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+
+
+    protected function ensureInstrumentBelongsToKnowledgeItem(KnowledgeItem $knowledgeItem, Instrument $instrument): void
     {
-        //
+        if ((int) $instrument->knowledgeitemid !== (int) $knowledgeItem->id) {
+            abort(404);
+        }
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
+    protected function ensureCorporateActionBelongsToInstrument(
+        Instrument $instrument,
+        InstrumentCorporateAction $corporateAction
+    ): void {
+        if ((int) $corporateAction->instrumentid !== (int) $instrument->id) {
+            abort(404);
+        }
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+        public static function actionTypeOptions(): array
     {
-        //
+        return [
+            'split' => 'Split',
+            'consolidation' => 'Consolidation',
+            'rename' => 'Rename',
+            'ticker-change' => 'Ticker Change',
+            'isin-change' => 'ISIN Change',
+            'merger' => 'Merger',
+            'demerger' => 'Demerger',
+            'scheme-of-arrangement' => 'Scheme of Arrangement',
+            'capital-return' => 'Capital Return',
+            'spin-off' => 'Spin-off',
+            'delisting' => 'Delisting',
+            'reinstatement' => 'Reinstatement',
+            'other' => 'Other',
+        ];
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    protected function validateCorporateAction(Request $request): array
     {
-        //
+        return $request->validate([
+            'actiondate' => ['required', 'date'],
+            'actiontype' => ['required', 'string', Rule::in(array_keys(self::actionTypeOptions()))],
+            'ratiofrom' => ['nullable', 'numeric', 'min:0'],
+            'ratioto' => ['nullable', 'numeric', 'min:0'],
+            'oldvalue' => ['nullable', 'string', 'max:255'],
+            'newvalue' => ['nullable', 'string', 'max:255'],
+            'notes' => ['nullable', 'string'],
+            'sourceid' => ['nullable', 'integer', 'exists:knowledgesources,id'],
+        ]);
     }
 }
