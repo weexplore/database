@@ -96,6 +96,24 @@ class KnowledgeCategoryController extends Controller
         }
     }
 
+    $expandedIds = collect($request->input('expanded', []))
+        ->map(fn ($id) => (int) $id)
+        ->filter()
+        ->values()
+        ->all();
+
+    if ($selectedCategory) {
+        $ancestorIds = [];
+        $current = $selectedCategory;
+
+        while ($current && $current->parentcategoryid) {
+            $ancestorIds[] = (int) $current->parentcategoryid;
+            $current = $allCategories->firstWhere('id', $current->parentcategoryid);
+        }
+
+        $expandedIds = array_values(array_unique(array_merge($expandedIds, $ancestorIds)));
+    }
+
     $itemTypes = KnowledgeItemType::query()
         ->where('isactive', 1)
         ->orderBy('sortorder')
@@ -126,6 +144,7 @@ class KnowledgeCategoryController extends Controller
             'topic' => 'Topic',
             'stream' => 'Stream',
         ],
+        'expandedIds' => $expandedIds,
     ]);
 }
 
@@ -193,8 +212,14 @@ class KnowledgeCategoryController extends Controller
                 'max:200',
                 $categoryNameUnique,
             ],
-            'categorytype' => ['nullable', 'string', 'max:50'],
-            'slug' => ['nullable', 'string', 'max:220', 'unique:knowledgecategories,slug'],
+        'slug' => [
+            'nullable',
+            'string',
+            'max:220',
+            Rule::unique('knowledgecategories', 'slug')
+                ->where(fn ($q) => $q->where('domainid', $request->integer('domainid')))
+                ->ignore($knowledgeCategory->id ?? null, 'id'),
+        ],
             'description' => ['nullable', 'string'],
             'sortorder' => ['nullable', 'integer', 'min:0'],
             'isfeatured' => ['nullable', 'boolean'],
@@ -235,94 +260,101 @@ class KnowledgeCategoryController extends Controller
     }
 
     public function update(Request $request, KnowledgeCategory $knowledgeCategory): RedirectResponse
-    {
-        $categoryNameUnique = Rule::unique('knowledgecategories', 'categoryname')
-            ->ignore($knowledgeCategory->id)
-            ->where(function ($q) use ($request) {
-                $q->where('domainid', $request->integer('domainid'));
+{
+    $request->merge([
+        'slug' => trim((string) $request->input('slug', '')),
+        'categoryname' => trim((string) $request->input('categoryname', '')),
+    ]);
 
-                if ($request->filled('parentcategoryid')) {
-                    $q->where('parentcategoryid', $request->integer('parentcategoryid'));
-                } else {
-                    $q->whereNull('parentcategoryid');
-                }
-            });
-    
-        $validated = $request->validate([
-            'domainid' => ['required', 'integer', Rule::exists('knowledgedomains', 'id')],
-            'parentcategoryid' => ['nullable', 'integer', Rule::exists('knowledgecategories', 'id')],
-            'categoryname' => [
-                'required',
-                'string',
-                'max:200',
-                $categoryNameUnique,
-            ],
-            'categorytype' => ['nullable', 'string', 'max:50'],
-            'slug' => [
-                'nullable',
-                'string',
-                'max:220',
-                Rule::unique('knowledgecategories', 'slug')->ignore($knowledgeCategory->id),
-            ],
-            'description' => ['nullable', 'string'],
-            'sortorder' => ['nullable', 'integer', 'min:0'],
-            'isfeatured' => ['nullable', 'boolean'],
-            'isactive' => ['nullable', 'boolean'],
-        ]);
+    $categoryNameUnique = Rule::unique('knowledgecategories', 'categoryname')
+        ->ignore($knowledgeCategory->id, 'id')
+        ->where(function ($q) use ($request) {
+            $q->where('domainid', $request->integer('domainid'));
 
-        if ((int) ($validated['parentcategoryid'] ?? 0) === (int) $knowledgeCategory->id) {
-            return back()->withErrors([
-                'parentcategoryid' => 'A category cannot be its own parent.',
-            ])->withInput();
-        }
-
-        if (!empty($validated['parentcategoryid'])) {
-            $parent = KnowledgeCategory::findOrFail($validated['parentcategoryid']);
-
-            if ((int) $parent->domainid !== (int) $validated['domainid']) {
-                return back()
-                    ->withInput()
-                    ->withErrors(['parentcategoryid' => 'Parent category must be in the same domain.']);
+            if ($request->filled('parentcategoryid')) {
+                $q->where('parentcategoryid', $request->integer('parentcategoryid'));
+            } else {
+                $q->whereNull('parentcategoryid');
             }
+        });
 
-            $descendantIds = $this->collectDescendantIds(
-                KnowledgeCategory::query()
-                    ->where('domainid', $validated['domainid'])
-                    ->get(),
-                $knowledgeCategory->id
-            );
+    $validated = $request->validate([
+        'domainid' => ['required', 'integer', Rule::exists('knowledgedomains', 'id')],
+        'parentcategoryid' => ['nullable', 'integer', Rule::exists('knowledgecategories', 'id')],
+        'categoryname' => [
+            'required',
+            'string',
+            'max:200',
+            $categoryNameUnique,
+        ],
+        'categorytype' => ['nullable', 'string', 'max:50'],
+        'slug' => [
+            'nullable',
+            'string',
+            'max:220',
+            Rule::unique('knowledgecategories', 'slug')
+                ->where(fn ($q) => $q->where('domainid', $request->integer('domainid')))
+                ->ignore($knowledgeCategory->id ?? null, 'id'),
+        ],
+        'description' => ['nullable', 'string'],
+        'sortorder' => ['nullable', 'integer', 'min:0'],
+        'isfeatured' => ['nullable', 'boolean'],
+        'isactive' => ['nullable', 'boolean'],
+    ]);
 
-            if (in_array((int) $validated['parentcategoryid'], $descendantIds, true)) {
-                return back()
-                    ->withInput()
-                    ->withErrors(['parentcategoryid' => 'A category cannot be moved under one of its descendants.']);
-            }
-        }
-
-        $slug = trim((string) ($validated['slug'] ?? ''));
-        if ($slug === '') {
-            $slug = Str::slug($validated['categoryname']);
-        }
-
-        $knowledgeCategory->update([
-            'domainid' => $validated['domainid'],
-            'parentcategoryid' => $validated['parentcategoryid'] ?? null,
-            'categoryname' => trim($validated['categoryname']),
-            'categorytype' => $validated['categorytype'] ?? null,
-            'slug' => $slug !== '' ? $slug : null,
-            'description' => $validated['description'] ?? null,
-            'sortorder' => $validated['sortorder'] ?? 0,
-            'isfeatured' => (bool) ($validated['isfeatured'] ?? false),
-            'isactive' => (bool) ($validated['isactive'] ?? true),
-        ]);
-
-        return redirect()
-            ->route('knowledge-categories.index', [
-                'domainid' => $validated['domainid'],
-                'categoryid' => $knowledgeCategory->id,
-            ])
-            ->with('success', 'Knowledge category saved.');
+    if ((int) ($validated['parentcategoryid'] ?? 0) === (int) $knowledgeCategory->id) {
+        return back()->withErrors([
+            'parentcategoryid' => 'A category cannot be its own parent.',
+        ])->withInput();
     }
+
+    if (!empty($validated['parentcategoryid'])) {
+        $parent = KnowledgeCategory::findOrFail($validated['parentcategoryid']);
+
+        if ((int) $parent->domainid !== (int) $validated['domainid']) {
+            return back()
+                ->withInput()
+                ->withErrors(['parentcategoryid' => 'Parent category must be in the same domain.']);
+        }
+
+        $descendantIds = $this->collectDescendantIds(
+            KnowledgeCategory::query()
+                ->where('domainid', $validated['domainid'])
+                ->get(),
+            $knowledgeCategory->id
+        );
+
+        if (in_array((int) $validated['parentcategoryid'], $descendantIds, true)) {
+            return back()
+                ->withInput()
+                ->withErrors(['parentcategoryid' => 'A category cannot be moved under one of its descendants.']);
+        }
+    }
+
+    $slug = $validated['slug'];
+    if ($slug === '') {
+        $slug = Str::slug($validated['categoryname']);
+    }
+
+    $knowledgeCategory->update([
+        'domainid' => $validated['domainid'],
+        'parentcategoryid' => $validated['parentcategoryid'] ?? null,
+        'categoryname' => $validated['categoryname'],
+        'categorytype' => $validated['categorytype'] ?? null,
+        'slug' => $slug !== '' ? $slug : null,
+        'description' => $validated['description'] ?? null,
+        'sortorder' => $validated['sortorder'] ?? 0,
+        'isfeatured' => (bool) ($validated['isfeatured'] ?? false),
+        'isactive' => (bool) ($validated['isactive'] ?? true),
+    ]);
+
+    return redirect()
+        ->route('knowledge-categories.index', [
+            'domainid' => $validated['domainid'],
+            'categoryid' => $knowledgeCategory->id,
+        ])
+        ->with('success', 'Knowledge category saved.');
+}
 
     protected function buildTree(Collection $categories, $parentId = null): Collection
     {

@@ -219,6 +219,7 @@ class KnowledgeItemController extends Controller
 {
     $knowledgeItem->load([
         'primaryCategory',
+        'primaryCategory.domain',
         'parentItem',
         'childItems',
         'sources',
@@ -227,9 +228,16 @@ class KnowledgeItemController extends Controller
         'reviewLogs',
         'itemType',
         'relationships.toItem',
+        'bibleReferences.book',
+        'bibleReferences.version',
     ]);
 
     $domainId = optional($knowledgeItem->primaryCategory)->domainid;
+
+    $domain = $knowledgeItem->primaryCategory?->domain;
+
+    $hasBibleTools = (bool) ($domain?->hasbibletools ?? false);
+    $hasInvestmentTools = (bool) ($domain?->hasinvestmenttools ?? false);
 
     $categories = KnowledgeCategory::query()
         ->where('domainid', $domainId)
@@ -268,7 +276,14 @@ class KnowledgeItemController extends Controller
     $editingRelationshipId = $request->integer('editing_relationship_id');
     $showAddRelationship = $request->boolean('show_add_relationship');
 
-    $allowedTabs = ['details', 'notes', 'sources', 'review-logs', 'relationships', 'attachments'];
+    $allowedTabs = ['details', 'info', 'notes', 'sources', 'review-logs', 'relationships', 'attachments'];
+    if (!empty($hasBibleTools)) {
+    $allowedTabs[] = 'bible-references';
+    }
+
+    if (!empty($hasInvestmentTools)) {
+        $allowedTabs[] = 'investments';
+    }
     $activeTab = $request->string('tab')->value() ?: 'details';
 
     if (! in_array($activeTab, $allowedTabs, true)) {
@@ -310,6 +325,8 @@ class KnowledgeItemController extends Controller
         'relationshipTypeOptions' => KnowledgeRelationship::typeOptions(),
         'activeTab' => $activeTab,
         'places' => $places,
+        'hasBibleTools' => $hasBibleTools,
+        'hasInvestmentTools' => $hasInvestmentTools,
     ]);
 }
 

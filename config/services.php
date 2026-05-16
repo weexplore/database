@@ -39,4 +39,9 @@ return [
         'api_key' => env('SERPAPI_API_KEY'),
     ],
 
+'apibible' => [
+    'base_url' => env('APIBIBLE_BASE_URL', 'https://rest.api.bible/v1'),
+    'key' => env('APIBIBLE_KEY'),
+    'cache_days' => (int) env('APIBIBLE_CACHE_DAYS', 7),
+],
 ];

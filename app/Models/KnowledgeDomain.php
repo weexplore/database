@@ -24,6 +24,8 @@ class KnowledgeDomain extends Model
     protected $casts = [
         'sortorder' => 'integer',
         'isactive' => 'boolean',
+        'hasbibletools' => 'boolean',
+        'hasinvestmenttools' => 'boolean',
     ];
 
     const CREATED_AT = 'createdat';
@@ -32,5 +34,9 @@ class KnowledgeDomain extends Model
     public function categories(): HasMany
     {
         return $this->hasMany(KnowledgeCategory::class, 'domainid');
+    }
+    public function domain(): BelongsTo
+    {
+        return $this->belongsTo(KnowledgeDomain::class, 'domainid');
     }
 }

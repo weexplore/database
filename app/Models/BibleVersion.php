@@ -13,17 +13,21 @@ class BibleVersion extends Model
 
     protected $table = 'bibleversions';
 
-    protected $fillable = [
-        'versioncode',
-        'versionname',
-        'languagecode',
-        'notes',
-        'isactive',
-    ];
+protected $fillable = [
+    'versioncode',
+    'apibibleid',
+    'apiversionlabel',
+    'versionname',
+    'languagecode',
+    'notes',
+    'isactive',
+    'apisyncedat',
+];
 
-    protected $casts = [
-        'isactive' => 'boolean',
-    ];
+protected $casts = [
+    'isactive' => 'boolean',
+    'apisyncedat' => 'datetime',
+];
 
     const CREATED_AT = 'createdat';
     const UPDATED_AT = 'updatedat';

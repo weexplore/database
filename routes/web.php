@@ -27,6 +27,7 @@ use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\TripPlanItemController;
 
 use App\Http\Controllers\BibleBookController;
+use App\Http\Controllers\BibleReferenceController;
 use App\Http\Controllers\BibleVersionController;
 use App\Http\Controllers\ExchangeController;
 use App\Http\Controllers\InstrumentTypeController;
@@ -43,6 +44,7 @@ use App\Http\Controllers\KnowledgeItemSourceController;
 use App\Http\Controllers\KnowledgeItemReviewLogController;
 use App\Http\Controllers\KnowledgeItemAttachmentController;
 use App\Http\Controllers\KnowledgeItemRelationshipController;
+use App\Http\Controllers\KnowledgeAttachmentController;
 
 
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
@@ -200,6 +202,24 @@ Route::resource('items.relationships', KnowledgeItemRelationshipController::clas
     ->except(['index', 'show', 'create']);
 });
 
+Route::post('knowledge-items/{knowledgeItem}/attachments', [KnowledgeAttachmentController::class, 'store'])
+    ->name('knowledge.attachments.store');
+
+Route::get('knowledge-attachments/{knowledgeAttachment}/edit', [KnowledgeAttachmentController::class, 'edit'])
+    ->name('knowledge.attachments.edit');
+
+Route::put('knowledge-attachments/{knowledgeAttachment}', [KnowledgeAttachmentController::class, 'update'])
+    ->name('knowledge.attachments.update');
+
+Route::delete('knowledge-attachments/{knowledgeAttachment}', [KnowledgeAttachmentController::class, 'destroy'])
+    ->name('knowledge.attachments.destroy');
+
+Route::get('knowledge-attachments/{knowledgeAttachment}/view', [KnowledgeAttachmentController::class, 'view'])
+    ->name('knowledge.attachments.view');
+
+Route::get('knowledge-attachments/{knowledgeAttachment}/download', [KnowledgeAttachmentController::class, 'download'])
+    ->name('knowledge.attachments.download');
+
 Route::delete('items/{knowledgeItem}/notes/{knowledgeNote}', [KnowledgeItemNoteController::class, 'destroy'])
     ->name('items.notes.destroy');
 
@@ -212,6 +232,20 @@ Route::delete('items/{knowledgeItem}/review-logs/{knowledgeReviewLog}', [Knowled
 Route::delete('items/{knowledgeItem}/relationships/{knowledgeRelationship}', [KnowledgeItemRelationshipController::class, 'destroy'])
     ->name('items.relationships.destroy');
 
+Route::post('knowledge-items/{knowledgeItem}/bible-references', [BibleReferenceController::class, 'store'])
+    ->name('knowledge.items.bible-references.store');
+
+Route::get('bible-references/{bibleReference}/edit', [BibleReferenceController::class, 'edit'])
+    ->name('knowledge.items.bible-references.edit');
+
+Route::put('bible-references/{bibleReference}', [BibleReferenceController::class, 'update'])
+    ->name('knowledge.items.bible-references.update');
+
+Route::delete('bible-references/{bibleReference}', [BibleReferenceController::class, 'destroy'])
+    ->name('knowledge.items.bible-references.destroy');
+
+Route::post('bible-references/{bibleReference}/fetch-passage', [BibleReferenceController::class, 'fetchPassage'])
+    ->name('knowledge.items.bible-references.fetch-passage');
 
 Route::resource('places', PlaceController::class)->except(['show']);
 

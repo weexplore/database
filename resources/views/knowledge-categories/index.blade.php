@@ -90,6 +90,7 @@
                                     'selectedId' => $selectedCategory?->id,
                                     'depth' => 0,
                                     'domainId' => $filters['domainid'],
+                                    'expandedIds' => $expandedIds ?? [],
                                 ])
                             @else
                                 <div class="px-2 py-4 text-sm text-slate-400">

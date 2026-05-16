@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BibleReference extends Model
 {
@@ -23,6 +22,10 @@ class BibleReference extends Model
         'verseto',
         'referencelabel',
         'notes',
+        'cachedpassagetext',
+        'cachedreferencetext',
+        'apipassagekey',
+        'passagefetchedat',
     ];
 
     protected $casts = [
@@ -33,6 +36,7 @@ class BibleReference extends Model
         'versefrom' => 'integer',
         'chapterto' => 'integer',
         'verseto' => 'integer',
+        'passagefetchedat' => 'datetime',
     ];
 
     const CREATED_AT = 'createdat';
@@ -51,5 +55,21 @@ class BibleReference extends Model
     public function book(): BelongsTo
     {
         return $this->belongsTo(BibleBook::class, 'bookid');
+    }
+
+    public function buildReferenceText(): string
+    {
+        $bookName = $this->book?->bookname ?: 'Book';
+
+        $from = $this->chapterfrom . ($this->versefrom ? ':' . $this->versefrom : '');
+        $to = null;
+
+        if ($this->chapterto) {
+            $to = $this->chapterto . ($this->verseto ? ':' . $this->verseto : '');
+        } elseif ($this->verseto && $this->versefrom) {
+            $to = $this->chapterfrom . ':' . $this->verseto;
+        }
+
+        return $to ? "{$bookName} {$from}-{$to}" : "{$bookName} {$from}";
     }
 }

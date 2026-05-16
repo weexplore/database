@@ -50,12 +50,21 @@
             @php
                 $tabs = [
                     'details' => 'Details',
+                    'info' => 'Info',
                     'notes' => 'Notes',
                     'sources' => 'Sources',
                     'review-logs' => 'Review Logs',
                     'relationships' => 'Relationships',
                     'attachments' => 'Attachments',
                 ];
+
+                if (!empty($hasBibleTools)) {
+                    $tabs['bible-references'] = 'Bible References';
+                }
+
+                if (!empty($hasInvestmentTools)) {
+                    $tabs['investments'] = 'Investments';
+                }
             @endphp
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -67,8 +76,8 @@
                                     'tab' => $tabKey,
                                 ])) }}"
                                class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium {{ ($activeTab ?? 'details') === $tabKey
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                                   ? 'bg-blue-600 text-white'
+                                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
                                 {{ $tabLabel }}
                             </a>
                         @endforeach
@@ -80,197 +89,55 @@
                 <form method="POST"
                       action="{{ route('knowledge.items.update', $knowledgeItem) }}"
                       id="knowledge-item-form"
-                      class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                      class="space-y-6">
                     @csrf
                     @method('PUT')
 
-                    <div class="xl:col-span-2 space-y-6">
-                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                            <div class="px-6 py-4 border-b border-gray-200">
-                                <div class="flex items-start justify-between gap-4">
-                                    <div>
-                                        <p class="mt-1 text-sm text-gray-500">
-                                            Update the core item details, notes, review settings, and relationships.
-                                        </p>
-                                    </div>
-
-                                    <div class="text-right text-xs text-gray-500 whitespace-nowrap">
-                                        <div>ID: {{ $knowledgeItem->id }}</div>
-                                        <div>Updated: {{ optional($knowledgeItem->updatedat)->format('d M Y H:i') ?? '—' }}</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="p-6">
-                                @include('knowledge.items._form', [
-                                    'knowledgeItem' => $knowledgeItem,
-                                    'categories' => $categories,
-                                    'parentItems' => $parentItems,
-                                    'itemTypes' => $itemTypes,
-                                    'itemStatusOptions' => $itemStatusOptions,
-                                    'places' => $places,
-                                ])
-                            </div>
-
-                            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between gap-3">
-                                <p class="text-sm text-gray-500">
-                                    Save after changing item details, review dates, or parent relationships.
-                                </p>
-
-                                <button type="submit"
-                                        class="inline-flex items-center px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-                                    Save Changes
-                                </button>
-                            </div>
-
-                            <div class="flex items-center gap-2 shrink-0">
-                                <a href="{{ route('knowledge.items.index', [
-                                        'domainid' => $domainId,
-                                        'categoryid' => $knowledgeItem->primarycategoryid,
-                                    ]) }}"
-                                class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
-                                    Back to Knowledge Items
-                                </a>
-
-                                <form method="POST"
-                                    action="{{ route('knowledge.items.destroy', $knowledgeItem) }}"
-                                    id="delete-knowledge-item-form"
-                                    class="inline">
-                                    @csrf
-                                    @method('DELETE')
-
-                                    <button type="submit"
-                                            class="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                                            onclick="return confirm('Delete knowledge item {{ addslashes($knowledgeItem->itemname ?: ('#' . $knowledgeItem->id)) }}? This cannot be undone.');">
-                                        Delete
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>          
-                    
-
-                    <div class="xl:col-span-1 space-y-6">
-                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                            <div class="px-5 py-4 border-b border-gray-200">
-                                <h3 class="text-sm font-semibold text-gray-900">Item Summary</h3>
-                            </div>
-
-                            <div class="p-5 space-y-4 text-sm">
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <div class="flex items-start justify-between gap-4">
                                 <div>
-                                    <div class="text-xs font-medium uppercase tracking-wide text-gray-500">Primary Category</div>
-                                    <div class="mt-1 text-gray-900">
-                                        {{ $knowledgeItem->primaryCategory?->categoryname ?? '—' }}
-                                    </div>
+                                    <p class="mt-1 text-sm text-gray-500">
+                                        Update the core item details, notes, review settings, and relationships.
+                                    </p>
                                 </div>
 
-                                <div>
-                                    <div class="text-xs font-medium uppercase tracking-wide text-gray-500">Type</div>
-                                    <div class="mt-1 text-gray-900">
-                                        {{ $knowledgeItem->itemType?->typename ?? '—' }}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div class="text-xs font-medium uppercase tracking-wide text-gray-500">Status</div>
-                                    <div class="mt-1 text-gray-900">
-                                        {{ $knowledgeItem->itemstatus ?: '—' }}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div class="text-xs font-medium uppercase tracking-wide text-gray-500">Parent Item</div>
-                                    <div class="mt-1 text-gray-900">
-                                        {{ $knowledgeItem->parentItem?->itemname ?? 'None' }}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div class="text-xs font-medium uppercase tracking-wide text-gray-500">Featured</div>
-                                    <div class="mt-1 text-gray-900">
-                                        {{ $knowledgeItem->isfeatured ? 'Yes' : 'No' }}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div class="text-xs font-medium uppercase tracking-wide text-gray-500">Active</div>
-                                    <div class="mt-1 text-gray-900">
-                                        {{ $knowledgeItem->isactive ? 'Yes' : 'No' }}
-                                    </div>
+                                <div class="text-right text-xs text-gray-500 whitespace-nowrap">
+                                    <div>ID: {{ $knowledgeItem->id }}</div>
+                                    <div>Updated: {{ optional($knowledgeItem->updatedat)->format('d M Y H:i') ?? '—' }}</div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                            <div class="px-5 py-4 border-b border-gray-200">
-                                <h3 class="text-sm font-semibold text-gray-900">Dates and Review</h3>
-                            </div>
-
-                            <div class="p-5 space-y-4 text-sm">
-                                <div>
-                                    <div class="text-xs font-medium uppercase tracking-wide text-gray-500">Start Date</div>
-                                    <div class="mt-1 text-gray-900">
-                                        {{ $knowledgeItem->startdate?->format('d M Y') ?? '—' }}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div class="text-xs font-medium uppercase tracking-wide text-gray-500">End Date</div>
-                                    <div class="mt-1 text-gray-900">
-                                        {{ $knowledgeItem->enddate?->format('d M Y') ?? '—' }}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div class="text-xs font-medium uppercase tracking-wide text-gray-500">Next Review</div>
-                                    <div class="mt-1 text-gray-900">
-                                        {{ $knowledgeItem->nextreviewdate?->format('d M Y') ?? '—' }}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div class="text-xs font-medium uppercase tracking-wide text-gray-500">Sort Order</div>
-                                    <div class="mt-1 text-gray-900">
-                                        {{ $knowledgeItem->sortorder ?? 0 }}
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="p-6">
+                            @include('knowledge.items._form', [
+                                'knowledgeItem' => $knowledgeItem,
+                                'categories' => $categories,
+                                'parentItems' => $parentItems,
+                                'itemTypes' => $itemTypes,
+                                'itemStatusOptions' => $itemStatusOptions,
+                                'places' => $places,
+                            ])
                         </div>
 
-                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                            <div class="px-5 py-4 border-b border-gray-200">
-                                <h3 class="text-sm font-semibold text-gray-900">Linked Records</h3>
-                            </div>
+                        <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between gap-3">
+                            <p class="text-sm text-gray-500">
+                                Save after changing item details, review dates, or parent relationships.
+                            </p>
 
-                            <div class="p-5 space-y-4 text-sm">
-                                <div class="flex items-center justify-between gap-4">
-                                    <span class="text-gray-600">Child items</span>
-                                    <span class="font-medium text-gray-900">{{ $knowledgeItem->childItems->count() }}</span>
-                                </div>
-
-                                <div class="flex items-center justify-between gap-4">
-                                    <span class="text-gray-600">Notes</span>
-                                    <span class="font-medium text-gray-900">{{ $knowledgeItem->notes->count() }}</span>
-                                </div>
-
-                                <div class="flex items-center justify-between gap-4">
-                                    <span class="text-gray-600">Sources</span>
-                                    <span class="font-medium text-gray-900">{{ $knowledgeItem->sources->count() }}</span>
-                                </div>
-
-                                <div class="flex items-center justify-between gap-4">
-                                    <span class="text-gray-600">Attachments</span>
-                                    <span class="font-medium text-gray-900">{{ $knowledgeItem->attachments->count() }}</span>
-                                </div>
-
-                                <div class="flex items-center justify-between gap-4">
-                                    <span class="text-gray-600">Review logs</span>
-                                    <span class="font-medium text-gray-900">{{ $knowledgeItem->reviewLogs->count() }}</span>
-                                </div>
-                            </div>
+                            <button type="submit"
+                                    class="inline-flex items-center px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                                Save Changes
+                            </button>
                         </div>
                     </div>
                 </form>
+            @endif
+
+            @if(($activeTab ?? 'details') === 'info')
+                @include('knowledge.items.partials.info-panel', [
+                    'knowledgeItem' => $knowledgeItem,
+                ])
             @endif
 
             @if(($activeTab ?? 'details') === 'notes')
@@ -315,7 +182,11 @@
                     'knowledgeItem' => $knowledgeItem,
                 ])
             @endif
-
+            @if(($activeTab ?? 'details') === 'bible-references' && !empty($hasBibleTools))
+                @include('knowledge.items.partials.bible-references-panel', [
+                    'knowledgeItem' => $knowledgeItem,
+                ])
+            @endif
         </div>
     </div>
 
