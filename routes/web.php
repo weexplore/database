@@ -31,10 +31,18 @@ use App\Http\Controllers\BibleVersionController;
 use App\Http\Controllers\ExchangeController;
 use App\Http\Controllers\InstrumentTypeController;
 use App\Http\Controllers\InvestmentDashboardController;
+use App\Http\Controllers\KnowledgeCategoryController;
 use App\Http\Controllers\KnowledgeDomainController;
+use App\Http\Controllers\KnowledgeItemController;
+use App\Http\Controllers\KnowledgeItemTypeController;
 use App\Http\Controllers\KnowledgeTagController;
 use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\ResearchDashboardController;
+use App\Http\Controllers\KnowledgeItemNoteController;
+use App\Http\Controllers\KnowledgeItemSourceController;
+use App\Http\Controllers\KnowledgeItemReviewLogController;
+use App\Http\Controllers\KnowledgeItemAttachmentController;
+use App\Http\Controllers\KnowledgeItemRelationshipController;
 
 
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
@@ -117,6 +125,92 @@ Route::get('/portfolios', [PortfolioController::class, 'index'])->name('portfoli
 Route::post('/portfolios/bulk-save', [PortfolioController::class, 'bulkSave'])->name('portfolios.bulk-save');
 Route::delete('/portfolios/{portfolio}', [PortfolioController::class, 'destroy'])->name('portfolios.destroy');
 
+Route::get('/knowledge-categories', [KnowledgeCategoryController::class, 'index'])
+    ->name('knowledge-categories.index');
+
+Route::get('/knowledge-categories/create', [KnowledgeCategoryController::class, 'create'])
+    ->name('knowledge-categories.create');
+
+Route::post('/knowledge-categories', [KnowledgeCategoryController::class, 'store'])
+    ->name('knowledge-categories.store');
+
+Route::put('/knowledge-categories/{knowledgeCategory}', [KnowledgeCategoryController::class, 'update'])
+    ->name('knowledge-categories.update');
+Route::delete('/knowledge-categories/{knowledgeCategory}', [KnowledgeCategoryController::class, 'destroy'])
+    ->name('knowledge-categories.destroy');
+
+Route::prefix('knowledge-item-types')
+    ->name('knowledge.item-types.')
+    ->group(function () {
+        Route::get('/', [KnowledgeItemTypeController::class, 'index'])->name('index');
+        Route::post('/bulk-save', [KnowledgeItemTypeController::class, 'bulkSave'])->name('bulk-save');
+        Route::delete('/{knowledgeItemType}', [KnowledgeItemTypeController::class, 'destroy'])->name('destroy');
+    });
+
+Route::get('/knowledge-item-types', [KnowledgeItemTypeController::class, 'index'])
+    ->name('knowledge.item-types.index');
+
+Route::post('/knowledge-item-types/bulk-save', [KnowledgeItemTypeController::class, 'bulkSave'])
+    ->name('knowledge.item-types.bulk-save');
+
+Route::delete('/knowledge-item-types/{knowledgeItemType}', [KnowledgeItemTypeController::class, 'destroy'])
+    ->name('knowledge.item-types.destroy');
+
+
+Route::prefix('knowledge')->name('knowledge.')->group(function () {
+    Route::get('items', [KnowledgeItemController::class, 'index'])->name('items.index');
+    Route::post('items/bulk-save', [KnowledgeItemController::class, 'bulkSave'])->name('items.bulk-save');
+    Route::get('items/{knowledgeItem}/edit', [KnowledgeItemController::class, 'edit'])->name('items.edit');
+    Route::put('items/{knowledgeItem}', [KnowledgeItemController::class, 'update'])->name('items.update');
+    Route::delete('items/{knowledgeItem}', [KnowledgeItemController::class, 'destroy'])->name('items.destroy');
+
+Route::resource('items.notes', KnowledgeItemNoteController::class)
+    ->parameters([
+        'items' => 'knowledgeItem',
+        'notes' => 'knowledgeNote',
+    ])
+    ->except(['index', 'show', 'create']);
+
+Route::resource('items.sources', KnowledgeItemSourceController::class)
+    ->parameters([
+        'items' => 'knowledgeItem',
+        'sources' => 'knowledgeSource',
+    ])
+    ->except(['index', 'show', 'create']);
+
+Route::resource('items.review-logs', KnowledgeItemReviewLogController::class)
+    ->parameters([
+        'items' => 'knowledgeItem',
+        'review-logs' => 'knowledgeReviewLog',
+    ])
+    ->except(['index', 'show', 'create']);
+
+Route::resource('items.attachments', KnowledgeItemAttachmentController::class)
+    ->parameters([
+        'items' => 'knowledgeItem',
+        'attachments' => 'knowledgeAttachment',
+    ])
+    ->except(['index', 'show', 'create']);
+
+Route::resource('items.relationships', KnowledgeItemRelationshipController::class)
+    ->parameters([
+        'items' => 'knowledgeItem',
+        'relationships' => 'knowledgeRelationship',
+    ])
+    ->except(['index', 'show', 'create']);
+});
+
+Route::delete('items/{knowledgeItem}/notes/{knowledgeNote}', [KnowledgeItemNoteController::class, 'destroy'])
+    ->name('items.notes.destroy');
+
+Route::delete('items/{knowledgeItem}/sources/{knowledgeSource}', [KnowledgeItemSourceController::class, 'destroy'])
+    ->name('items.sources.destroy');
+
+Route::delete('items/{knowledgeItem}/review-logs/{knowledgeReviewLog}', [KnowledgeItemReviewLogController::class, 'destroy'])
+    ->name('items.review-logs.destroy');
+
+Route::delete('items/{knowledgeItem}/relationships/{knowledgeRelationship}', [KnowledgeItemRelationshipController::class, 'destroy'])
+    ->name('items.relationships.destroy');
 
 
 Route::resource('places', PlaceController::class)->except(['show']);

@@ -674,6 +674,53 @@
     </div>
 </div>
 
+<div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+    <div class="px-4 py-3 border-b border-gray-200">
+        <div>
+            <h3 class="text-sm font-semibold text-gray-900">Linked Knowledge Items</h3>
+            <p class="mt-1 text-xs text-gray-500">
+                {{ $place->knowledgeItems->count() }} linked record{{ $place->knowledgeItems->count() === 1 ? '' : 's' }}
+            </p>
+        </div>
+    </div>
+
+    <div class="p-4">
+        @if($place->knowledgeItems->isNotEmpty())
+            <ul class="space-y-3">
+                @foreach($place->knowledgeItems as $knowledgeItem)
+                    <li>
+                        <a href="{{ route('knowledge.items.edit', [
+                                'knowledgeItem' => $knowledgeItem,
+                                'return_to' => url()->full(),
+                            ]) }}"
+                           class="block border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <div class="text-sm font-medium text-gray-900">
+                                {{ $knowledgeItem->itemname ?: 'Untitled knowledge item' }}
+                            </div>
+
+                            <div class="mt-1 text-xs text-gray-500">
+                                Type: {{ $knowledgeItem->itemType?->typename ?? '—' }}
+                            </div>
+
+                            <div class="mt-1 text-xs text-gray-500">
+                                Category: {{ $knowledgeItem->primaryCategory?->categoryname ?? '—' }}
+                            </div>
+
+                            <div class="mt-1 text-xs text-gray-500">
+                                Status: {{ $knowledgeItem->itemstatus ?: '—' }}
+                            </div>
+                        </a>
+                    </li>
+                @endforeach
+            </ul>
+        @else
+            <p class="text-sm text-gray-500">
+                No knowledge items are currently linked to this place.
+            </p>
+        @endif
+    </div>
+</div>
+
                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
                         <h3 class="text-sm font-semibold text-gray-900">
                             Record summary

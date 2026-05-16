@@ -37,6 +37,24 @@ class KnowledgeSource extends Model
     const CREATED_AT = 'createdat';
     const UPDATED_AT = 'updatedat';
 
+    public const TYPE_OPTIONS = [
+        'article' => 'Article',
+        'book' => 'Book',
+        'website' => 'Website',
+        'video' => 'Video',
+        'podcast' => 'Podcast',
+        'document' => 'Document',
+    ];
+
+    public static function typeOptions(): array
+    {
+        return self::TYPE_OPTIONS;
+    }
+
+    public static function typeValues(): array
+    {
+        return array_keys(self::TYPE_OPTIONS);
+    }
     public function item(): BelongsTo
     {
         return $this->belongsTo(KnowledgeItem::class, 'knowledgeitemid');

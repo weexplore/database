@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\KnowledgeItem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -97,5 +98,9 @@ class Place extends Model
     public function tripLegsFrom()
     {
         return $this->hasMany(\App\Models\TripLeg::class, 'fromplaceid');
+    }
+    public function knowledgeItems(): HasMany
+    {
+        return $this->hasMany(KnowledgeItem::class, 'placeid');
     }
 }

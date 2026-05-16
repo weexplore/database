@@ -22,51 +22,68 @@ class TripController extends Controller
     ];
 
     public function index(Request $request)
-    {
-        $query = Trip::query()->with('travellers');
+{
+    $query = Trip::query()->with('travellers');
 
-        if ($request->filled('tripstatus')) {
-            $query->where('tripstatus', $request->tripstatus);
-        }
-
-        if ($request->filled('year')) {
-            $year = (int) $request->year;
-
-            $query->where(function ($q) use ($year) {
-                $q->whereYear('startdate', $year)
-                    ->orWhereYear('enddate', $year);
-            });
-        }
-
-        if ($request->filled('search')) {
-            $search = trim((string) $request->search);
-
-            $query->where(function ($q) use ($search) {
-                $q->where('tripname', 'like', '%' . $search . '%')
-                    ->orWhere('slug', 'like', '%' . $search . '%')
-                    ->orWhere('summary', 'like', '%' . $search . '%');
-            });
-        }
-
-        $trips = $query
-            ->orderByDesc('startdate')
-            ->orderBy('tripname')
-            ->paginate(25)
-            ->withQueryString();
-
-        $availableYears = Trip::query()
-            ->whereNotNull('startdate')
-            ->selectRaw('YEAR(startdate) as tripyear')
-            ->distinct()
-            ->orderByDesc('tripyear')
-            ->pluck('tripyear');
-
-        return view('trips.index', [
-            'trips' => $trips,
-            'availableYears' => $availableYears,
-            'statusOptions' => $this->statusOptions,
-        ]);
+    if ($request->filled('tripstatus')) {
+        $query->where('tripstatus', $request->input('tripstatus'));
     }
+
+    if ($request->filled('year')) {
+        $year = (int) $request->input('year');
+        $startOfYear = $year . '-01-01';
+        $endOfYear = $year . '-12-31';
+
+        $query->where(function ($q) use ($year, $startOfYear, $endOfYear) {
+            $q->whereBetween('startdate', [$startOfYear, $endOfYear])
+                ->orWhereBetween('enddate', [$startOfYear, $endOfYear])
+                ->orWhere(function ($q2) use ($startOfYear, $endOfYear) {
+                    $q2->whereNotNull('startdate')
+                        ->whereNotNull('enddate')
+                        ->where('startdate', '<=', $endOfYear)
+                        ->where('enddate', '>=', $startOfYear);
+                })
+                ->orWhere(function ($q2) {
+                    $q2->whereNull('startdate')
+                        ->whereNull('enddate');
+                });
+        });
+    }
+
+    if ($request->filled('search')) {
+        $search = trim((string) $request->input('search'));
+
+        $query->where(function ($q) use ($search) {
+            $q->where('tripname', 'like', '%' . $search . '%')
+                ->orWhere('slug', 'like', '%' . $search . '%')
+                ->orWhere('summary', 'like', '%' . $search . '%');
+        });
+    }
+
+    $trips = $query
+        ->orderByRaw('startdate IS NULL ASC')
+        ->orderByDesc('startdate')
+        ->orderBy('tripname')
+        ->paginate(25)
+        ->withQueryString();
+
+    $availableYears = Trip::query()
+        ->selectRaw('YEAR(startdate) as tripyear')
+        ->whereNotNull('startdate')
+        ->union(
+            Trip::query()
+                ->selectRaw('YEAR(enddate) as tripyear')
+                ->whereNotNull('enddate')
+        )
+        ->orderByDesc('tripyear')
+        ->pluck('tripyear');
+
+    return view('trips.index', [
+        'trips' => $trips,
+        'availableYears' => $availableYears,
+        'statusOptions' => $this->statusOptions,
+    ]);
+}
 
     public function bulkSave(Request $request)
     {
@@ -151,7 +168,7 @@ class TripController extends Controller
             ->with('success', 'Trips saved successfully.');
     }
 
-    public function edit(Trip $trip)
+    public function edit(Request $request, Trip $trip)
 {
     $trip->load([
         'travellers',
@@ -183,6 +200,12 @@ class TripController extends Controller
         'supportvehicle',
         'other',
     ];
+    $allowedTabs = ['details', 'notes', 'budget', 'vehicles', 'travellers', 'workflow'];
+    $activeTab = old('tab', $request->string('tab')->value() ?: 'details');
+
+    if (! in_array($activeTab, $allowedTabs, true)) {
+        $activeTab = 'details';
+    }
 
     return view('trips.edit', [
         'trip' => $trip,
@@ -192,6 +215,7 @@ class TripController extends Controller
         'statusOptions' => $this->statusOptions,
         'calculatedEstimatedDistance' => $calculatedEstimatedDistance,
         'vehicleRoleOptions' => $vehicleRoleOptions,
+        'activeTab' => $activeTab,
     ]);
 }
 
@@ -297,7 +321,10 @@ class TripController extends Controller
         });
 
         return redirect()
-            ->route('trips.edit', $trip)
+            ->route('trips.edit', [
+                'trip' => $trip,
+                'tab' => $request->input('tab', 'details'),
+            ])
             ->with('success', 'Trip updated successfully.');
     }
 

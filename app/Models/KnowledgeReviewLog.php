@@ -31,6 +31,23 @@ class KnowledgeReviewLog extends Model
     const CREATED_AT = 'createdat';
     const UPDATED_AT = 'updatedat';
 
+    public const TYPE_OPTIONS = [
+        'routine' => 'Routine',
+        'deep-dive' => 'Deep Dive',
+        'expiry-check' => 'Expiry Check',
+        'quality-check' => 'Quality Check',
+        'fact-check' => 'Fact Check',
+    ];
+
+    public static function typeOptions(): array
+    {
+        return self::TYPE_OPTIONS;
+    }
+
+    public static function typeValues(): array
+    {
+        return array_keys(self::TYPE_OPTIONS);
+    }
     public function item(): BelongsTo
     {
         return $this->belongsTo(KnowledgeItem::class, 'knowledgeitemid');

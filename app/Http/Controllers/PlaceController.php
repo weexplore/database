@@ -374,6 +374,9 @@ public function edit(Request $request, Place $place)
             ->with('trip')
             ->orderByDesc('startdate')
             ->orderByDesc('id'),
+        'knowledgeItems' => fn ($query) => $query
+            ->with(['itemType', 'primaryCategory'])
+            ->orderBy('itemname'),
     ]);
 
     $destinationItems = $place->destinations

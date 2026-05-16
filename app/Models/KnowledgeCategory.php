@@ -60,4 +60,13 @@ class KnowledgeCategory extends Model
     {
         return $this->hasMany(KnowledgeItemCategory::class, 'knowledgecategoryid');
     }
+    public function children(): HasMany
+    {
+        return $this->hasMany(KnowledgeCategory::class, 'parentcategoryid');
+    }
+
+    public function knowledgeItems(): HasMany
+    {
+        return $this->hasMany(KnowledgeItem::class, 'primarycategoryid');
+    }
 }

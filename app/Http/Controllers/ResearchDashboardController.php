@@ -28,6 +28,16 @@ class ResearchDashboardController extends Controller
                     'description' => 'Maintain Bible book reference rows.',
                     'route' => route('bible-books.index'),
                 ],
+                [
+                    'title' => 'Knowledge Categories',
+                    'description' => 'Maintain hierarchical research categories.',
+                    'route' => route('knowledge-categories.index', ['domainid' => 0, 'categoryid' => 0]),
+                ],
+                [
+                    'title' => 'Knowledge Item Types',
+                    'description' => 'Maintain hierarchical research categories.',
+                    'route' => route('knowledge.item-types.index'),
+                ],
             ],
         ]);
     }

@@ -30,6 +30,24 @@ class KnowledgeRelationship extends Model
     const CREATED_AT = 'createdat';
     const UPDATED_AT = 'updatedat';
 
+    public const TYPE_OPTIONS = [
+        'related' => 'Related',
+        'supports' => 'Supports',
+        'contradicts' => 'Contradicts',
+        'depends-on' => 'Depends On',
+        'parent-of' => 'Parent Of',
+        'child-of' => 'Child Of',
+    ];
+
+    public static function typeOptions(): array
+    {
+        return self::TYPE_OPTIONS;
+    }
+
+    public static function typeValues(): array
+    {
+        return array_keys(self::TYPE_OPTIONS);
+    }
     public function fromItem(): BelongsTo
     {
         return $this->belongsTo(KnowledgeItem::class, 'fromitemid');

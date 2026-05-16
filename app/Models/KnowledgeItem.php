@@ -13,37 +13,41 @@ class KnowledgeItem extends Model
     use HasFactory;
 
     protected $table = 'knowledgeitems';
+    protected $primaryKey = 'id';
+    public $incrementing = true;
+    protected $keyType = 'int';
 
-    protected $fillable = [
-        'primarycategoryid',
-        'itemname',
-        'itemtype',
-        'itemstatus',
-        'summary',
-        'detailednotes',
-        'significance',
-        'reviewnotes',
-        'parentitemid',
-        'placeid',
-        'startdate',
-        'enddate',
-        'nextreviewdate',
-        'sortorder',
-        'isfeatured',
-        'isactive',
-    ];
+protected $fillable = [
+    'primarycategoryid',
+    'itemname',
+    'itemtype',
+    'itemstatus',
+    'summary',
+    'detailednotes',
+    'significance',
+    'reviewnotes',
+    'parentitemid',
+    'placeid',
+    'startdate',
+    'enddate',
+    'nextreviewdate',
+    'sortorder',
+    'isfeatured',
+    'isactive',
+];
 
-    protected $casts = [
-        'primarycategoryid' => 'integer',
-        'parentitemid' => 'integer',
-        'placeid' => 'integer',
-        'startdate' => 'date',
-        'enddate' => 'date',
-        'nextreviewdate' => 'date',
-        'sortorder' => 'integer',
-        'isfeatured' => 'boolean',
-        'isactive' => 'boolean',
-    ];
+protected $casts = [
+    'primarycategoryid' => 'integer',
+    'itemtype' => 'integer',
+    'parentitemid' => 'integer',
+    'placeid' => 'integer',
+    'startdate' => 'date',
+    'enddate' => 'date',
+    'nextreviewdate' => 'date',
+    'sortorder' => 'integer',
+    'isfeatured' => 'boolean',
+    'isactive' => 'boolean',
+];
 
     const CREATED_AT = 'createdat';
     const UPDATED_AT = 'updatedat';
@@ -116,5 +120,18 @@ class KnowledgeItem extends Model
     public function instruments(): HasMany
     {
         return $this->hasMany(Instrument::class, 'knowledgeitemid');
+    }
+    public function itemType(): BelongsTo
+    {
+        return $this->belongsTo(KnowledgeItemType::class, 'itemtype');
+    }
+
+    public function relationships(): HasMany
+    {
+        return $this->hasMany(KnowledgeRelationship::class, 'fromitemid');
+    }
+    public function place(): BelongsTo
+    {
+        return $this->belongsTo(Place::class, 'placeid');
     }
 }
