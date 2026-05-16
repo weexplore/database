@@ -10,6 +10,7 @@ use App\Models\KnowledgeNote;
 use App\Models\KnowledgeSource;
 use App\Models\KnowledgeReviewLog;
 use App\Models\KnowledgeRelationship;
+use App\Models\KnowledgeTag;
 use App\Models\Place;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -89,6 +90,7 @@ class KnowledgeItemController extends Controller
             ->distinct()
             ->orderBy('itemstatus')
             ->pluck('itemstatus');
+
 
         
         return view('knowledge.items.index', [
@@ -295,6 +297,8 @@ class KnowledgeItemController extends Controller
         ->orderBy('placename')
         ->orderBy('locality')
         ->get(['id', 'placename', 'locality', 'placetype']);
+
+    $knowledgeItem->load(['tags']);
     
 
     return view('knowledge.items.edit', [
@@ -325,6 +329,10 @@ class KnowledgeItemController extends Controller
         'relationshipTypeOptions' => KnowledgeRelationship::typeOptions(),
         'activeTab' => $activeTab,
         'places' => $places,
+        'knowledgeTags' => KnowledgeTag::query()
+            ->where('isactive', 1)
+            ->orderByRaw('COALESCE(sortorder, 999999), tagname')
+            ->get(),
         'hasBibleTools' => $hasBibleTools,
         'hasInvestmentTools' => $hasInvestmentTools,
     ]);
@@ -363,6 +371,15 @@ class KnowledgeItemController extends Controller
                 ->withInput()
                 ->withErrors(['parentitemid' => 'A knowledge item cannot be its own parent.']);
         }
+
+        $tagIds = collect($request->input('tagids', []))
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $knowledgeItem->tags()->sync($tagIds);
 
         $knowledgeItem->update([
             'primarycategoryid' => $validated['primarycategoryid'],

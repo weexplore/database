@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class KnowledgeTag extends Model
 {
@@ -33,4 +34,14 @@ class KnowledgeTag extends Model
     {
         return $this->hasMany(KnowledgeItemTag::class, 'tagid');
     }
+
+    public function items(): BelongsToMany
+{
+    return $this->belongsToMany(
+        KnowledgeItem::class,
+        'knowledgeitemtags',
+        'tagid',
+        'knowledgeitemid'
+    )->withTimestamps('createdat', 'updatedat');
+}
 }

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 
 class KnowledgeItem extends Model
@@ -133,5 +134,15 @@ protected $casts = [
     public function place(): BelongsTo
     {
         return $this->belongsTo(Place::class, 'placeid');
+    }
+    
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            KnowledgeTag::class,
+            'knowledgeitemtags',
+            'knowledgeitemid',
+            'tagid'
+        )->withTimestamps('createdat', 'updatedat');
     }
 }

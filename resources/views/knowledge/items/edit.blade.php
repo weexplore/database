@@ -118,6 +118,11 @@
                                 'itemStatusOptions' => $itemStatusOptions,
                                 'places' => $places,
                             ])
+
+                            @include('knowledge.items.partials.tags-panel', [
+                                'knowledgeItem' => $knowledgeItem,
+                                'knowledgeTags' => $knowledgeTags ?? collect(),
+                            ])
                         </div>
 
                         <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between gap-3">
