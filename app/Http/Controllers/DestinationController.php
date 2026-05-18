@@ -15,20 +15,22 @@ class DestinationController extends Controller
 {
     protected array $typeOptions = [
         'town',
+        'suburb',
         'region',
         'locality',
         'attraction',
     ];
 
-    private function typeOptions(): array
-    {
-        return [
-            'town',
-            'region',
-            'locality',
-            'attraction',
-        ];
-    }
+private function typeOptions(): array
+{
+    return [
+        'town',
+        'suburb',
+        'region',
+        'locality',
+        'attraction',
+    ];
+}
 
     public function index(Request $request)
     {
@@ -293,20 +295,19 @@ public function edit(Request $request, Destination $destination)
 {
     $returnTo = $request->input('return_to');
 
-    $existing = $place->destinations()
-        ->orderBy('destinationname')
-        ->first();
+    $baseName = trim((string) $place->placename);
+    $name = $baseName;
+    $suffix = 2;
 
-    if ($existing) {
-        return redirect()
-            ->route('destinations.edit', [
-                'destination' => $existing,
-                'return_to' => $returnTo,
-            ])
-            ->with('info', 'Using existing destination linked to this place.');
+    while (
+        Destination::query()
+            ->where('placeid', $place->id)
+            ->whereRaw('LOWER(destinationname) = ?', [mb_strtolower($name)])
+            ->exists()
+    ) {
+        $name = $baseName . ' - ' . $suffix;
+        $suffix++;
     }
-
-    $name = $place->placename;
     $typeOptions = $this->typeOptions();
     $defaultType = null;
 
@@ -316,14 +317,30 @@ public function edit(Request $request, Destination $destination)
         $defaultType = 'town';
     } elseif (in_array('region', $typeOptions, true) && $placeType === 'national_park') {
         $defaultType = 'region';
-    } elseif (in_array('locality', $typeOptions, true) && $placeType === 'accommodation') {
-        $defaultType = 'locality';
     } elseif (in_array('attraction', $typeOptions, true) && in_array($placeType, ['day_use_area', 'campground', 'other'], true)) {
         $defaultType = 'attraction';
+    } elseif (in_array('locality', $typeOptions, true) && in_array($placeType, ['accommodation', 'caravan_park', 'free_camp', 'showgrounds', 'station_stay'], true)) {
+        $defaultType = 'locality';
     }
 
     if ($defaultType === null) {
         $defaultType = $typeOptions[0] ?? 'town';
+    }
+
+    $baseName = trim((string) $name);
+
+    $duplicateExists = Destination::query()
+        ->where('placeid', $place->id)
+        ->whereRaw('LOWER(destinationname) = ?', [mb_strtolower($baseName)])
+        ->exists();
+
+    if ($duplicateExists) {
+        return redirect()
+            ->route('places.edit', [
+                'place' => $place,
+                'return_to' => $returnTo,
+            ])
+            ->with('error', 'A destination with this name is already linked to this place. Rename the existing destination or create a more specific one.');
     }
 
     $destination = Destination::create([
@@ -345,7 +362,7 @@ public function edit(Request $request, Destination $destination)
             'destination' => $destination,
             'return_to' => $returnTo,
         ])
-        ->with('success', 'Destination created from place. You can now add overview and commentary.');
+        ->with('success', 'Destination created from place. Rename it as needed for suburb, locality, or attraction context.');
 }
 
 public function create(Request $request)

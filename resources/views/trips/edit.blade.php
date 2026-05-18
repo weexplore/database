@@ -8,6 +8,11 @@
                 <p class="mt-1 text-sm text-gray-500">
                     {{ $trip->tripname }}
                 </p>
+                <p class="mt-1 text-sm text-gray-500">
+                    Status: {{ ucfirst($trip->tripstatus) }} ·
+                    Start: {{ optional($trip->startdate)->format('d M Y') ?? '—' }} ·
+                    End: {{ optional($trip->enddate)->format('d M Y') ?? '—' }}
+                </p>
             </div>
 
             <div class="flex items-center gap-3">

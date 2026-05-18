@@ -8,12 +8,17 @@
                 <p class="mt-1 text-sm text-gray-500">
                     {{ $trip->tripname }}
                 </p>
+                <p class="mt-1 text-sm text-gray-500">
+                    Status: {{ ucfirst($trip->tripstatus) }} ·
+                    Start: {{ optional($trip->startdate)->format('d M Y') ?? '—' }} ·
+                    End: {{ optional($trip->enddate)->format('d M Y') ?? '—' }}
+                </p>
             </div>
 
-            <a href="{{ route('trips.legs.index', $trip) }}"
-               class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
-                Back to Trip Legs
-            </a>
+                <a href="{{ route('trips.edit', ['trip' => $trip, 'tab' => 'workflow']) }}"
+                class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
+                    Back to Trip
+                </a>
         </div>
     </x-slot>
 
@@ -215,6 +220,10 @@ document.addEventListener('DOMContentLoaded', function () {
             removeEmptyLegPointMessage();
             legPointRows.appendChild(row);
 
+            document.dispatchEvent(new CustomEvent('trip-leg:leg-point-row-added', {
+                detail: { row }
+            }));
+
             isDirty = true;
             document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
         });
@@ -361,7 +370,6 @@ document.addEventListener('DOMContentLoaded', function () {
     let routeMarkers = [];
     let routeLayer = null;
     let refreshRequestId = 0;
-
     let refreshTimer = null;
 
     function scheduleRefreshMap(delay = 150) {
@@ -370,6 +378,13 @@ document.addEventListener('DOMContentLoaded', function () {
             refreshMap();
         }, delay);
     }
+
+    document.addEventListener('trip-leg:map-tab-shown', () => {
+        setTimeout(() => {
+            map.invalidateSize();
+            scheduleRefreshMap(80);
+        }, 150);
+    });
 
     function syncDistanceKm(distanceKm) {
         if (!distanceKmInput) {

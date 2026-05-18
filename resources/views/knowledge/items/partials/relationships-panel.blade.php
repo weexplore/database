@@ -133,7 +133,11 @@
                 <div class="flex items-start justify-between gap-4">
                     <div class="space-y-1 min-w-0">
                         <div class="text-sm font-semibold text-gray-900">
-                            {{ $relationship->toItem?->itemname ?: 'Missing related item' }}
+                            @if($relationship->toItem)
+                                {{ $relationship->toItem->primaryCategory?->categoryname ?? 'Uncategorised' }}: {{ $relationship->toItem->itemname }}
+                            @else
+                                Missing related item
+                            @endif
                         </div>
 
                         <div class="text-xs text-gray-500">

@@ -312,7 +312,11 @@
 
                                                     <div class="text-sm text-gray-700">
                                                         <span class="font-medium text-gray-800">To:</span>
-                                                        {{ $relationship->toItem?->itemname ?? 'Unknown item' }}
+                                                        @if($relationship->toItem)
+                                                            {{ $relationship->toItem->primaryCategory?->categoryname ?? 'Uncategorised' }}: {{ $relationship->toItem->itemname }}
+                                                        @else
+                                                            Unknown item
+                                                        @endif
                                                     </div>
 
                                                     @if($relationship->notes)

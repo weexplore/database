@@ -107,7 +107,7 @@
 
                         <div class="md:col-span-6 flex flex-wrap items-center justify-between gap-3 pt-2">
                             <div class="flex flex-wrap items-center gap-2">
-                                <button type="submit" class="inline-flex items-center px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-900 text-sm">
+                                <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
                                     Filter
                                 </button>
                                 <a href="{{ route('trips.items.index', $trip) }}" class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">

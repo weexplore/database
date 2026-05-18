@@ -1,3 +1,7 @@
+@php
+    $showCreate = $showCreate ?? (request()->boolean('show_create') || $errors->any());
+@endphp
+
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between gap-4">
@@ -15,63 +19,47 @@
                 </p>
             </div>
 
-            <a href="{{ route('trips.edit', ['trip' => $trip, 'tab' => 'workflow']) }}"
-            class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
-                Back to Trip
-            </a>
+            <div class="flex items-center gap-2">
+                <a href="{{ route('trips.fuel-estimates.index', array_merge(['trip' => $trip->id], request()->query(), ['show_create' => 1])) }}"
+                   class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
+                    Add Trip Fuel Estimate
+                </a>
+
+                <a href="{{ route('trips.edit', ['trip' => $trip, 'tab' => 'workflow']) }}"
+                   class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
+                    Back to Trip
+                </a>
+            </div>
         </div>
     </x-slot>
 
     <div class="py-6">
         <div class="w-full max-w-none mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 space-y-6">
+            @include('partials.admin.flash-messages')
+            @include('partials.admin.validation-summary')
 
-            @if (session('success'))
-                <div class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-                    {{ session('success') }}
-                </div>
-            @endif
-
-            @if (session('error'))
-                <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-                    {{ session('error') }}
-                </div>
-            @endif
-
-            @if ($errors->any())
-                <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-                    <div class="font-semibold mb-2">Please fix the following:</div>
-                    <ul class="list-disc pl-5 space-y-1">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
-
-            <div class="bg-white shadow-sm rounded-lg border border-gray-200">
-                <div class="p-4 border-b border-gray-200">
-                    <form method="GET" action="{{ route('trips.fuel-estimates.index', $trip) }}" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
+            <div class="bg-white shadow-sm sm:rounded-lg p-6">
+                <form method="GET" action="{{ route('trips.fuel-estimates.index', $trip) }}">
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
                         <div>
-                            <label for="triplegid" class="block text-sm font-medium text-gray-700 mb-1">Trip Leg</label>
-                            <select
-                                name="triplegid"
-                                id="triplegid"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <label for="filter_triplegid" class="block text-sm font-medium text-gray-700 mb-1">Trip Leg</label>
+                            <select name="triplegid"
+                                    id="filter_triplegid"
+                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 <option value="">All legs</option>
                                 @foreach ($tripLegs as $tripLeg)
+                                    @php
+                                        $legLabel =
+                                            $tripLeg->title
+                                            ?: trim(
+                                                collect([
+                                                    optional($tripLeg->fromPlace)->placename,
+                                                    optional($tripLeg->toPlace)->placename,
+                                                ])->filter()->implode(' → ')
+                                            )
+                                            ?: ('Leg ' . ($tripLeg->legnumber ?? $tripLeg->id));
+                                    @endphp
                                     <option value="{{ $tripLeg->id }}" @selected((string) request('triplegid') === (string) $tripLeg->id)>
-                                        @php
-                                            $legLabel =
-                                                $tripLeg->title
-                                                ?: trim(
-                                                    collect([
-                                                        optional($tripLeg->fromPlace)->placename,
-                                                        optional($tripLeg->toPlace)->placename,
-                                                    ])->filter()->implode(' → ')
-                                                )
-                                                ?: ('Leg ' . ($tripLeg->legnumber ?? $tripLeg->id));
-                                        @endphp
-
                                         {{ $legLabel }}
                                     </option>
                                 @endforeach
@@ -79,11 +67,10 @@
                         </div>
 
                         <div>
-                            <label for="fueltype" class="block text-sm font-medium text-gray-700 mb-1">Fuel Type</label>
-                            <select
-                                name="fueltype"
-                                id="fueltype"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <label for="filter_fueltype" class="block text-sm font-medium text-gray-700 mb-1">Fuel Type</label>
+                            <select name="fueltype"
+                                    id="filter_fueltype"
+                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 <option value="">All fuel types</option>
                                 @foreach ($fuelTypes as $value => $label)
                                     <option value="{{ $value }}" @selected(request('fueltype') === $value)>
@@ -94,11 +81,10 @@
                         </div>
 
                         <div>
-                            <label for="fuelstopid" class="block text-sm font-medium text-gray-700 mb-1">Fuel Stop</label>
-                            <select
-                                name="fuelstopid"
-                                id="fuelstopid"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <label for="filter_fuelstopid" class="block text-sm font-medium text-gray-700 mb-1">Fuel Stop</label>
+                            <select name="fuelstopid"
+                                    id="filter_fuelstopid"
+                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 <option value="">All fuel stops</option>
                                 @foreach ($fuelStops as $fuelStop)
                                     <option value="{{ $fuelStop->id }}" @selected((string) request('fuelstopid') === (string) $fuelStop->id)>
@@ -110,233 +96,76 @@
 
                         <div>
                             <label for="date_from" class="block text-sm font-medium text-gray-700 mb-1">Estimate From</label>
-                            <input
-                                type="date"
-                                name="date_from"
-                                id="date_from"
-                                value="{{ request('date_from') }}"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <input type="date"
+                                   name="date_from"
+                                   id="date_from"
+                                   value="{{ request('date_from') }}"
+                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                         </div>
 
                         <div>
                             <label for="date_to" class="block text-sm font-medium text-gray-700 mb-1">Estimate To</label>
-                            <input
-                                type="date"
-                                name="date_to"
-                                id="date_to"
-                                value="{{ request('date_to') }}"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <input type="date"
+                                   name="date_to"
+                                   id="date_to"
+                                   value="{{ request('date_to') }}"
+                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                         </div>
 
                         <div class="flex items-end gap-2">
-                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700">
+                            <button type="submit"
+                                    class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
                                 Filter
                             </button>
-                            <a href="{{ route('trips.fuel-estimates.index', $trip) }}" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50">
+
+                            <a href="{{ route('trips.fuel-estimates.index', $trip) }}"
+                               class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
                                 Reset
                             </a>
                         </div>
-                    </form>
-                </div>
+                    </div>
+                </form>
+            </div>
 
-                <div class="p-4 border-b border-gray-200 bg-gray-50">
-                    <h3 class="text-sm font-semibold text-gray-800 mb-3">Add Trip Fuel Estimate</h3>
+            @if($showCreate)
+                <form method="POST"
+                      action="{{ route('trips.fuel-estimates.store', $trip) }}"
+                      id="trip-fuel-estimate-create-form"
+                      class="space-y-6">
+                    @csrf
 
-                    <form method="POST" action="{{ route('trips.fuel-estimates.store', $trip) }}" class="space-y-4" data-dirty-form>
-                        @csrf
+                    @include('tripfuelestimates._form', [
+                        'trip' => $trip,
+                        'fuelEstimate' => null,
+                        'tripLegs' => $tripLegs,
+                        'fuelStops' => $fuelStops,
+                        'places' => $places,
+                        'fuelTypes' => $fuelTypes,
+                        'sourceObservations' => $sourceObservations,
+                        'isCreate' => true,
+                        'returnTo' => route('trips.fuel-estimates.index', $trip),
+                    ])
+                </form>
+            @endif
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                            <div>
-                                <label for="triplegid" class="block text-sm font-medium text-gray-700 mb-1">Trip Leg</label>
-                                <select
-                                    name="triplegid"
-                                    id="triplegid"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                    <option value="">Select leg</option>
-                                    @foreach ($tripLegs as $tripLeg)
-                                        @php
-                                            $legLabel =
-                                                $tripLeg->title
-                                                ?: trim(
-                                                    collect([
-                                                        optional($tripLeg->fromPlace)->placename,
-                                                        optional($tripLeg->toPlace)->placename,
-                                                    ])->filter()->implode(' → ')
-                                                )
-                                                ?: ('Leg ' . ($tripLeg->legnumber ?? $tripLeg->id));
-                                        @endphp
-                                        <option
-                                            value="{{ $tripLeg->id }}"
-                                            data-distancekm="{{ $tripLeg->distancekm ?? '' }}"
-                                            @selected(old('triplegid') == $tripLeg->id)
-                                        >
-                                            {{ $legLabel }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div>
-                                <label for="fuelstopid" class="block text-sm font-medium text-gray-700 mb-1">Fuel Stop</label>
-                                <select
-                                    name="fuelstopid"
-                                    id="fuelstopid"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                    <option value="">Select fuel stop</option>
-                                    @foreach ($fuelStops as $fuelStop)
-                                        <option value="{{ $fuelStop->id }}" @selected(old('fuelstopid') == $fuelStop->id)>
-                                            {{ $fuelStop->stopname }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div>
-                                <label for="placeid" class="block text-sm font-medium text-gray-700 mb-1">Place</label>
-                                <select
-                                    name="placeid"
-                                    id="placeid"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                    <option value="">Select place</option>
-                                    @foreach ($places as $place)
-                                        <option value="{{ $place->id }}" @selected(old('placeid') == $place->id)>
-                                            {{ $place->placename }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div>
-                                <label for="estimatedate" class="block text-sm font-medium text-gray-700 mb-1">Estimate Date</label>
-                                <input
-                                    type="date"
-                                    name="estimatedate"
-                                    id="estimatedate"
-                                    value="{{ old('estimatedate') }}"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    required>
-                            </div>
-
-                            <div>
-                                <label for="fueltype" class="block text-sm font-medium text-gray-700 mb-1">Fuel Type</label>
-                                <select
-                                    name="fueltype"
-                                    id="fueltype"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    required>
-                                    <option value="">Select fuel type</option>
-                                    @foreach ($fuelTypes as $value => $label)
-                                        <option value="{{ $value }}" @selected(old('fueltype') === $value)>
-                                            {{ $label }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div>
-                                <label for="expectedpriceperlitre" class="block text-sm font-medium text-gray-700 mb-1">Expected Price / Litre</label>
-                                <input
-                                    type="number"
-                                    name="expectedpriceperlitre"
-                                    id="expectedpriceperlitre"
-                                    value="{{ old('expectedpriceperlitre', $trip->defaultfuelpriceperlitre) }}"
-                                    step="0.0001"
-                                    min="0"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            </div>
-
-                            <div>
-                                <label for="estimateddistancekm" class="block text-sm font-medium text-gray-700 mb-1">Estimated Distance Km</label>
-                                <input
-                                    type="number"
-                                    name="estimateddistancekm"
-                                    id="estimateddistancekm"
-                                    value="{{ old('estimateddistancekm') }}"
-                                    step="0.1"
-                                    min="0"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            </div>
-
-                            <div>
-                                <label for="estimatedlitres" class="block text-sm font-medium text-gray-700 mb-1">Estimated Litres</label>
-                                <input
-                                    type="number"
-                                    name="estimatedlitres"
-                                    id="estimatedlitres"
-                                    value="{{ old('estimatedlitres') }}"
-                                    step="0.001"
-                                    min="0"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            </div>
-
-                            <div>
-                                <label for="estimatedtotalcost" class="block text-sm font-medium text-gray-700 mb-1">Estimated Total Cost</label>
-                                <input
-                                    type="number"
-                                    name="estimatedtotalcost"
-                                    id="estimatedtotalcost"
-                                    value="{{ old('estimatedtotalcost') }}"
-                                    step="0.01"
-                                    min="0"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            </div>
-
-                            <div class="xl:col-span-3">
-                                <label for="sourceobservationid" class="block text-sm font-medium text-gray-700 mb-1">Source Observation</label>
-                                <select
-                                    name="sourceobservationid"
-                                    id="sourceobservationid"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                    <option value="">Select source observation</option>
-                                    @foreach ($sourceObservations as $sourceObservation)
-                                        <option value="{{ $sourceObservation->id }}" @selected(old('sourceobservationid') == $sourceObservation->id)>
-                                            {{ optional($sourceObservation->observedon)->format('Y-m-d') }}
-                                            —
-                                            {{ $sourceObservation->fuelStop?->stopname ?? 'Unknown stop' }}
-                                            —
-                                            {{ $sourceObservation->fuel_type_label }}
-                                            —
-                                            {{ number_format((float) $sourceObservation->priceperlitre, 4) }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                            <textarea
-                                name="notes"
-                                id="notes"
-                                rows="3"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('notes') }}</textarea>
-                        </div>
-
-                        <div class="flex justify-end">
-                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700">
-                                Add Estimate
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
+            <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 text-sm">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Date</th>
-                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Leg</th>
-                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Fuel Stop</th>
-                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Place</th>
-                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Fuel Type</th>
-                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Price/L</th>
-                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Distance</th>
-                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Litres</th>
-                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Total</th>
-                                <th class="px-4 py-3 text-right font-semibold text-gray-700">Actions</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-600">Date</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-600">Leg</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-600">Fuel Stop</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-600">Place</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-600">Fuel Type</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-600">Price/L</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-600">Distance</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-600">Litres</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-600">Total</th>
+                                <th class="px-4 py-3 text-right font-medium text-gray-600">Actions</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-200 bg-white">
+                        <tbody class="divide-y divide-gray-100 bg-white">
                             @forelse ($tripFuelEstimates as $fuelEstimate)
                                 <tr>
                                     <td class="px-4 py-3 align-top text-gray-700">
@@ -345,7 +174,6 @@
                                     <td class="px-4 py-3 align-top text-gray-700">
                                         @php
                                             $leg = $fuelEstimate->tripLeg;
-
                                             $legLabel =
                                                 $leg?->title
                                                 ?: trim(
@@ -356,7 +184,6 @@
                                                 )
                                                 ?: ($leg ? 'Leg ' . ($leg->legnumber ?? $leg->id) : '—');
                                         @endphp
-
                                         {{ $legLabel }}
                                     </td>
                                     <td class="px-4 py-3 align-top text-gray-900 font-medium">
@@ -383,7 +210,7 @@
                                     <td class="px-4 py-3 align-top text-right">
                                         <div class="flex items-center justify-end gap-2">
                                             <a href="{{ route('trips.fuel-estimates.edit', [$trip, $fuelEstimate]) }}"
-                                            class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50">
+                                               class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs">
                                                 Edit
                                             </a>
                                         </div>
@@ -408,92 +235,4 @@
             </div>
         </div>
     </div>
-
-    <script>
-        (() => {
-            const forms = document.querySelectorAll('[data-dirty-form]');
-            forms.forEach((form) => {
-                let isDirty = false;
-
-                form.querySelectorAll('input, select, textarea').forEach((field) => {
-                    field.addEventListener('change', () => isDirty = true);
-                    field.addEventListener('input', () => isDirty = true);
-                });
-
-                form.addEventListener('submit', () => isDirty = false);
-
-                window.addEventListener('beforeunload', (event) => {
-                    if (!isDirty) return;
-                    event.preventDefault();
-                    event.returnValue = '';
-                });
-            });
-        })();
-    </script>
-    <script>
-        (() => {
-            const forms = document.querySelectorAll('[data-dirty-form]');
-            const tripDefaultConsumption = {{ json_encode((float) ($trip->defaultfuelconsumptionlper100km ?? 0)) }};
-
-            forms.forEach((form) => {
-                let isDirty = false;
-
-                form.querySelectorAll('input, select, textarea').forEach((field) => {
-                    field.addEventListener('change', () => isDirty = true);
-                    field.addEventListener('input', () => isDirty = true);
-                });
-
-                form.addEventListener('submit', () => isDirty = false);
-
-                window.addEventListener('beforeunload', (event) => {
-                    if (!isDirty) return;
-                    event.preventDefault();
-                    event.returnValue = '';
-                });
-
-                const distanceInput = form.querySelector('#estimateddistancekm');
-                const litresInput = form.querySelector('#estimatedlitres');
-                const priceInput = form.querySelector('#expectedpriceperlitre');
-                const totalInput = form.querySelector('#estimatedtotalcost');
-
-                function recalcEstimatedTotal() {
-                    const litres = parseFloat(litresInput?.value);
-                    const price = parseFloat(priceInput?.value);
-
-                    if (!isNaN(litres) && !isNaN(price) && litres >= 0 && price >= 0) {
-                        totalInput.value = (litres * price).toFixed(2);
-                    } else if (totalInput) {
-                        totalInput.value = '';
-                    }
-                }
-
-                function recalcEstimatedLitres() {
-                    const distance = parseFloat(distanceInput?.value);
-
-                    if (!isNaN(distance) && distance >= 0 && tripDefaultConsumption > 0) {
-                        litresInput.value = ((distance / 100) * tripDefaultConsumption).toFixed(3);
-                    } else if (litresInput) {
-                        litresInput.value = '';
-                    }
-
-                    recalcEstimatedTotal();
-                }
-
-                if (distanceInput && litresInput) {
-                    distanceInput.addEventListener('input', recalcEstimatedLitres);
-                    distanceInput.addEventListener('change', recalcEstimatedLitres);
-                }
-
-                if (litresInput && priceInput && totalInput) {
-                    litresInput.addEventListener('input', recalcEstimatedTotal);
-                    litresInput.addEventListener('change', recalcEstimatedTotal);
-                    priceInput.addEventListener('input', recalcEstimatedTotal);
-                    priceInput.addEventListener('change', recalcEstimatedTotal);
-                }
-
-                recalcEstimatedLitres();
-                recalcEstimatedTotal();
-            });
-        })();
-    </script>
 </x-app-layout>
