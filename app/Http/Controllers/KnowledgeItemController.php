@@ -95,12 +95,20 @@ class KnowledgeItemController extends Controller
             ->orderBy('itemstatus')
             ->pluck('itemstatus');
 
+        $selectedCategory = null;
+
+        if (!empty($filters['categoryid'])) {
+            $selectedCategory = KnowledgeCategory::query()
+                ->with(['domain', 'parentCategory'])
+                ->find($filters['categoryid']);
+        }
 
         
         return view('knowledge.items.index', [
             'pageTitle' => 'Knowledge Items',
             'filters' => $filters,
             'domains' => $domains,
+            'selectedCategory' => $selectedCategory,
             'categories' => $categories,
             'items' => $items,
             'itemTypes' => $itemTypes,
@@ -226,6 +234,7 @@ class KnowledgeItemController extends Controller
     $knowledgeItem->load([
         'primaryCategory',
         'primaryCategory.domain',
+        'primaryCategory.parentCategory',
         'parentItem',
         'childItems',
         'sources',
@@ -272,10 +281,24 @@ class KnowledgeItemController extends Controller
         ->get();
 
     $relationshipItems = KnowledgeItem::query()
-        ->where('id', '!=', $knowledgeItem->id)
-        ->whereHas('primaryCategory', fn ($q) => $q->where('domainid', $domainId))
-        ->orderBy('itemname')
-        ->get();
+        ->with([
+            'primaryCategory',
+            'primaryCategory.parentCategory',
+            'primaryCategory.domain',
+        ])
+        ->where('id', '<>', $knowledgeItem->id)
+        ->whereHas('primaryCategory', function ($query) use ($knowledgeItem) {
+            $query->where('domainid', $knowledgeItem->primaryCategory?->domainid);
+        })
+        ->get()
+        ->sortBy(function ($item) {
+            return sprintf(
+                '%s %s',
+                mb_strtolower($item->primaryCategory?->categoryname ?? 'zzzz'),
+                mb_strtolower($item->itemname ?? '')
+            );
+        })
+        ->values();
 
     $editingNoteId = $request->integer('editing_note_id');
     $showAddNote = $request->boolean('show_add_note');
@@ -302,6 +325,8 @@ class KnowledgeItemController extends Controller
     if (! in_array($activeTab, $allowedTabs, true)) {
         $activeTab = 'details';
     }
+    
+    
 
     $places = Place::query()
         ->where('isactive', true)

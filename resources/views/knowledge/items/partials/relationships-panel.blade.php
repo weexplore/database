@@ -59,7 +59,7 @@
                             <option value="">Select related item</option>
                             @foreach($relationshipItems as $item)
                                 <option value="{{ $item->id }}" @selected(old('toitemid') == $item->id)>
-                                    {{ $item->itemname }}
+                                    {{ $item->primaryCategory?->categoryname ?? 'Uncategorised' }}: {{ $item->itemname }}
                                 </option>
                             @endforeach
                         </select>
@@ -81,6 +81,16 @@
                             @endforeach
                         </select>
                     </div>
+                </div>
+                <div>
+                    <label for="relationship_effective_date" class="block text-sm font-medium text-gray-700 mb-1">
+                        Effective Date
+                    </label>
+                    <input type="date"
+                        name="effective_date"
+                        id="relationship_effective_date"
+                        value="{{ old('effective_date') }}"
+                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                 </div>
 
                 <div>
@@ -128,6 +138,7 @@
 
                         <div class="text-xs text-gray-500">
                             Type: {{ $relationship->relationshiptype ?: '—' }}
+                            · Effective: {{ $relationship->effective_date ? $relationship->effective_date->format('d M Y') : '—' }}
                             · Sort: {{ $relationship->sortorder ?? 0 }}
                         </div>
 
@@ -184,7 +195,7 @@
                                         @foreach($relationshipItems as $item)
                                             <option value="{{ $item->id }}"
                                                 @selected((string) old('toitemid', $relationship->toitemid) === (string) $item->id)>
-                                                {{ $item->itemname }}
+                                                {{ $item->primaryCategory?->categoryname ?? 'Uncategorised' }}: {{ $item->itemname }}
                                             </option>
                                         @endforeach
                                     </select>
@@ -203,6 +214,13 @@
                                         @endforeach
                                     </select>
                                 </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Effective Date</label>
+                                <input type="date"
+                                    name="effective_date"
+                                    value="{{ old('effective_date', optional($relationship->effective_date)->format('Y-m-d')) }}"
+                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                             </div>
 
                             <div>
@@ -239,7 +257,7 @@
                             </div>
                         </form>
                         <form method="POST"
-                            action="{{ route('knowledge.items.relationships.destroy', [$knowledgeItem, $knowledgeRelationship]) }}"
+                            action="{{ route('knowledge.items.relationships.destroy', [$knowledgeItem, $relationship]) }}"
                             class="inline">
                             @csrf
                             @method('DELETE')

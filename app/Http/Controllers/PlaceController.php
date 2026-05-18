@@ -84,9 +84,10 @@ class PlaceController extends Controller
 
     $query = Place::query()
         ->with(['country', 'state', 'region'])
-        ->withCount('destinations');
-
-
+        ->withCount([
+            'destinations',
+            'destinationItems as destination_items_count',
+        ]);
 
     if ($selectedCountryId) {
         $query->where('countryid', $selectedCountryId);

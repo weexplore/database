@@ -6,9 +6,14 @@
                     Trip Bookings
                 </h2>
                 <p class="text-sm text-gray-500 mt-1">{{ $trip->tripname }}</p>
+                <p class="mt-1 text-sm text-gray-500">
+                    Status: {{ ucfirst($trip->tripstatus) }} ·
+                    Start: {{ optional($trip->startdate)->format('d M Y') ?? '—' }} ·
+                    End: {{ optional($trip->enddate)->format('d M Y') ?? '—' }}
+                </p>
             </div>
-            <a href="{{ route('trips.edit', $trip) }}"
-               class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-semibold text-gray-700 hover:bg-gray-50">
+            <a href="{{ route('trips.edit', ['trip' => $trip, 'tab' => 'workflow']) }}"
+            class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
                 Back to Trip
             </a>
         </div>

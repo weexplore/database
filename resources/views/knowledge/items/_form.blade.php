@@ -97,10 +97,11 @@
                     Summary
                 </label>
                 <textarea name="summary"
-                          id="summary"
-                          rows="3"
-                          class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                          placeholder="Short overview of the knowledge item">{{ old('summary', $knowledgeItem->summary ?? '') }}</textarea>
+                        id="summary"
+                        rows="3"
+                        class="js-auto-resize-textarea w-full min-h-[5.5rem] rounded-md border-gray-300 shadow-sm text-sm"
+                        data-min-rows="3"
+                        placeholder="Short overview of the knowledge item">{{ old('summary', $knowledgeItem->summary ?? '') }}</textarea>
             </div>
         </div>
     </div>
@@ -117,10 +118,11 @@
                     Detailed Notes
                 </label>
                 <textarea name="detailednotes"
-                          id="detailednotes"
-                          rows="8"
-                          class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                          placeholder="Full notes, observations, or structured research detail">{{ old('detailednotes', $knowledgeItem->detailednotes ?? '') }}</textarea>
+                        id="detailednotes"
+                        rows="8"
+                        class="js-auto-resize-textarea w-full min-h-[12rem] rounded-md border-gray-300 shadow-sm text-sm"
+                        data-min-rows="8"
+                        placeholder="Full notes, observations, or structured research detail">{{ old('detailednotes', $knowledgeItem->detailednotes ?? '') }}</textarea>
             </div>
 
             <div>
@@ -128,21 +130,23 @@
                     Significance
                 </label>
                 <textarea name="significance"
-                          id="significance"
-                          rows="4"
-                          class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                          placeholder="Why this item matters">{{ old('significance', $knowledgeItem->significance ?? '') }}</textarea>
+                        id="significance"
+                        rows="4"
+                        class="js-auto-resize-textarea w-full min-h-[7rem] rounded-md border-gray-300 shadow-sm text-sm"
+                        data-min-rows="4"
+                        placeholder="Why this item matters">{{ old('significance', $knowledgeItem->significance ?? '') }}</textarea>
             </div>
 
             <div>
                 <label for="reviewnotes" class="block text-sm font-medium text-gray-700 mb-1">
                     Review Notes
                 </label>
-                <textarea name="reviewnotes"
-                          id="reviewnotes"
-                          rows="4"
-                          class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                          placeholder="Review comments, follow-up actions, or quality notes">{{ old('reviewnotes', $knowledgeItem->reviewnotes ?? '') }}</textarea>
+<textarea name="reviewnotes"
+          id="reviewnotes"
+          rows="4"
+          class="js-auto-resize-textarea w-full min-h-[7rem] rounded-md border-gray-300 shadow-sm text-sm"
+          data-min-rows="4"
+          placeholder="Review comments, follow-up actions, or quality notes">{{ old('reviewnotes', $knowledgeItem->reviewnotes ?? '') }}</textarea>
             </div>
         </div>
     </div>
@@ -249,3 +253,48 @@
         </div>
     </div>
 </div>
+@if(($activeTab ?? 'details') === 'details')
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const textareas = Array.from(document.querySelectorAll('.js-auto-resize-textarea'));
+
+        function getMinHeight(textarea) {
+            const computed = window.getComputedStyle(textarea);
+            const lineHeight = parseFloat(computed.lineHeight) || 20;
+            const paddingTop = parseFloat(computed.paddingTop) || 0;
+            const paddingBottom = parseFloat(computed.paddingBottom) || 0;
+            const borderTop = parseFloat(computed.borderTopWidth) || 0;
+            const borderBottom = parseFloat(computed.borderBottomWidth) || 0;
+            const minRows = parseInt(textarea.dataset.minRows || textarea.getAttribute('rows') || 3, 10);
+
+            return (lineHeight * minRows) + paddingTop + paddingBottom + borderTop + borderBottom;
+        }
+
+        function autoResize(textarea) {
+            const minHeight = getMinHeight(textarea);
+
+            textarea.style.overflowY = 'hidden';
+            textarea.style.resize = 'vertical';
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.max(textarea.scrollHeight, minHeight) + 'px';
+        }
+
+        textareas.forEach((textarea) => {
+            autoResize(textarea);
+
+            textarea.addEventListener('input', function () {
+                autoResize(textarea);
+            });
+        });
+
+        window.addEventListener('resize', function () {
+            textareas.forEach(autoResize);
+        });
+    });
+    </script>
+
+    @include('partials.admin.dirty-form-script', [
+        'formId' => 'knowledge-item-form',
+        'dirtyMessage' => 'You have unsaved changes on this Knowledge Item. Continue and lose those changes?',
+    ])
+@endif

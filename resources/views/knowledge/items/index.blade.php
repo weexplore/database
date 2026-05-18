@@ -1,9 +1,39 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ $pageTitle ?? 'Knowledge Items' }}
-            </h2>
+        <div class="flex items-center justify-between gap-4">
+            <div>
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                    {{ $pageTitle ?? 'Knowledge Items' }}
+                </h2>
+
+                @if($selectedCategory)
+                    <p class="mt-1 text-sm text-gray-500">
+                        Domain: {{ $selectedCategory->domain?->domainname ?? '—' }}
+                    </p>
+
+                    <p class="mt-1 text-sm text-gray-500">
+                        Parent Category: {{ $selectedCategory->parentCategory?->categoryname ?? 'Root' }} ·
+                        Knowledge Category: {{ $selectedCategory->categoryname }}
+                    </p>
+                @elseif(!empty($filters['domainid']) && isset($domains))
+                    <p class="mt-1 text-sm text-gray-500">
+                        Domain:
+                        {{ optional($domains->firstWhere('id', $filters['domainid']))->domainname ?? '—' }}
+                    </p>
+                @endif
+            </div>
+
+            <div class="flex items-center gap-3">
+                @if($filters['categoryid'] ?? null)
+                    <a href="{{ route('knowledge-categories.index', [
+                            'domainid' => $filters['domainid'] ?? null,
+                            'categoryid' => $filters['categoryid'] ?? null,
+                        ]) }}"
+                       class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
+                        Back to Category
+                    </a>
+                @endif
+            </div>
         </div>
     </x-slot>
 
@@ -12,23 +42,6 @@
 
             @include('partials.admin.flash-messages')
             @include('partials.admin.validation-summary')
-            <div class="p-6 border-b border-gray-200 flex items-center justify-between gap-3">
-                <div class="text-sm text-gray-500">
-                    Quick update key fields here, then open full edit for richer notes, relationships, and review content.
-                </div>
-
-                <div class="flex items-center gap-2">
-                    @if($filters['categoryid'] ?? null)
-                        <a href="{{ route('knowledge-categories.index', [
-                                'domainid' => $filters['domainid'] ?? null,
-                                'categoryid' => $filters['categoryid'] ?? null,
-                            ]) }}"
-                        class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
-                            Back to Category
-                        </a>
-                    @endif
-                </div>
-            </div>
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 border-b border-gray-200">
@@ -69,20 +82,20 @@
                                    placeholder="Name, summary, notes">
                         </div>
 
-<div>
-    <label for="itemtype" class="block text-sm font-medium text-gray-700 mb-1">
-        Type
-    </label>
-    <select name="itemtype" id="itemtype" class="w-full rounded-md border-gray-300 shadow-sm">
-        <option value="">All item types</option>
-        @foreach($itemTypes as $itemType)
-            <option value="{{ $itemType->id }}"
-                @selected((string) ($filters['itemtype'] ?? '') === (string) $itemType->id)>
-                {{ $itemType->typename }}
-            </option>
-        @endforeach
-    </select>
-</div>
+                        <div>
+                            <label for="itemtype" class="block text-sm font-medium text-gray-700 mb-1">
+                                Type
+                            </label>
+                            <select name="itemtype" id="itemtype" class="w-full rounded-md border-gray-300 shadow-sm">
+                                <option value="">All item types</option>
+                                @foreach($itemTypes as $itemType)
+                                    <option value="{{ $itemType->id }}"
+                                        @selected((string) ($filters['itemtype'] ?? '') === (string) $itemType->id)>
+                                        {{ $itemType->typename }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
 
                         <div>
                             <label for="itemstatus" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -146,11 +159,6 @@
                                                    value="{{ old("existing.{$item->id}.itemname", $item->itemname) }}"
                                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm"
                                                    required>
-
-                                            <a href="{{ route('knowledge.items.edit', $item) }}"
-                                               class="inline-block mt-2 text-xs text-blue-700 hover:text-blue-900">
-                                                Open full edit
-                                            </a>
                                         </td>
 
                                         <td class="px-3 py-2 min-w-[180px]">

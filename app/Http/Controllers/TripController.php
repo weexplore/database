@@ -136,7 +136,6 @@ class TripController extends Controller
             $new = $validated['new'] ?? [];
             $newName = trim((string) ($new['tripname'] ?? ''));
             $hasNewTrip = $newName !== ''
-                || !empty($new['tripstatus'] ?? null)
                 || !empty($new['startdate'] ?? null)
                 || !empty($new['enddate'] ?? null);
 

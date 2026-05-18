@@ -84,10 +84,11 @@
                         Note Content
                     </label>
                     <textarea name="notecontent"
-                              id="note_notecontent"
-                              rows="4"
-                              class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                              required>{{ old('notecontent') }}</textarea>
+                            id="note_notecontent"
+                            rows="4"
+                            class="js-auto-resize-textarea w-full rounded-md border-gray-300 shadow-sm text-sm"
+                            data-min-rows="4"
+                            required>{{ old('notecontent') }}</textarea>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -241,9 +242,10 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Note Content</label>
                                 <textarea name="notecontent"
-                                          rows="4"
-                                          class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                          required>{{ old('notecontent', $note->notecontent) }}</textarea>
+                                        rows="4"
+                                        class="js-auto-resize-textarea w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                        data-min-rows="4"
+                                        required>{{ old('notecontent', $note->notecontent) }}</textarea>
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -311,7 +313,7 @@
                             </div>
                         </form>
                         <form method="POST"
-                            action="{{ route('knowledge.items.notes.destroy', [$knowledgeItem, $knowledgeNote]) }}"
+                            action="{{ route('knowledge.items.notes.destroy', [$knowledgeItem, $note]) }}"
                             class="inline">
                             @csrf
                             @method('DELETE')
@@ -332,3 +334,45 @@
         @endforelse
     </div>
 </div>
+@if(($activeTab ?? null) === 'notes')
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const textareas = Array.from(document.querySelectorAll('.js-auto-resize-textarea'));
+
+        function getMinHeight(textarea) {
+            const computed = window.getComputedStyle(textarea);
+            const lineHeight = parseFloat(computed.lineHeight) || 20;
+            const paddingTop = parseFloat(computed.paddingTop) || 0;
+            const paddingBottom = parseFloat(computed.paddingBottom) || 0;
+            const borderTop = parseFloat(computed.borderTopWidth) || 0;
+            const borderBottom = parseFloat(computed.borderBottomWidth) || 0;
+            const minRows = parseInt(textarea.dataset.minRows || textarea.getAttribute('rows') || 4, 10);
+
+            return (lineHeight * minRows) + paddingTop + paddingBottom + borderTop + borderBottom;
+        }
+
+        function autoResize(textarea) {
+            const minHeight = getMinHeight(textarea);
+
+            textarea.style.overflowY = 'hidden';
+            textarea.style.resize = 'vertical';
+            textarea.style.height = 'auto';
+
+            const nextHeight = Math.max(textarea.scrollHeight, minHeight);
+            textarea.style.height = nextHeight + 'px';
+        }
+
+        textareas.forEach((textarea) => {
+            autoResize(textarea);
+
+            textarea.addEventListener('input', function () {
+                autoResize(textarea);
+            });
+        });
+
+        window.addEventListener('resize', function () {
+            textareas.forEach(autoResize);
+        });
+    });
+    </script>
+@endif

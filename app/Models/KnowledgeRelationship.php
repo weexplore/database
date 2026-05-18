@@ -17,6 +17,7 @@ class KnowledgeRelationship extends Model
         'fromitemid',
         'toitemid',
         'relationshiptype',
+        'effective_date',
         'notes',
         'sortorder',
     ];
@@ -24,6 +25,7 @@ class KnowledgeRelationship extends Model
     protected $casts = [
         'fromitemid' => 'integer',
         'toitemid' => 'integer',
+        'effective_date' => 'date',
         'sortorder' => 'integer',
     ];
 
@@ -37,6 +39,7 @@ class KnowledgeRelationship extends Model
         'depends-on' => 'Depends On',
         'parent-of' => 'Parent Of',
         'child-of' => 'Child Of',
+        'married' => 'Married',
     ];
 
     public static function typeOptions(): array

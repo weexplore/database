@@ -362,6 +362,34 @@ document.addEventListener('DOMContentLoaded', function () {
     let routeLayer = null;
     let refreshRequestId = 0;
 
+    let refreshTimer = null;
+
+    function scheduleRefreshMap(delay = 150) {
+        window.clearTimeout(refreshTimer);
+        refreshTimer = window.setTimeout(() => {
+            refreshMap();
+        }, delay);
+    }
+
+    function syncDistanceKm(distanceKm) {
+        if (!distanceKmInput) {
+            return;
+        }
+
+        const nextValue = Number(distanceKm);
+        const currentValue = Number(distanceKmInput.value);
+
+        if (!Number.isFinite(nextValue)) {
+            return;
+        }
+
+        if (!Number.isFinite(currentValue) || Math.abs(currentValue - nextValue) > 0.05) {
+            distanceKmInput.value = nextValue.toFixed(1);
+            distanceKmInput.dispatchEvent(new Event('input', { bubbles: true }));
+            distanceKmInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+
     function clearRoute() {
         routeMarkers.forEach(marker => map.removeLayer(marker));
         routeMarkers = [];
@@ -379,27 +407,23 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function refreshMap() {
-        const requestId = ++refreshRequestId;
+    const requestId = ++refreshRequestId;
 
-        const from = getCurrentFromPoint();
-        const to = getCurrentToPoint();
-        const legPoints = getLegPointCoords();
+    const from = getCurrentFromPoint();
+    const to = getCurrentToPoint();
+    const legPoints = getLegPointCoords();
 
-        clearRoute();
-        updateGoogleMapsLink(from, to, legPoints);
+    clearRoute();
+    updateGoogleMapsLink(from, to, legPoints);
 
-        const routePoints = [
-            ...(from ? [{ ...from, role: 'from' }] : []),
-            ...legPoints.map(point => ({ ...point, role: 'via' })),
-            ...(to ? [{ ...to, role: 'to' }] : []),
-        ];
+    const routePoints = [
+        ...(from ? [{ ...from, role: 'from' }] : []),
+        ...legPoints.map(point => ({ ...point, role: 'via' })),
+        ...(to ? [{ ...to, role: 'to' }] : []),
+    ];
 
-        if (routePoints.length === 0) {
-            setSummaryHtml('Select a start point and an end point with coordinates to display the route preview.');
-            return;
-        }
-
-        routePoints.forEach((point, index) => {
+    function addMarkers(points) {
+        points.forEach((point, index) => {
             let label = 'Point';
 
             if (point.role === 'from') {
@@ -416,131 +440,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
             routeMarkers.push(marker);
         });
+    }
 
-        if (routePoints.length === 1) {
-            map.setView([routePoints[0].lat, routePoints[0].lng], 10);
-            setSummaryHtml('Only one point has coordinates available. Add at least a start and end point to preview the route.');
-            return;
+    function fitToPoints(points) {
+        const latLngs = points.map(p => [p.lat, p.lng]);
+        if (!latLngs.length) return;
+
+        if (latLngs.length === 1) {
+            map.setView(latLngs[0], 10);
+        } else {
+            map.fitBounds(latLngs, { padding: [30, 30] });
         }
+    }
 
-        setSummaryHtml('Loading routed road preview...');
+    function renderStraightLine(points, messageHtml) {
+        clearRoute();
+        addMarkers(points);
 
-        const coordString = routePoints
-            .map(point => `${point.lng},${point.lat}`)
-            .join(';');
+        const latLngs = points.map(p => [p.lat, p.lng]);
 
-        const osrmUrl =
-            `https://router.project-osrm.org/route/v1/driving/${coordString}` +
-            `?overview=full&geometries=geojson&steps=false`;
-
-        try {
-            const response = await fetch(osrmUrl, {
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
-
-            if (requestId !== refreshRequestId) {
-                return;
-            }
-
-            if (!response.ok) {
-                throw new Error(`Routing request failed with status ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            if (requestId !== refreshRequestId) {
-                return;
-            }
-
-            if (!data.routes || !data.routes.length || !data.routes[0].geometry) {
-                throw new Error('No route returned');
-            }
-
-            clearRoute();
-
-            routePoints.forEach((point, index) => {
-                let label = 'Point';
-
-                if (point.role === 'from') {
-                    label = 'From';
-                } else if (point.role === 'to') {
-                    label = 'To';
-                } else {
-                    label = `Via ${index}`;
-                }
-
-                const marker = L.marker([point.lat, point.lng])
-                    .addTo(map)
-                    .bindPopup(`<strong>${label}</strong><br>${point.name}`);
-
-                routeMarkers.push(marker);
-            });
-
-            const route = data.routes[0];
-
-            routeLayer = L.geoJSON(route.geometry, {
-                style: {
-                    color: '#2563eb',
-                    weight: 5,
-                    opacity: 0.9
-                }
-            }).addTo(map);
-
-            map.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
-
-            const distanceKm = (route.distance / 1000).toFixed(1);
-            const durationMinutes = Math.round(route.duration / 60);
-
-            if (
-                distanceKmInput &&
-                (
-                    distanceKmInput.value === '' ||
-                    distanceKmInput.value === null ||
-                    Number(distanceKmInput.value) === 0
-                )
-            ) {
-                distanceKmInput.value = distanceKm;
-            }
-
-            const viaLabel = legPoints.length
-                ? ` via ${legPoints.map(point => point.name).join(', ')}`
-                : '';
-
-            setSummaryHtml(`
-                <span class="font-medium text-gray-900">${from ? from.name : 'Start'}</span>
-                <span class="text-gray-400"> to </span>
-                <span class="font-medium text-gray-900">${to ? to.name : 'End'}</span>
-                <span class="text-gray-500">${viaLabel} — routed via roads, ${distanceKm} km, about ${durationMinutes} min</span>
-            `);
-        } catch (error) {
-            if (requestId !== refreshRequestId) {
-                return;
-            }
-
-            clearRoute();
-
-            routePoints.forEach((point, index) => {
-                let label = 'Point';
-
-                if (point.role === 'from') {
-                    label = 'From';
-                } else if (point.role === 'to') {
-                    label = 'To';
-                } else {
-                    label = `Via ${index}`;
-                }
-
-                const marker = L.marker([point.lat, point.lng])
-                    .addTo(map)
-                    .bindPopup(`<strong>${label}</strong><br>${point.name}`);
-
-                routeMarkers.push(marker);
-            });
-
-            const latLngs = routePoints.map(point => [point.lat, point.lng]);
-
+        if (latLngs.length >= 2) {
             routeLayer = L.polyline(latLngs, {
                 color: '#2563eb',
                 weight: 4,
@@ -549,30 +468,153 @@ document.addEventListener('DOMContentLoaded', function () {
             }).addTo(map);
 
             map.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
-
-            const viaLabel = legPoints.length
-                ? ` via ${legPoints.map(point => point.name).join(', ')}`
-                : '';
-
-            setSummaryHtml(`
-                <span class="font-medium text-gray-900">${from ? from.name : 'Start'}</span>
-                <span class="text-gray-400"> to </span>
-                <span class="font-medium text-gray-900">${to ? to.name : 'End'}</span>
-                <span class="text-gray-500">${viaLabel}</span>
-                <span class="text-amber-600"> — routing unavailable, showing straight-line fallback</span>
-            `);
+        } else {
+            fitToPoints(points);
         }
+
+        setSummaryHtml(messageHtml);
     }
+
+    function totalStraightLineDistanceKm(points) {
+        if (!points.length) return 0;
+
+        let totalMeters = 0;
+        for (let i = 1; i < points.length; i++) {
+            totalMeters += map.distance(
+                [points[i - 1].lat, points[i - 1].lng],
+                [points[i].lat, points[i].lng]
+            );
+        }
+        return totalMeters / 1000;
+    }
+
+    if (!from || !to) {
+        if (!routePoints.length) {
+            setSummaryHtml('Select a start point and an end point with coordinates to display the route preview.');
+        } else {
+            addMarkers(routePoints);
+            fitToPoints(routePoints);
+            setSummaryHtml('Select both a start point and an end point with coordinates to preview the routed road path.');
+        }
+        return;
+    }
+
+    if (routePoints.length < 2) {
+        addMarkers(routePoints);
+        fitToPoints(routePoints);
+        setSummaryHtml('Only one point has coordinates available. Add at least a start and end point to preview the route.');
+        return;
+    }
+
+    // Baseline: always show straight-line “sensible” path; OSRM is an enhancement.
+    const viaLabelBase = legPoints.length
+        ? ` via ${legPoints.map(p => p.name).join(', ')}`
+        : '';
+
+    const straightDistanceKm = totalStraightLineDistanceKm(routePoints);
+    renderStraightLine(
+        routePoints,
+        `
+            <span class="font-medium text-gray-900">${from.name}</span>
+            <span class="text-gray-400"> to </span>
+            <span class="font-medium text-gray-900">${to.name}</span>
+            <span class="text-gray-500">${viaLabelBase} — straight-line preview</span>
+        `
+    );
+
+    setSummaryHtml('Loading routed road preview...');
+
+    const coordString = routePoints
+        .map(point => `${point.lng},${point.lat}`)
+        .join(';');
+
+    const osrmUrl =
+        `https://router.project-osrm.org/route/v1/driving/${coordString}` +
+        `?overview=full&geometries=geojson&steps=false`;
+
+    try {
+        const response = await fetch(osrmUrl, { headers: { 'Accept': 'application/json' } });
+
+        if (requestId !== refreshRequestId) return;
+        if (!response.ok) throw new Error(`Routing request failed with status ${response.status}`);
+
+        const data = await response.json();
+        if (requestId !== refreshRequestId) return;
+
+        if (!data.routes || !data.routes.length || !data.routes[0].geometry) {
+            throw new Error('No route returned');
+        }
+
+        const route = data.routes[0];
+        const roadDistanceKm = route.distance / 1000;
+
+        const clearlyBad =
+            straightDistanceKm > 0 &&
+            (
+                roadDistanceKm > straightDistanceKm * 2.2 ||    // more than ~2.2x straight line
+                (roadDistanceKm - straightDistanceKm) > 80      // or >80 km extra
+            );
+
+        if (clearlyBad) {
+            // Leave the straight-line polyline in place and just update the message.
+            setSummaryHtml(`
+                <span class="font-medium text-gray-900">${from.name}</span>
+                <span class="text-gray-400"> to </span>
+                <span class="font-medium text-gray-900">${to.name}</span>
+                <span class="text-gray-500">${viaLabelBase}</span>
+                <span class="text-amber-600"> — road route looked unreasonable, keeping direct preview</span>
+            `);
+            return;
+        }
+
+        // Road route looks reasonable: replace the straight-line polyline with OSRM geometry.
+        clearRoute();
+        addMarkers(routePoints);
+
+        routeLayer = L.geoJSON(route.geometry, {
+            style: { color: '#2563eb', weight: 5, opacity: 0.9 }
+        }).addTo(map);
+
+        map.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
+
+        const formattedDistanceKm = roadDistanceKm.toFixed(1);
+        const durationMinutes = Math.round(route.duration / 60);
+
+        syncDistanceKm(roadDistanceKm);
+
+        const viaLabel = legPoints.length
+            ? ` via ${legPoints.map(point => point.name).join(', ')}`
+            : '';
+
+        setSummaryHtml(`
+            <span class="font-medium text-gray-900">${from.name}</span>
+            <span class="text-gray-400"> to </span>
+            <span class="font-medium text-gray-900">${to.name}</span>
+            <span class="text-gray-500">${viaLabel} — routed via roads, ${formattedDistanceKm} km, about ${durationMinutes} min</span>
+        `);
+    } catch (error) {
+        if (requestId !== refreshRequestId) return;
+
+        // On failure, we already have the straight-line preview visible; just explain why.
+        setSummaryHtml(`
+            <span class="font-medium text-gray-900">${from.name}</span>
+            <span class="text-gray-400"> to </span>
+            <span class="font-medium text-gray-900">${to.name}</span>
+            <span class="text-gray-500">${viaLabelBase}</span>
+            <span class="text-amber-600"> — routing unavailable, showing direct preview</span>
+        `);
+    }
+}
 
     [fromPlaceSelect, toPlaceSelect, fromDestinationItemSelect, destinationItemSelect].forEach((select) => {
         if (select) {
-            select.addEventListener('change', refreshMap);
+            select.addEventListener('change', () => scheduleRefreshMap(120));
         }
     });
 
-    document.addEventListener('trip-leg:selection-updated', refreshMap);
+    document.addEventListener('trip-leg:selection-updated', () => scheduleRefreshMap(180));
 
-    refreshMap();
+    scheduleRefreshMap(50);
 
     setTimeout(function () {
         map.invalidateSize();

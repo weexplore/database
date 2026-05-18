@@ -352,7 +352,7 @@
                                     No destination items are currently linked to this destination.
                                 </p>
                             @endif
-                            <a href="{{ route('destination-items.create-from-destination', [
+                            <a href="{{ route('destinations.destination-items.create-from-destination', [
                                     'destination' => $destination,
                                     'return_to' => url()->full(),
                                 ]) }}"

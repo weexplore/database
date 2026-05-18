@@ -8,18 +8,24 @@
                 <p class="mt-1 text-sm text-gray-500">
                     {{ $trip->tripname }}
                 </p>
+                <p class="mt-1 text-sm text-gray-500">
+                    Status: {{ ucfirst($trip->tripstatus) }} ·
+                    Start: {{ optional($trip->startdate)->format('d M Y') ?? '—' }} ·
+                    End: {{ optional($trip->enddate)->format('d M Y') ?? '—' }}
+                </p>
             </div>
 
             <div class="flex items-center gap-2">
-                <a href="{{ route('trips.edit', $trip) }}"
-                   class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
-                    Back to Trip
-                </a>
 
                 <a href="{{ route('trips.stays.index', array_merge(['trip' => $trip->id], request()->query(), ['show_create' => 1])) }}"
                    class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
                     Add Trip Stay
                 </a>
+                <a href="{{ route('trips.edit', ['trip' => $trip, 'tab' => 'workflow']) }}"
+                class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
+                    Back to Trip
+                </a>
+
             </div>
         </div>
     </x-slot>

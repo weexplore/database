@@ -2,17 +2,36 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between gap-4">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ $pageTitle ?? 'Edit Knowledge Item' }}
-            </h2>
+            <div>
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                    {{ $pageTitle ?? 'Edit Knowledge Item' }}
+                </h2>
 
-            <a href="{{ route('knowledge.items.index', [
-                    'domainid' => $domainId,
-                    'categoryid' => $knowledgeItem->primarycategoryid,
-                ]) }}"
-               class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
-                Back to Knowledge Items
-            </a>
+                @if($knowledgeItem->primaryCategory)
+                    <p class="mt-1 text-sm text-gray-500">
+                        Domain: {{ $knowledgeItem->primaryCategory->domain?->domainname ?? '—' }}
+                    </p>
+
+                    <p class="mt-1 text-sm text-gray-500">
+                        Parent Category: {{ $knowledgeItem->primaryCategory->parentCategory?->categoryname ?? 'Root' }} ·
+                        Knowledge Category: {{ $knowledgeItem->primaryCategory->categoryname }}
+                    </p>
+                @elseif(!empty($domainId) && isset($domains))
+                    <p class="mt-1 text-sm text-gray-500">
+                        Domain: {{ optional($domains->firstWhere('id', $domainId))->domainname ?? '—' }}
+                    </p>
+                @endif
+            </div>
+
+            <div class="flex items-center gap-3">
+                <a href="{{ route('knowledge.items.index', [
+                        'domainid' => $domainId,
+                        'categoryid' => $knowledgeItem->primarycategoryid,
+                    ]) }}"
+                class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
+                    Back to Knowledge Items
+                </a>
+            </div>
         </div>
     </x-slot>
 
@@ -196,14 +215,84 @@
                 @include('knowledge.items.partials.investments-panel', [
                     'knowledgeItem' => $knowledgeItem,
                 ])
+                @include('partials.admin.dirty-multi-form-script', [
+                    'formSelector' => '[data-investments-panel] form',
+                    'tabLinkSelector' => '[data-knowledge-tab-link]',
+                    'message' => 'You have unsaved changes in Investments. Leave without saving?',
+                ])
             @endif
         </div>
     </div>
 
-    @if(($activeTab ?? 'details') === 'details')
-        @include('partials.admin.dirty-form-script', [
-            'formId' => 'knowledge-item-form',
-            'dirtyMessage' => 'You have unsaved changes on this Knowledge Item. Continue and lose those changes?',
-        ])
-    @endif
+@if(($activeTab ?? 'details') === 'details')
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const toggleButton = document.getElementById('toggle-knowledge-tags-panel');
+        const panel = document.getElementById('knowledge-tags-panel');
+        const summary = document.getElementById('selected-knowledge-tags-summary');
+
+        if (!toggleButton || !panel || !summary) {
+            return;
+        }
+
+        const checkboxes = Array.from(
+            document.querySelectorAll('.knowledge-tag-checkbox')
+        );
+
+        function getTagLabel(checkbox) {
+            return checkbox
+                .closest('label')
+                ?.querySelector('.text-sm.font-medium.text-gray-900')
+                ?.textContent
+                ?.trim() || '';
+        }
+
+        function updateSummary() {
+            const selectedLabels = checkboxes
+                .filter(checkbox => checkbox.checked)
+                .map(getTagLabel)
+                .filter(Boolean);
+
+            summary.innerHTML = '';
+
+            if (selectedLabels.length === 0) {
+                summary.classList.add('hidden');
+                return;
+            }
+
+            summary.classList.remove('hidden');
+
+            selectedLabels.forEach(label => {
+                const chip = document.createElement('span');
+                chip.className = 'inline-flex items-center px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium border border-blue-200';
+                chip.textContent = label;
+                summary.appendChild(chip);
+            });
+        }
+
+        function updateToggleLabel() {
+            toggleButton.textContent = panel.classList.contains('hidden')
+                ? 'Add or change tags'
+                : 'Hide tags';
+        }
+
+        toggleButton.addEventListener('click', function () {
+            panel.classList.toggle('hidden');
+            updateToggleLabel();
+        });
+
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateSummary);
+        });
+
+        updateSummary();
+        updateToggleLabel();
+    });
+    </script>
+
+    @include('partials.admin.dirty-form-script', [
+        'formId' => 'knowledge-item-form',
+        'dirtyMessage' => 'You have unsaved changes on this Knowledge Item. Continue and lose those changes?',
+    ])
+@endif
 </x-app-layout>

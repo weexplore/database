@@ -13,6 +13,7 @@
         @method('PUT')
     @endif
 
+<div data-investments-panel class="space-y-6">
     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
         <div class="px-6 py-4 border-b border-gray-200">
             <div class="flex items-start justify-between gap-4">
@@ -997,3 +998,4 @@
         </div>
     </div>
 @endif
+</div>

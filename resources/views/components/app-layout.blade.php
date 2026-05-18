@@ -39,6 +39,11 @@
                               {{ request()->is('places*') ? 'border-b-2 border-white text-white' : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
                         Places
                     </a>
+                    <a href="{{ route('knowledge-categories.index', ['domainid' => 0, 'categoryid' => 0]) }}" 
+                       class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
+                              {{ request()->is('Knowledge*') ? 'border-b-2 border-white text-white' : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
+                        Knowledge
+                    </a>
 
                     <a href="{{ route('research.index') }}"
                     class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium

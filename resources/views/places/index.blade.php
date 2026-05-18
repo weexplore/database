@@ -324,17 +324,24 @@
                                                 </span>
                                             @endif
                                         </td>
-                                        <td class="px-4 py-3">
-                                            @if(($place->destinations_count ?? 0) > 0)
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
-                                                    Yes
-                                                </span>
-                                            @else
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-medium">
-                                                    Missing
-                                                </span>
-                                            @endif
-                                        </td>
+<td class="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+    <div class="flex items-center gap-2">
+        @if(($place->destinations_count ?? 0) > 0)
+            <span class="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
+                Yes
+            </span>
+        @else
+            <span class="inline-flex items-center px-2 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-medium">
+                Missing
+            </span>
+        @endif
+
+        <span class="text-xs text-gray-500">
+            Destinations: {{ $place->destinations_count ?? 0 }},
+            Items: {{ $place->destination_items_count ?? 0 }}
+        </span>
+    </div>
+</td>
 
                                         <td class="px-4 py-3 text-center whitespace-nowrap">
                                             <a

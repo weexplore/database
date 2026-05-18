@@ -50,426 +50,416 @@ use App\Http\Controllers\InstrumentAliasController;
 use App\Http\Controllers\InstrumentPriceObservationController;
 use App\Http\Controllers\InstrumentCorporateActionController;
 use App\Http\Controllers\InstrumentTransactionController;
+use App\Http\Controllers\KnowledgeReportController;
 
-
+/*
+|--------------------------------------------------------------------------
+| Dashboard
+|--------------------------------------------------------------------------
+| Main application landing page.
+*/
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-Route::prefix('places')->name('places.')->group(function () {
-    Route::get('states-for-country', [PlaceController::class, 'statesForCountry'])->name('states-for-country');
-    Route::get('regions-for-country-state', [PlaceController::class, 'regionsForCountryState'])->name('regions-for-country-state');
-    Route::post('bulk-save', [PlaceController::class, 'bulkSave'])->name('bulk-save');
-});
-
-    Route::resource('attachments', AttachmentController::class)
-        ->except(['show', 'create'])
-        ->names('attachments')
-        ->parameters([
-            'attachments' => 'attachment',
-        ]);
-
-    Route::get('/attachments/{attachment}/download', [AttachmentController::class, 'download'])
-        ->name('attachments.download');
-
-    Route::get('/attachments/{attachment}/view', [AttachmentController::class, 'view'])
-        ->name('attachments.view');
-
-Route::prefix('trips/{trip}')->group(function () {
-    Route::get('/edit', [TripController::class, 'edit'])->name('trips.edit');
-    Route::put('/', [TripController::class, 'update'])->name('trips.update');
-
-    Route::prefix('planner')->name('trips.planner.')->group(function () {
-        Route::get('/', [TripPlanItemController::class, 'index'])->name('index');
-        Route::get('/create', [TripPlanItemController::class, 'create'])->name('create');
-        Route::post('/', [TripPlanItemController::class, 'store'])->name('store');
-
-        Route::get('/generate', [TripPlanItemController::class, 'generatePreview'])->name('generate');
-        Route::post('/generate', [TripPlanItemController::class, 'generateApply'])->name('generate.apply');
-        Route::post('/generated/rollback', [TripPlanItemController::class, 'rollbackGenerated'])->name('generated.rollback');
-
-        Route::post('/resequence', [TripPlanItemController::class, 'resequence'])->name('resequence');
-        Route::post('/bulk-update', [TripPlanItemController::class, 'bulkUpdate'])->name('bulk-update');
-        Route::post('/renumber', [TripPlanItemController::class, 'renumber'])->name('renumber');
-        Route::post('/bulk-add-destination-items', [TripPlanItemController::class, 'bulkAddDestinationItems'])
-            ->name('bulk-add-destination-items');
-
-        Route::get('/{tripPlanItem}/edit', [TripPlanItemController::class, 'edit'])->name('edit');
-        Route::put('/{tripPlanItem}', [TripPlanItemController::class, 'update'])->name('update');
-        Route::delete('/{tripPlanItem}', [TripPlanItemController::class, 'destroy'])->name('destroy');
-    });
-
-    // your existing legs/stays/items/bookings/etc here...
-});
-
+/*
+|--------------------------------------------------------------------------
+| Dashboards
+|--------------------------------------------------------------------------
+| Secondary top-level dashboard areas.
+*/
 Route::get('/research', [ResearchDashboardController::class, 'index'])->name('research.index');
 Route::get('/investments', [InvestmentDashboardController::class, 'index'])->name('investments.index');
 
-Route::resource('knowledge-domains', KnowledgeDomainController::class)
-    ->only(['index', 'destroy']);
-Route::post('/knowledge-domains/bulk-save', [KnowledgeDomainController::class, 'bulkSave'])
-    ->name('knowledge-domains.bulk-save');
+/*
+|--------------------------------------------------------------------------
+| Attachments
+|--------------------------------------------------------------------------
+| Shared attachment CRUD plus download/view helpers.
+*/
+Route::prefix('attachments')->name('attachments.')->group(function () {
+    Route::get('{attachment}/download', [AttachmentController::class, 'download'])->name('download');
+    Route::get('{attachment}/view', [AttachmentController::class, 'view'])->name('view');
+});
 
-Route::get('/knowledge-tags', [KnowledgeTagController::class, 'index'])->name('knowledge-tags.index');
-Route::post('/knowledge-tags/bulk-save', [KnowledgeTagController::class, 'bulkSave'])->name('knowledge-tags.bulk-save');
-Route::delete('/knowledge-tags/{knowledgeTag}', [KnowledgeTagController::class, 'destroy'])->name('knowledge-tags.destroy');
+Route::resource('attachments', AttachmentController::class)
+    ->except(['show', 'create'])
+    ->names('attachments')
+    ->parameters([
+        'attachments' => 'attachment',
+    ]);
 
-Route::get('/bible-versions', [BibleVersionController::class, 'index'])->name('bible-versions.index');
-Route::post('/bible-versions/bulk-save', [BibleVersionController::class, 'bulkSave'])->name('bible-versions.bulk-save');
-Route::delete('/bible-versions/{bibleVersion}', [BibleVersionController::class, 'destroy'])->name('bible-versions.destroy');
+/*
+|--------------------------------------------------------------------------
+| Geography and master registers
+|--------------------------------------------------------------------------
+| Country, state, region, place, traveller, vehicle and related registers.
+| These are structured as compact master-list style modules.
+*/
+Route::prefix('countries')->name('countries.')->group(function () {
+    Route::get('/', [CountryController::class, 'index'])->name('index');
+    Route::post('bulk-save', [CountryController::class, 'bulkSave'])->name('bulk-save');
+    Route::delete('{country}', [CountryController::class, 'destroy'])->name('destroy');
+});
 
-Route::get('/bible-books', [BibleBookController::class, 'index'])->name('bible-books.index');
-Route::post('/bible-books/bulk-save', [BibleBookController::class, 'bulkSave'])->name('bible-books.bulk-save');
-Route::delete('/bible-books/{bibleBook}', [BibleBookController::class, 'destroy'])->name('bible-books.destroy');
+Route::prefix('states')->name('states.')->group(function () {
+    Route::get('/', [StateController::class, 'index'])->name('index');
+    Route::post('bulk-save', [StateController::class, 'bulkSave'])->name('bulk-save');
+    Route::delete('{state}', [StateController::class, 'destroy'])->name('destroy');
+});
 
-Route::get('/exchanges', [ExchangeController::class, 'index'])->name('exchanges.index');
-Route::post('/exchanges/bulk-save', [ExchangeController::class, 'bulkSave'])->name('exchanges.bulk-save');
-Route::delete('/exchanges/{exchange}', [ExchangeController::class, 'destroy'])->name('exchanges.destroy');
+Route::prefix('regions')->name('regions.')->group(function () {
+    Route::get('/', [RegionController::class, 'index'])->name('index');
+    Route::post('bulk-save', [RegionController::class, 'bulkSave'])->name('bulk-save');
+    Route::delete('{region}', [RegionController::class, 'destroy'])->name('destroy');
+});
 
-Route::get('/instrument-types', [InstrumentTypeController::class, 'index'])->name('instrument-types.index');
-Route::post('/instrument-types/bulk-save', [InstrumentTypeController::class, 'bulkSave'])->name('instrument-types.bulk-save');
-Route::delete('/instrument-types/{instrumentType}', [InstrumentTypeController::class, 'destroy'])->name('instrument-types.destroy');
+Route::prefix('places')->name('places.')->group(function () {
+    Route::get('/', [PlaceController::class, 'index'])->name('index');
+    Route::post('bulk-save', [PlaceController::class, 'bulkSave'])->name('bulk-save');
+    Route::get('states-for-country', [PlaceController::class, 'statesForCountry'])->name('states-for-country');
+    Route::get('regions-for-country-state', [PlaceController::class, 'regionsForCountryState'])->name('regions-for-country-state');
+    Route::get('create', [PlaceController::class, 'create'])->name('create');
+    Route::post('/', [PlaceController::class, 'store'])->name('store');
+    Route::get('{place}/edit', [PlaceController::class, 'edit'])->name('edit');
+    Route::put('{place}', [PlaceController::class, 'update'])->name('update');
+    Route::delete('{place}', [PlaceController::class, 'destroy'])->name('destroy');
+    Route::get('{place}/destinations/create-from-place', [DestinationController::class, 'createFromPlace'])
+        ->name('destinations.create-from-place');
+});
 
-Route::get('/portfolios', [PortfolioController::class, 'index'])->name('portfolios.index');
-Route::post('/portfolios/bulk-save', [PortfolioController::class, 'bulkSave'])->name('portfolios.bulk-save');
-Route::delete('/portfolios/{portfolio}', [PortfolioController::class, 'destroy'])->name('portfolios.destroy');
+Route::resource('place-aliases', PlaceAliasController::class);
 
-Route::get('/knowledge-categories', [KnowledgeCategoryController::class, 'index'])
-    ->name('knowledge-categories.index');
+Route::prefix('travellers')->name('travellers.')->group(function () {
+    Route::get('/', [TravellerController::class, 'index'])->name('index');
+    Route::post('bulk-save', [TravellerController::class, 'bulkSave'])->name('bulk-save');
+    Route::get('create', [TravellerController::class, 'create'])->name('create');
+    Route::post('/', [TravellerController::class, 'store'])->name('store');
+    Route::get('{traveller}/edit', [TravellerController::class, 'edit'])->name('edit');
+    Route::put('{traveller}', [TravellerController::class, 'update'])->name('update');
+    Route::delete('{traveller}', [TravellerController::class, 'destroy'])->name('destroy');
+});
 
-Route::get('/knowledge-categories/create', [KnowledgeCategoryController::class, 'create'])
-    ->name('knowledge-categories.create');
+Route::prefix('vehicles')->name('vehicles.')->group(function () {
+    Route::get('/', [VehicleController::class, 'index'])->name('index');
+    Route::post('bulk-save', [VehicleController::class, 'bulkSave'])->name('bulk-save');
+    Route::get('create', [VehicleController::class, 'create'])->name('create');
+    Route::post('/', [VehicleController::class, 'store'])->name('store');
+    Route::get('{vehicle}/edit', [VehicleController::class, 'edit'])->name('edit');
+    Route::put('{vehicle}', [VehicleController::class, 'update'])->name('update');
+    Route::delete('{vehicle}', [VehicleController::class, 'destroy'])->name('destroy');
+});
 
-Route::post('/knowledge-categories', [KnowledgeCategoryController::class, 'store'])
-    ->name('knowledge-categories.store');
+Route::resource('fuel-stops', FuelStopController::class)->except(['show']);
+Route::resource('fuel-price-observations', FuelPriceObservationController::class)->except(['show']);
 
-Route::put('/knowledge-categories/{knowledgeCategory}', [KnowledgeCategoryController::class, 'update'])
-    ->name('knowledge-categories.update');
-Route::delete('/knowledge-categories/{knowledgeCategory}', [KnowledgeCategoryController::class, 'destroy'])
-    ->name('knowledge-categories.destroy');
+/*
+|--------------------------------------------------------------------------
+| Destinations
+|--------------------------------------------------------------------------
+| Curated destination content, sources, and destination items.
+*/
+Route::prefix('destinations')->name('destinations.')->group(function () {
+    Route::get('/', [DestinationController::class, 'index'])->name('index');
+    Route::post('bulk-save', [DestinationController::class, 'bulkSave'])->name('bulk-save');
+    Route::get('{destination}/edit', [DestinationController::class, 'edit'])->name('edit');
+    Route::put('{destination}', [DestinationController::class, 'update'])->name('update');
+    Route::delete('{destination}', [DestinationController::class, 'destroy'])->name('destroy');
+    Route::post('{destination}/suggest-from-web', [DestinationController::class, 'suggestFromWeb'])->name('suggest-from-web');
+    Route::get('{destination}/destination-items/create-from-destination', [DestinationItemController::class, 'createFromDestination'])
+        ->name('destination-items.create-from-destination');
+});
 
-Route::prefix('knowledge-item-types')
-    ->name('knowledge.item-types.')
-    ->group(function () {
-        Route::get('/', [KnowledgeItemTypeController::class, 'index'])->name('index');
-        Route::post('/bulk-save', [KnowledgeItemTypeController::class, 'bulkSave'])->name('bulk-save');
-        Route::delete('/{knowledgeItemType}', [KnowledgeItemTypeController::class, 'destroy'])->name('destroy');
+Route::prefix('destination-sources')->name('destination-sources.')->group(function () {
+    Route::post('/', [DestinationSourceController::class, 'store'])->name('store');
+    Route::put('{destinationsource}', [DestinationSourceController::class, 'update'])->name('update');
+    Route::delete('{destinationsource}', [DestinationSourceController::class, 'destroy'])->name('destroy');
+});
+
+Route::prefix('destination-items')->name('destination-items.')->group(function () {
+    Route::get('/', [DestinationItemController::class, 'index'])->name('index');
+    Route::get('create', [DestinationItemController::class, 'create'])->name('create');
+    Route::post('/', [DestinationItemController::class, 'store'])->name('store');
+    Route::get('{destinationItem}/edit', [DestinationItemController::class, 'edit'])->name('edit');
+    Route::put('{destinationItem}', [DestinationItemController::class, 'update'])->name('update');
+    Route::delete('{destinationItem}', [DestinationItemController::class, 'destroy'])->name('destroy');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Reports
+|--------------------------------------------------------------------------
+| Shared reports outside a single module workflow.
+*/
+Route::prefix('reports')->name('reports.')->group(function () {
+    Route::get('places/reference-book', [PlaceController::class, 'referenceBook'])->name('places.reference-book');
+
+    Route::get('knowledge/categories/reference-book', [KnowledgeReportController::class, 'categoryReferenceBook'])
+        ->name('knowledge.categories.reference-book');
+    Route::get('knowledge/domains/reference-book', [KnowledgeReportController::class, 'domainReferenceBook'])
+        ->name('knowledge.domains.reference-book');
+    Route::get('knowledge/categories/tree-reference-book', [KnowledgeReportController::class, 'categoryTreeReferenceBook'])
+        ->name('knowledge.categories.tree-reference-book');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Trips
+|--------------------------------------------------------------------------
+| Trip register plus full nested workflow: planner, legs, stays, items,
+| bookings, reviews, fuel estimates, fuel purchases, and trip book.
+*/
+Route::prefix('trips')->name('trips.')->group(function () {
+    Route::get('/', [TripController::class, 'index'])->name('index');
+    Route::post('bulk-save', [TripController::class, 'bulkSave'])->name('bulk-save');
+    Route::get('create', [TripController::class, 'create'])->name('create');
+    Route::post('/', [TripController::class, 'store'])->name('store');
+    Route::get('{trip}/edit', [TripController::class, 'edit'])->name('edit');
+    Route::put('{trip}', [TripController::class, 'update'])->name('update');
+    Route::delete('{trip}', [TripController::class, 'destroy'])->name('destroy');
+    Route::get('{trip}/book', [TripReportController::class, 'book'])->name('book');
+
+    Route::prefix('{trip}')->group(function () {
+        /*
+        |------------------------------------------------------------------
+        | Trip planner
+        |------------------------------------------------------------------
+        | Planning layer before operational trip records are created.
+        */
+        Route::prefix('planner')->name('planner.')->group(function () {
+            Route::get('/', [TripPlanItemController::class, 'index'])->name('index');
+            Route::get('create', [TripPlanItemController::class, 'create'])->name('create');
+            Route::post('/', [TripPlanItemController::class, 'store'])->name('store');
+            Route::get('generate', [TripPlanItemController::class, 'generatePreview'])->name('generate');
+            Route::post('generate', [TripPlanItemController::class, 'generateApply'])->name('generate.apply');
+            Route::post('generated/rollback', [TripPlanItemController::class, 'rollbackGenerated'])->name('generated.rollback');
+            Route::post('resequence', [TripPlanItemController::class, 'resequence'])->name('resequence');
+            Route::post('bulk-update', [TripPlanItemController::class, 'bulkUpdate'])->name('bulk-update');
+            Route::post('renumber', [TripPlanItemController::class, 'renumber'])->name('renumber');
+            Route::post('bulk-add-destination-items', [TripPlanItemController::class, 'bulkAddDestinationItems'])
+                ->name('bulk-add-destination-items');
+            Route::get('{tripPlanItem}/edit', [TripPlanItemController::class, 'edit'])->name('edit');
+            Route::put('{tripPlanItem}', [TripPlanItemController::class, 'update'])->name('update');
+            Route::delete('{tripPlanItem}', [TripPlanItemController::class, 'destroy'])->name('destroy');
+        });
+
+        /*
+        |------------------------------------------------------------------
+        | Trip movement and stay workflow
+        |------------------------------------------------------------------
+        */
+        Route::resource('legs', TripLegController::class)
+            ->names('legs')
+            ->parameters(['legs' => 'tripLeg']);
+
+        Route::resource('stays', TripStayController::class)
+            ->names('stays')
+            ->parameters(['stays' => 'tripStay']);
+        Route::post('stays/prefill-from-place', [TripStayController::class, 'prefillFromPlace'])
+            ->name('stays.prefill-from-place');
+        Route::post('stays/prefill-from-previous-stay', [TripStayController::class, 'prefillFromPreviousStay'])
+            ->name('stays.prefill-from-previous-stay');
+
+        /*
+        |------------------------------------------------------------------
+        | Trip content and transactions
+        |------------------------------------------------------------------
+        */
+        Route::resource('items', TripItemController::class)
+            ->names('items')
+            ->parameters(['items' => 'tripItem']);
+
+        Route::resource('bookings', TripBookingController::class)
+            ->except(['create', 'show'])
+            ->names('bookings')
+            ->parameters(['bookings' => 'booking']);
+
+        Route::resource('reviews', TripReviewController::class)
+            ->except(['show', 'create'])
+            ->names('reviews')
+            ->parameters(['reviews' => 'review']);
+
+        Route::resource('fuel-estimates', TripFuelEstimateController::class)
+            ->names('fuel-estimates')
+            ->parameters(['fuel-estimates' => 'fuelEstimate']);
+
+        Route::resource('fuel-purchases', TripFuelPurchaseController::class)
+            ->names('fuel-purchases');
     });
+});
 
-Route::get('/knowledge-item-types', [KnowledgeItemTypeController::class, 'index'])
-    ->name('knowledge.item-types.index');
+/*
+|--------------------------------------------------------------------------
+| Knowledge reference registers
+|--------------------------------------------------------------------------
+| Knowledge-side master registers and supporting lookup data.
+*/
+Route::prefix('knowledge-domains')->name('knowledge-domains.')->group(function () {
+    Route::get('/', [KnowledgeDomainController::class, 'index'])->name('index');
+    Route::post('bulk-save', [KnowledgeDomainController::class, 'bulkSave'])->name('bulk-save');
+    Route::delete('{knowledgeDomain}', [KnowledgeDomainController::class, 'destroy'])->name('destroy');
+});
 
-Route::post('/knowledge-item-types/bulk-save', [KnowledgeItemTypeController::class, 'bulkSave'])
-    ->name('knowledge.item-types.bulk-save');
+Route::prefix('knowledge-tags')->name('knowledge-tags.')->group(function () {
+    Route::get('/', [KnowledgeTagController::class, 'index'])->name('index');
+    Route::post('bulk-save', [KnowledgeTagController::class, 'bulkSave'])->name('bulk-save');
+    Route::delete('{knowledgeTag}', [KnowledgeTagController::class, 'destroy'])->name('destroy');
+});
 
-Route::delete('/knowledge-item-types/{knowledgeItemType}', [KnowledgeItemTypeController::class, 'destroy'])
-    ->name('knowledge.item-types.destroy');
+Route::prefix('knowledge-categories')->name('knowledge-categories.')->group(function () {
+    Route::get('/', [KnowledgeCategoryController::class, 'index'])->name('index');
+    Route::get('create', [KnowledgeCategoryController::class, 'create'])->name('create');
+    Route::post('/', [KnowledgeCategoryController::class, 'store'])->name('store');
+    Route::put('{knowledgeCategory}', [KnowledgeCategoryController::class, 'update'])->name('update');
+    Route::delete('{knowledgeCategory}', [KnowledgeCategoryController::class, 'destroy'])->name('destroy');
+});
 
+Route::prefix('knowledge-item-types')->name('knowledge.item-types.')->group(function () {
+    Route::get('/', [KnowledgeItemTypeController::class, 'index'])->name('index');
+    Route::post('bulk-save', [KnowledgeItemTypeController::class, 'bulkSave'])->name('bulk-save');
+    Route::delete('{knowledgeItemType}', [KnowledgeItemTypeController::class, 'destroy'])->name('destroy');
+});
 
+Route::prefix('bible-versions')->name('bible-versions.')->group(function () {
+    Route::get('/', [BibleVersionController::class, 'index'])->name('index');
+    Route::post('bulk-save', [BibleVersionController::class, 'bulkSave'])->name('bulk-save');
+    Route::delete('{bibleVersion}', [BibleVersionController::class, 'destroy'])->name('destroy');
+});
+
+Route::prefix('bible-books')->name('bible-books.')->group(function () {
+    Route::get('/', [BibleBookController::class, 'index'])->name('index');
+    Route::post('bulk-save', [BibleBookController::class, 'bulkSave'])->name('bulk-save');
+    Route::delete('{bibleBook}', [BibleBookController::class, 'destroy'])->name('destroy');
+});
+
+Route::prefix('exchanges')->name('exchanges.')->group(function () {
+    Route::get('/', [ExchangeController::class, 'index'])->name('index');
+    Route::post('bulk-save', [ExchangeController::class, 'bulkSave'])->name('bulk-save');
+    Route::delete('{exchange}', [ExchangeController::class, 'destroy'])->name('destroy');
+});
+
+Route::prefix('instrument-types')->name('instrument-types.')->group(function () {
+    Route::get('/', [InstrumentTypeController::class, 'index'])->name('index');
+    Route::post('bulk-save', [InstrumentTypeController::class, 'bulkSave'])->name('bulk-save');
+    Route::delete('{instrumentType}', [InstrumentTypeController::class, 'destroy'])->name('destroy');
+});
+
+Route::prefix('portfolios')->name('portfolios.')->group(function () {
+    Route::get('/', [PortfolioController::class, 'index'])->name('index');
+    Route::post('bulk-save', [PortfolioController::class, 'bulkSave'])->name('bulk-save');
+    Route::delete('{portfolio}', [PortfolioController::class, 'destroy'])->name('destroy');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Knowledge
+|--------------------------------------------------------------------------
+| Knowledge item workflow and nested item sub-resources.
+*/
 Route::prefix('knowledge')->name('knowledge.')->group(function () {
-    Route::get('items', [KnowledgeItemController::class, 'index'])->name('items.index');
-    Route::post('items/bulk-save', [KnowledgeItemController::class, 'bulkSave'])->name('items.bulk-save');
-    Route::get('items/{knowledgeItem}/edit', [KnowledgeItemController::class, 'edit'])->name('items.edit');
-    Route::put('items/{knowledgeItem}', [KnowledgeItemController::class, 'update'])->name('items.update');
-    Route::delete('items/{knowledgeItem}', [KnowledgeItemController::class, 'destroy'])->name('items.destroy');
+    Route::prefix('items')->name('items.')->group(function () {
+        Route::get('/', [KnowledgeItemController::class, 'index'])->name('index');
+        Route::post('bulk-save', [KnowledgeItemController::class, 'bulkSave'])->name('bulk-save');
+        Route::get('{knowledgeItem}/edit', [KnowledgeItemController::class, 'edit'])->name('edit');
+        Route::put('{knowledgeItem}', [KnowledgeItemController::class, 'update'])->name('update');
+        Route::delete('{knowledgeItem}', [KnowledgeItemController::class, 'destroy'])->name('destroy');
 
-Route::resource('items.notes', KnowledgeItemNoteController::class)
-    ->parameters([
-        'items' => 'knowledgeItem',
-        'notes' => 'knowledgeNote',
-    ])
-    ->except(['index', 'show', 'create']);
+        Route::resource('{knowledgeItem}/notes', KnowledgeItemNoteController::class)
+            ->except(['index', 'show', 'create'])
+            ->parameters([
+                'notes' => 'knowledgeNote',
+            ]);
 
-Route::resource('items.sources', KnowledgeItemSourceController::class)
-    ->parameters([
-        'items' => 'knowledgeItem',
-        'sources' => 'knowledgeSource',
-    ])
-    ->except(['index', 'show', 'create']);
+        Route::resource('{knowledgeItem}/sources', KnowledgeItemSourceController::class)
+            ->except(['index', 'show', 'create'])
+            ->parameters([
+                'sources' => 'knowledgeSource',
+            ]);
 
-Route::resource('items.review-logs', KnowledgeItemReviewLogController::class)
-    ->parameters([
-        'items' => 'knowledgeItem',
-        'review-logs' => 'knowledgeReviewLog',
-    ])
-    ->except(['index', 'show', 'create']);
+        Route::resource('{knowledgeItem}/review-logs', KnowledgeItemReviewLogController::class)
+            ->except(['index', 'show', 'create'])
+            ->parameters([
+                'review-logs' => 'knowledgeReviewLog',
+            ]);
 
-Route::resource('items.attachments', KnowledgeItemAttachmentController::class)
-    ->parameters([
-        'items' => 'knowledgeItem',
-        'attachments' => 'knowledgeAttachment',
-    ])
-    ->except(['index', 'show', 'create']);
+        Route::resource('{knowledgeItem}/attachments', KnowledgeItemAttachmentController::class)
+            ->except(['index', 'show', 'create'])
+            ->parameters([
+                'attachments' => 'knowledgeAttachment',
+            ]);
 
-Route::resource('items.relationships', KnowledgeItemRelationshipController::class)
-    ->parameters([
-        'items' => 'knowledgeItem',
-        'relationships' => 'knowledgeRelationship',
-    ])
-    ->except(['index', 'show', 'create']);
+        Route::resource('{knowledgeItem}/relationships', KnowledgeItemRelationshipController::class)
+            ->except(['index', 'show', 'create'])
+            ->parameters([
+                'relationships' => 'knowledgeRelationship',
+            ]);
+
+        Route::post('{knowledgeItem}/bible-references', [BibleReferenceController::class, 'store'])
+            ->name('bible-references.store');
+
+        Route::post('{knowledgeItem}/instrument', [InstrumentController::class, 'storeForKnowledgeItem'])
+            ->name('instrument.store');
+
+        Route::put('{knowledgeItem}/instrument/{instrument}', [InstrumentController::class, 'updateForKnowledgeItem'])
+            ->name('instrument.update');
+
+        Route::post('{knowledgeItem}/instrument/{instrument}/aliases', [InstrumentAliasController::class, 'storeForInstrument'])
+            ->name('instrument.aliases.store');
+
+        Route::put('{knowledgeItem}/instrument/{instrument}/aliases/{alias}', [InstrumentAliasController::class, 'updateForInstrument'])
+            ->name('instrument.aliases.update');
+
+        Route::delete('{knowledgeItem}/instrument/{instrument}/aliases/{alias}', [InstrumentAliasController::class, 'destroyForInstrument'])
+            ->name('instrument.aliases.destroy');
+
+        Route::post('{knowledgeItem}/instrument/{instrument}/price-observations', [InstrumentPriceObservationController::class, 'storeForInstrument'])
+            ->name('instrument.price-observations.store');
+
+        Route::put('{knowledgeItem}/instrument/{instrument}/price-observations/{priceObservation}', [InstrumentPriceObservationController::class, 'updateForInstrument'])
+            ->name('instrument.price-observations.update');
+
+        Route::delete('{knowledgeItem}/instrument/{instrument}/price-observations/{priceObservation}', [InstrumentPriceObservationController::class, 'destroyForInstrument'])
+            ->name('instrument.price-observations.destroy');
+
+        Route::post('{knowledgeItem}/instrument/{instrument}/corporate-actions', [InstrumentCorporateActionController::class, 'storeForInstrument'])
+            ->name('instrument.corporate-actions.store');
+
+        Route::put('{knowledgeItem}/instrument/{instrument}/corporate-actions/{corporateAction}', [InstrumentCorporateActionController::class, 'updateForInstrument'])
+            ->name('instrument.corporate-actions.update');
+
+        Route::delete('{knowledgeItem}/instrument/{instrument}/corporate-actions/{corporateAction}', [InstrumentCorporateActionController::class, 'destroyForInstrument'])
+            ->name('instrument.corporate-actions.destroy');
+
+        Route::post('{knowledgeItem}/instrument/{instrument}/transactions', [InstrumentTransactionController::class, 'storeForInstrument'])
+            ->name('instrument.transactions.store');
+
+        Route::put('{knowledgeItem}/instrument/{instrument}/transactions/{transaction}', [InstrumentTransactionController::class, 'updateForInstrument'])
+            ->name('instrument.transactions.update');
+
+        Route::delete('{knowledgeItem}/instrument/{instrument}/transactions/{transaction}', [InstrumentTransactionController::class, 'destroyForInstrument'])
+            ->name('instrument.transactions.destroy');
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Knowledge attachments and Bible references with standalone edit pages
+|--------------------------------------------------------------------------
+| These remain outside the nested item group because the edit routes are
+| record-based rather than nested under the item URL.
+*/
+Route::prefix('knowledge-attachments')->name('knowledge.attachments.')->group(function () {
+    Route::get('{knowledgeAttachment}/edit', [KnowledgeAttachmentController::class, 'edit'])->name('edit');
+    Route::put('{knowledgeAttachment}', [KnowledgeAttachmentController::class, 'update'])->name('update');
+    Route::delete('{knowledgeAttachment}', [KnowledgeAttachmentController::class, 'destroy'])->name('destroy');
+    Route::get('{knowledgeAttachment}/view', [KnowledgeAttachmentController::class, 'view'])->name('view');
+    Route::get('{knowledgeAttachment}/download', [KnowledgeAttachmentController::class, 'download'])->name('download');
 });
 
 Route::post('knowledge-items/{knowledgeItem}/attachments', [KnowledgeAttachmentController::class, 'store'])
     ->name('knowledge.attachments.store');
 
-Route::get('knowledge-attachments/{knowledgeAttachment}/edit', [KnowledgeAttachmentController::class, 'edit'])
-    ->name('knowledge.attachments.edit');
-
-Route::put('knowledge-attachments/{knowledgeAttachment}', [KnowledgeAttachmentController::class, 'update'])
-    ->name('knowledge.attachments.update');
-
-Route::delete('knowledge-attachments/{knowledgeAttachment}', [KnowledgeAttachmentController::class, 'destroy'])
-    ->name('knowledge.attachments.destroy');
-
-Route::get('knowledge-attachments/{knowledgeAttachment}/view', [KnowledgeAttachmentController::class, 'view'])
-    ->name('knowledge.attachments.view');
-
-Route::get('knowledge-attachments/{knowledgeAttachment}/download', [KnowledgeAttachmentController::class, 'download'])
-    ->name('knowledge.attachments.download');
-
-Route::delete('items/{knowledgeItem}/notes/{knowledgeNote}', [KnowledgeItemNoteController::class, 'destroy'])
-    ->name('items.notes.destroy');
-
-Route::delete('items/{knowledgeItem}/sources/{knowledgeSource}', [KnowledgeItemSourceController::class, 'destroy'])
-    ->name('items.sources.destroy');
-
-Route::delete('items/{knowledgeItem}/review-logs/{knowledgeReviewLog}', [KnowledgeItemReviewLogController::class, 'destroy'])
-    ->name('items.review-logs.destroy');
-
-Route::delete('items/{knowledgeItem}/relationships/{knowledgeRelationship}', [KnowledgeItemRelationshipController::class, 'destroy'])
-    ->name('items.relationships.destroy');
-
-Route::post('knowledge-items/{knowledgeItem}/bible-references', [BibleReferenceController::class, 'store'])
-    ->name('knowledge.items.bible-references.store');
-
-Route::get('bible-references/{bibleReference}/edit', [BibleReferenceController::class, 'edit'])
-    ->name('knowledge.items.bible-references.edit');
-
-Route::put('bible-references/{bibleReference}', [BibleReferenceController::class, 'update'])
-    ->name('knowledge.items.bible-references.update');
-
-Route::delete('bible-references/{bibleReference}', [BibleReferenceController::class, 'destroy'])
-    ->name('knowledge.items.bible-references.destroy');
-
-Route::post('bible-references/{bibleReference}/fetch-passage', [BibleReferenceController::class, 'fetchPassage'])
-    ->name('knowledge.items.bible-references.fetch-passage');
-
-Route::post(
-    '/knowledge-items/{knowledgeItem}/instrument',
-    [InstrumentController::class, 'storeForKnowledgeItem']
-)->name('knowledge.items.instrument.store');
-
-Route::put(
-    '/knowledge-items/{knowledgeItem}/instrument/{instrument}',
-    [InstrumentController::class, 'updateForKnowledgeItem']
-)->name('knowledge.items.instrument.update');
-
-Route::post(
-    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/aliases',
-    [InstrumentAliasController::class, 'storeForInstrument']
-)->name('knowledge.items.instrument.aliases.store');
-
-Route::put(
-    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/aliases/{alias}',
-    [InstrumentAliasController::class, 'updateForInstrument']
-)->name('knowledge.items.instrument.aliases.update');
-
-Route::delete(
-    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/aliases/{alias}',
-    [InstrumentAliasController::class, 'destroyForInstrument']
-)->name('knowledge.items.instrument.aliases.destroy');
-
-Route::post(
-    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/price-observations',
-    [InstrumentPriceObservationController::class, 'storeForInstrument']
-)->name('knowledge.items.instrument.price-observations.store');
-
-Route::put(
-    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/price-observations/{priceObservation}',
-    [InstrumentPriceObservationController::class, 'updateForInstrument']
-)->name('knowledge.items.instrument.price-observations.update');
-
-Route::delete(
-    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/price-observations/{priceObservation}',
-    [InstrumentPriceObservationController::class, 'destroyForInstrument']
-)->name('knowledge.items.instrument.price-observations.destroy');
-
-Route::post(
-    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/corporate-actions',
-    [InstrumentCorporateActionController::class, 'storeForInstrument']
-)->name('knowledge.items.instrument.corporate-actions.store');
-
-Route::put(
-    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/corporate-actions/{corporateAction}',
-    [InstrumentCorporateActionController::class, 'updateForInstrument']
-)->name('knowledge.items.instrument.corporate-actions.update');
-
-Route::delete(
-    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/corporate-actions/{corporateAction}',
-    [InstrumentCorporateActionController::class, 'destroyForInstrument']
-)->name('knowledge.items.instrument.corporate-actions.destroy');
-
-Route::post(
-    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/transactions',
-    [InstrumentTransactionController::class, 'storeForInstrument']
-)->name('knowledge.items.instrument.transactions.store');
-
-Route::put(
-    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/transactions/{transaction}',
-    [InstrumentTransactionController::class, 'updateForInstrument']
-)->name('knowledge.items.instrument.transactions.update');
-
-Route::delete(
-    '/knowledge-items/{knowledgeItem}/instrument/{instrument}/transactions/{transaction}',
-    [InstrumentTransactionController::class, 'destroyForInstrument']
-)->name('knowledge.items.instrument.transactions.destroy');
-
-
-Route::resource('places', PlaceController::class)->except(['show']);
-
-Route::resource('countries', CountryController::class);
-Route::resource('states', StateController::class);
-Route::resource('regions', RegionController::class);
-Route::resource('places', PlaceController::class);
-Route::resource('place-aliases', PlaceAliasController::class);
-Route::resource('travellers', TravellerController::class);
-Route::resource('trips', TripController::class);
-
-// Trip traveller assignment helpers
-Route::get('/travellers', [TravellerController::class, 'index'])->name('travellers.index');
-Route::post('/travellers/bulk-save', [TravellerController::class, 'bulkSave'])->name('travellers.bulk-save');
-Route::delete('/travellers/{traveller}', [TravellerController::class, 'destroy'])->name('travellers.destroy');
-
-// Places assignment helpers
-Route::get('/places', [PlaceController::class, 'index'])->name('places.index');
-Route::post('/places/bulk-save', [PlaceController::class, 'bulkSave'])->name('places.bulk-save');
-Route::delete('/places/{place}', [PlaceController::class, 'destroy'])->name('places.destroy');
-
-Route::get('/places/{place}/edit', [PlaceController::class, 'edit'])->name('places.edit');
-Route::put('/places/{place}', [PlaceController::class, 'update'])->name('places.update');
-
-Route::get('/places/{place}/destinations/create-from-place', [DestinationController::class, 'createFromPlace'])
-    ->name('places.destinations.create-from-place');
-
-
-// Regions assignment helpers
-Route::get('/regions', [RegionController::class, 'index'])->name('regions.index');
-Route::post('/regions/bulk-save', [RegionController::class, 'bulkSave'])->name('regions.bulk-save');
-Route::delete('/regions/{region}', [RegionController::class, 'destroy'])->name('regions.destroy');
-
-Route::get('/countries', [CountryController::class, 'index'])->name('countries.index');
-Route::post('/countries/bulk-save', [CountryController::class, 'bulkSave'])->name('countries.bulk-save');
-Route::delete('/countries/{country}', [CountryController::class, 'destroy'])->name('countries.destroy');
-
-Route::get('/states', [StateController::class, 'index'])->name('states.index');
-Route::post('/states/bulk-save', [StateController::class, 'bulkSave'])->name('states.bulk-save');
-Route::delete('/states/{state}', [StateController::class, 'destroy'])->name('states.destroy');
-
-Route::get('/trips', [TripController::class, 'index'])->name('trips.index');
-Route::post('/trips/bulk-save', [TripController::class, 'bulkSave'])->name('trips.bulk-save');
-Route::get('/trips/{trip}/edit', [TripController::class, 'edit'])->name('trips.edit');
-Route::put('/trips/{trip}', [TripController::class, 'update'])->name('trips.update');
-Route::delete('/trips/{trip}', [TripController::class, 'destroy'])->name('trips.destroy');
-
-Route::get('/destinations', [DestinationController::class, 'index'])->name('destinations.index');
-Route::post('/destinations/bulk-save', [DestinationController::class, 'bulkSave'])->name('destinations.bulk-save');
-Route::get('/destinations/{destination}/edit', [DestinationController::class, 'edit'])->name('destinations.edit');
-Route::put('/destinations/{destination}', [DestinationController::class, 'update'])->name('destinations.update');
-Route::delete('/destinations/{destination}', [DestinationController::class, 'destroy'])->name('destinations.destroy');
-
-Route::get('/reports/places/reference-book', [PlaceController::class, 'referenceBook'])
-    ->name('reports.places.reference-book');
-
-Route::resource('fuel-stops', FuelStopController::class)->except(['show']);
-Route::resource('fuel-price-observations', FuelPriceObservationController::class)->except(['show']);
-
-    Route::resource('vehicles', VehicleController::class)->except(['show']);
-
-    Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
-    Route::post('/vehicles/bulk-save', [VehicleController::class, 'bulkSave'])->name('vehicles.bulk-save');
-    Route::delete('/vehicles/{vehicle}', [VehicleController::class, 'destroy'])->name('vehicles.destroy');
-
-Route::prefix('trips/{trip}')->group(function () {
-    Route::resource('fuel-estimates', TripFuelEstimateController::class)
-        ->names('trips.fuel-estimates')
-        ->parameters([
-            'fuel-estimates' => 'fuelEstimate',
-        ]);
-
-    Route::resource('fuel-purchases', TripFuelPurchaseController::class)
-        ->names('trips.fuel-purchases');
-});
-
-// routes/web.php
-Route::post('/destinations/{destination}/suggest-from-web', [DestinationController::class, 'suggestFromWeb'])
-    ->name('destinations.suggest-from-web');
-
-Route::post('/destination-sources', [DestinationSourceController::class, 'store'])
-    ->name('destination-sources.store');
-
-Route::put('/destination-sources/{destinationsource}', [DestinationSourceController::class, 'update'])
-    ->name('destination-sources.update');
-
-Route::delete('/destination-sources/{destinationsource}', [DestinationSourceController::class, 'destroy'])
-    ->name('destination-sources.destroy');
-
-Route::get('/destination-items', [DestinationItemController::class, 'index'])->name('destination-items.index');
-Route::get('/destination-items/create', [DestinationItemController::class, 'create'])->name('destination-items.create');
-Route::post('/destination-items', [DestinationItemController::class, 'store'])->name('destination-items.store');
-Route::get('/destination-items/{destinationItem}/edit', [DestinationItemController::class, 'edit'])->name('destination-items.edit');
-Route::put('/destination-items/{destinationItem}', [DestinationItemController::class, 'update'])->name('destination-items.update');
-Route::delete('/destination-items/{destinationItem}', [DestinationItemController::class, 'destroy'])->name('destination-items.destroy');
-Route::get(
-    '/destinations/{destination}/destination-items/create-from-destination',
-    [DestinationItemController::class, 'createFromDestination']
-)->name('destination-items.create-from-destination');
-
-Route::prefix('trips/{trip}')->name('trips.')->group(function () {
-    Route::get('/edit', [TripController::class, 'edit'])->name('edit');
-    Route::put('/', [TripController::class, 'update'])->name('update');
-    
-     // Trip Book report (one trip at a time)
-    Route::get('/book', [TripReportController::class, 'book'])
-        ->name('book');
-
-    Route::get('/legs', [TripLegController::class, 'index'])->name('legs.index');
-    Route::get('/legs/create', [TripLegController::class, 'create'])->name('legs.create');
-    Route::post('/legs', [TripLegController::class, 'store'])->name('legs.store');
-    Route::get('/legs/{tripLeg}/edit', [TripLegController::class, 'edit'])->name('legs.edit');
-    Route::put('/legs/{tripLeg}', [TripLegController::class, 'update'])->name('legs.update');
-    Route::delete('/legs/{tripLeg}', [TripLegController::class, 'destroy'])->name('legs.destroy');
-
-    Route::get('/stays', [TripStayController::class, 'index'])->name('stays.index');
-    Route::get('/stays/create', [TripStayController::class, 'create'])->name('stays.create');
-    Route::post('/stays', [TripStayController::class, 'store'])->name('stays.store');
-    Route::get('/stays/{tripStay}/edit', [TripStayController::class, 'edit'])->name('stays.edit');
-    Route::put('/stays/{tripStay}', [TripStayController::class, 'update'])->name('stays.update');
-    Route::delete('/stays/{tripStay}', [TripStayController::class, 'destroy'])->name('stays.destroy');
-    Route::post('/stays/prefill-from-place', [TripStayController::class, 'prefillFromPlace'])
-        ->name('stays.prefill-from-place');
-
-    Route::post('/stays/prefill-from-previous-stay', [TripStayController::class, 'prefillFromPreviousStay'])
-        ->name('stays.prefill-from-previous-stay');
-
-    Route::get('/items', [TripItemController::class, 'index'])->name('items.index');
-    Route::get('/items/create', [TripItemController::class, 'create'])->name('items.create');
-    Route::post('/items', [TripItemController::class, 'store'])->name('items.store');
-    Route::get('/items/{tripItem}/edit', [TripItemController::class, 'edit'])->name('items.edit');
-    Route::put('/items/{tripItem}', [TripItemController::class, 'update'])->name('items.update');
-    Route::delete('/items/{tripItem}', [TripItemController::class, 'destroy'])->name('items.destroy');
-
-    Route::resource('bookings', TripBookingController::class)
-        ->except(['create', 'show'])
-        ->names('bookings')
-        ->parameters([
-            'bookings' => 'booking',
-        ]);
-    Route::resource('reviews', TripReviewController::class)
-        ->except(['show', 'create'])
-        ->names('reviews')
-        ->parameters([
-            'reviews' => 'review',
-        ]);
-
-      
-
-   
+Route::prefix('bible-references')->name('knowledge.items.bible-references.')->group(function () {
+    Route::get('{bibleReference}/edit', [BibleReferenceController::class, 'edit'])->name('edit');
+    Route::put('{bibleReference}', [BibleReferenceController::class, 'update'])->name('update');
+    Route::delete('{bibleReference}', [BibleReferenceController::class, 'destroy'])->name('destroy');
+    Route::post('{bibleReference}/fetch-passage', [BibleReferenceController::class, 'fetchPassage'])->name('fetch-passage');
 });

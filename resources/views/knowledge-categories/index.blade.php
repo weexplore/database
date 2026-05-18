@@ -67,6 +67,7 @@
                                        class="inline-flex w-full items-center justify-center rounded-md bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700">
                                         Add root category
                                     </a>
+                                    
 
                                     @if($selectedCategory)
                                         <a href="{{ route('knowledge-categories.create', [
@@ -75,6 +76,31 @@
                                             ]) }}"
                                            class="inline-flex w-full items-center justify-center rounded-md bg-slate-700 px-3 py-2 text-sm font-medium text-white hover:bg-slate-600">
                                             Add child under {{ $selectedCategory->categoryname }}
+                                        </a>
+                                    @endif
+                                    @if(!empty($filters['domainid']))
+                                        <a href="{{ route('reports.knowledge.domains.reference-book', [
+                                                'domainid' => $filters['domainid'],
+                                                'return_to' => url()->full(),
+                                            ]) }}"
+                                        class="inline-flex w-full items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+                                            Domain Report
+                                        </a>
+                                    @endif
+                                    @if($selectedCategory)
+                                        <a href="{{ route('reports.knowledge.categories.reference-book', [
+                                                'category_ids' => [$selectedCategory->id],
+                                                'return_to' => url()->full(),
+                                            ]) }}"
+                                        class="inline-flex w-full items-center justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                                            Category Report
+                                        </a>
+                                            <a href="{{ route('reports.knowledge.categories.tree-reference-book', [
+                                                'categoryid' => $selectedCategory->id,
+                                                'return_to' => url()->full(),
+                                            ]) }}"
+                                        class="inline-flex w-full items-center justify-center rounded-md bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700">
+                                            Category Tree Report
                                         </a>
                                     @endif
                                 </div>

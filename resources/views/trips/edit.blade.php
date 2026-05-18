@@ -213,7 +213,7 @@
                                 <textarea name="summary"
                                           id="summary"
                                           rows="3"
-                                          class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('summary', $trip->summary) }}</textarea>
+                                          class="js-auto-expand w-full min-h-[96px] rounded-md border-gray-300 shadow-sm text-sm resize-none overflow-hidden">{{ old('summary', $trip->summary) }}</textarea>
                             </div>
 
                             <div>
@@ -223,7 +223,7 @@
                                 <textarea name="planningnotes"
                                           id="planningnotes"
                                           rows="6"
-                                          class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('planningnotes', $trip->planningnotes) }}</textarea>
+                                          class="js-auto-expand w-full min-h-[144px] rounded-md border-gray-300 shadow-sm text-sm resize-none overflow-hidden">{{ old('planningnotes', $trip->planningnotes) }}</textarea>
                             </div>
 
                             <div>
@@ -233,7 +233,7 @@
                                 <textarea name="actualnotes"
                                           id="actualnotes"
                                           rows="6"
-                                          class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('actualnotes', $trip->actualnotes) }}</textarea>
+                                          class="js-auto-expand w-full min-h-[144px] rounded-md border-gray-300 shadow-sm text-sm resize-none overflow-hidden">{{ old('actualnotes', $trip->actualnotes) }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -343,16 +343,24 @@
 
                 <div class="{{ $activeTab === 'vehicles' ? 'block' : 'hidden' }}">
                     <div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-6">
-                        <div>
-                            <h3 class="text-lg font-medium text-gray-900">Default Vehicles</h3>
-                            <p class="mt-1 text-sm text-gray-500">
-                                These vehicles are the default setup for this trip and will be copied to new trip legs.
-                            </p>
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-900">Default Vehicles</h3>
+                                <p class="mt-1 text-sm text-gray-500">
+                                    These vehicles are the default setup for this trip and will be copied to new trip legs.
+                                </p>
+                            </div>
+
+                            <button type="button"
+                                    id="add-trip-vehicle-row"
+                                    class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                                Add Vehicle
+                            </button>
                         </div>
 
-                        <div class="space-y-4">
+                        <div id="trip-vehicle-rows" class="space-y-4">
                             @foreach($tripVehicleRows as $index => $row)
-                                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start border border-gray-200 rounded-lg p-4">
+                                <div class="trip-vehicle-row grid grid-cols-1 md:grid-cols-12 gap-4 items-start border border-gray-200 rounded-lg p-4">
                                     <div class="md:col-span-4">
                                         <label class="block text-sm font-medium text-gray-700 mb-1">
                                             Vehicle
@@ -399,7 +407,7 @@
                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                     </div>
 
-                                    <div class="md:col-span-3">
+                                    <div class="md:col-span-2">
                                         <label class="block text-sm font-medium text-gray-700 mb-1">
                                             Use for new legs
                                         </label>
@@ -413,19 +421,104 @@
                                         </div>
                                     </div>
 
+                                    <div class="md:col-span-1 flex items-end justify-end">
+                                        <button type="button"
+                                                class="remove-trip-vehicle-row inline-flex items-center px-3 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm">
+                                            Remove
+                                        </button>
+                                    </div>
+
                                     <div class="md:col-span-12">
                                         <label class="block text-sm font-medium text-gray-700 mb-1">
                                             Notes
                                         </label>
-                                        <input type="text"
-                                               name="tripvehicles[{{ $index }}][notes]"
-                                               value="{{ $row['notes'] ?? '' }}"
-                                               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                               placeholder="Optional notes for this trip vehicle setup">
+                                        <textarea name="tripvehicles[{{ $index }}][notes]"
+                                                  rows="3"
+                                                  class="js-auto-expand w-full min-h-[96px] rounded-md border-gray-300 shadow-sm text-sm resize-none overflow-hidden"
+                                                  placeholder="Optional notes for this trip vehicle setup">{{ $row['notes'] ?? '' }}</textarea>
                                     </div>
                                 </div>
                             @endforeach
                         </div>
+
+                        <template id="trip-vehicle-row-template">
+                            <div class="trip-vehicle-row grid grid-cols-1 md:grid-cols-12 gap-4 items-start border border-gray-200 rounded-lg p-4">
+                                <div class="md:col-span-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Vehicle
+                                    </label>
+                                    <select name="tripvehicles[__INDEX__][vehicleid]"
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                        <option value="">Select vehicle</option>
+                                        @foreach($vehicles as $vehicle)
+                                            <option value="{{ $vehicle->id }}">
+                                                {{ $vehicle->vehiclename }}
+                                                @if($vehicle->registrationnumber)
+                                                    ({{ $vehicle->registrationnumber }})
+                                                @endif
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div class="md:col-span-3">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Role
+                                    </label>
+                                    <select name="tripvehicles[__INDEX__][vehiclerole]"
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                        <option value="">Select role</option>
+                                        @foreach($vehicleRoleOptions as $role)
+                                            <option value="{{ $role }}">
+                                                {{ ucfirst(str_replace('vehicle', ' vehicle', $role)) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Sort Order
+                                    </label>
+                                    <input type="number"
+                                           name="tripvehicles[__INDEX__][sortorder]"
+                                           value=""
+                                           min="1"
+                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                </div>
+
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Use for new legs
+                                    </label>
+                                    <div class="flex items-center h-10">
+                                        <input type="hidden" name="tripvehicles[__INDEX__][isdefaultforlegs]" value="0">
+                                        <input type="checkbox"
+                                               name="tripvehicles[__INDEX__][isdefaultforlegs]"
+                                               value="1"
+                                               class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                               checked>
+                                    </div>
+                                </div>
+
+                                <div class="md:col-span-1 flex items-end justify-end">
+                                    <button type="button"
+                                            class="remove-trip-vehicle-row inline-flex items-center px-3 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm">
+                                        Remove
+                                    </button>
+                                </div>
+
+                                <div class="md:col-span-12">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Notes
+                                    </label>
+                                    <textarea name="tripvehicles[__INDEX__][notes]"
+                                              rows="3"
+                                              class="js-auto-expand w-full min-h-[96px] rounded-md border-gray-300 shadow-sm text-sm resize-none overflow-hidden"
+                                              placeholder="Optional notes for this trip vehicle setup"></textarea>
+                                </div>
+                            </div>
+                        </template>
 
                         <p class="text-xs text-gray-500">
                             Keep one row for the tow vehicle and one for the caravan where applicable.
@@ -590,6 +683,33 @@
             let isDirty = false;
             let isSubmitting = false;
 
+            function resizeTextarea(textarea) {
+                textarea.style.height = 'auto';
+                textarea.style.overflowY = 'hidden';
+                textarea.style.height = textarea.scrollHeight + 'px';
+            }
+
+            function bindAutoExpand(scope = document) {
+                const textareas = Array.from(scope.querySelectorAll('.js-auto-expand'));
+
+                textareas.forEach(textarea => {
+                    if (textarea.dataset.autoExpandBound === '1') {
+                        resizeTextarea(textarea);
+                        return;
+                    }
+
+                    resizeTextarea(textarea);
+
+                    textarea.addEventListener('input', function () {
+                        resizeTextarea(textarea);
+                    });
+
+                    textarea.dataset.autoExpandBound = '1';
+                });
+            }
+
+            bindAutoExpand(document);
+
             form.querySelectorAll('input, select, textarea').forEach((element) => {
                 const type = (element.getAttribute('type') || '').toLowerCase();
 
@@ -614,35 +734,82 @@
             });
 
             const tabNav = document.querySelector('[aria-label="Trip sections"]');
-            if (!tabNav) return;
+            if (tabNav) {
+                tabNav.querySelectorAll('a').forEach((tabLink) => {
+                    tabLink.addEventListener('click', function (event) {
+                        if (!isDirty || isSubmitting) {
+                            return;
+                        }
 
-            tabNav.querySelectorAll('a').forEach((tabLink) => {
-                tabLink.addEventListener('click', function (event) {
-                    if (!isDirty || isSubmitting) {
-                        return;
-                    }
+                        const currentUrl = new URL(window.location.href);
+                        const currentTab = currentUrl.searchParams.get('tab') || 'details';
 
-                    const currentUrl = new URL(window.location.href);
-                    const currentTab = currentUrl.searchParams.get('tab') || 'details';
+                        const targetUrl = new URL(tabLink.href);
+                        const targetTab = targetUrl.searchParams.get('tab') || 'details';
 
-                    const targetUrl = new URL(tabLink.href);
-                    const targetTab = targetUrl.searchParams.get('tab') || 'details';
+                        if (currentTab === targetTab) {
+                            return;
+                        }
 
-                    if (currentTab === targetTab) {
-                        return;
-                    }
+                        event.preventDefault();
 
-                    event.preventDefault();
+                        const confirmed = window.confirm(
+                            'You have unsaved changes on this tab. Discard changes and switch tabs?'
+                        );
 
-                    const confirmed = window.confirm(
-                        'You have unsaved changes on this tab. Discard changes and switch tabs?'
-                    );
-
-                    if (confirmed) {
-                        window.location.href = tabLink.href;
-                    }
+                        if (confirmed) {
+                            window.location.href = tabLink.href;
+                        }
+                    });
                 });
-            });
+            }
+
+            const vehicleRowsContainer = document.getElementById('trip-vehicle-rows');
+            const addVehicleRowButton = document.getElementById('add-trip-vehicle-row');
+            const vehicleRowTemplate = document.getElementById('trip-vehicle-row-template');
+
+            if (vehicleRowsContainer && addVehicleRowButton && vehicleRowTemplate) {
+                let nextVehicleIndex = vehicleRowsContainer.querySelectorAll('.trip-vehicle-row').length;
+
+                addVehicleRowButton.addEventListener('click', function () {
+                    const html = vehicleRowTemplate.innerHTML.replaceAll('__INDEX__', String(nextVehicleIndex));
+                    vehicleRowsContainer.insertAdjacentHTML('beforeend', html);
+
+                    const newRow = vehicleRowsContainer.lastElementChild;
+                    if (newRow) {
+                        bindAutoExpand(newRow);
+
+                        newRow.querySelectorAll('input, select, textarea').forEach((element) => {
+                            const type = (element.getAttribute('type') || '').toLowerCase();
+
+                            if (type === 'hidden' || element.hasAttribute('readonly') || element.disabled) {
+                                return;
+                            }
+
+                            element.addEventListener('change', () => isDirty = true);
+                            element.addEventListener('input', () => isDirty = true);
+                        });
+                    }
+
+                    nextVehicleIndex += 1;
+                    isDirty = true;
+                });
+
+                vehicleRowsContainer.addEventListener('click', function (event) {
+                    const removeButton = event.target.closest('.remove-trip-vehicle-row');
+                    if (!removeButton) {
+                        return;
+                    }
+
+                    const row = removeButton.closest('.trip-vehicle-row');
+                    if (!row) {
+                        return;
+                    }
+
+                    row.remove();
+                    isDirty = true;
+                });
+            }
         });
     </script>
 </x-app-layout>

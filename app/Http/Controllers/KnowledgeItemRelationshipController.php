@@ -20,6 +20,7 @@ class KnowledgeItemRelationshipController extends Controller
                 Rule::exists('knowledgeitems', 'id'),
             ],
             'relationshiptype' => ['required', 'string', Rule::in(KnowledgeRelationship::typeValues())],
+            'effective_date' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
             'sortorder' => ['nullable', 'integer', 'min:0'],
         ]);
@@ -34,6 +35,7 @@ class KnowledgeItemRelationshipController extends Controller
             'fromitemid' => $knowledgeItem->id,
             'toitemid' => $validated['toitemid'],
             'relationshiptype' => $validated['relationshiptype'],
+            'effective_date' => $validated['effective_date'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'sortorder' => $validated['sortorder'] ?? 0,
         ]);
@@ -60,6 +62,7 @@ class KnowledgeItemRelationshipController extends Controller
                 Rule::exists('knowledgeitems', 'id'),
             ],
             'relationshiptype' => ['required', 'string', Rule::in(KnowledgeRelationship::typeValues())],
+            'effective_date' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
             'sortorder' => ['nullable', 'integer', 'min:0'],
         ]);
@@ -73,6 +76,7 @@ class KnowledgeItemRelationshipController extends Controller
         $knowledgeRelationship->update([
             'toitemid' => $validated['toitemid'],
             'relationshiptype' => $validated['relationshiptype'],
+            'effective_date' => $validated['effective_date'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'sortorder' => $validated['sortorder'] ?? 0,
         ]);

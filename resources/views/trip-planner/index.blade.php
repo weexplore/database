@@ -1,21 +1,34 @@
 <x-app-layout>
     <x-slot name="header">
-<div class="flex items-center gap-2">
-    <a href="{{ route('trips.edit', $trip) }}"
-       class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
-        Back to Trip
-    </a>
-
-    <a href="{{ route('trips.planner.generate', ['trip' => $trip->id, 'return_to' => url()->full()]) }}"
-       class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm">
-        Generate Legs & Stays
-    </a>
-
-    <a href="{{ route('trips.planner.create', ['trip' => $trip->id]) }}"
-       class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-        Add Planning Item
-    </a>
-</div>
+        <div class="flex items-center justify-between gap-4">
+            <div>
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                    Trip Planning
+                </h2>
+                <p class="mt-1 text-sm text-gray-500">
+                    {{ $trip->tripname }}
+                </p>
+                <p class="mt-1 text-sm text-gray-500">
+                    Status: {{ ucfirst($trip->tripstatus) }} ·
+                    Start: {{ optional($trip->startdate)->format('d M Y') ?? '—' }} ·
+                    End: {{ optional($trip->enddate)->format('d M Y') ?? '—' }}
+                </p>
+            </div>
+            <a href="{{ route('trips.planner.generate', ['trip' => $trip->id, 'return_to' => url()->full()]) }}"
+            class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm">
+                Generate Legs & Stays
+            </a>
+            <div>
+                <a href="{{ route('trips.planner.create', ['trip' => $trip->id]) }}"
+                class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                    Add Planning Item
+                </a>
+                <a href="{{ route('trips.edit', ['trip' => $trip, 'tab' => 'workflow']) }}"
+                class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
+                    Back to Trip
+                </a>
+            </div>
+        </div>
     </x-slot>
 
     <div class="py-6">

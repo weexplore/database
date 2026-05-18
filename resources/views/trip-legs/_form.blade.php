@@ -933,41 +933,47 @@ function updateTitle() {
     }
 }
 
+    function emitTripLegSelectionUpdated() {
+        window.setTimeout(() => {
+            document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
+        }, 0);
+    }
+
     function refreshDependentUi() {
         filterFromDestinationItems();
         filterToPlaces();
         filterDestinationItems();
         updateTitle();
-        document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
+        emitTripLegSelectionUpdated();
     }
 
     if (fromPlaceSelect) {
         fromPlaceSelect.addEventListener('change', refreshDependentUi);
     }
 
+    if (destinationSelect) {
+        destinationSelect.addEventListener('change', refreshDependentUi);
+    }
+
     if (toPlaceSelect) {
         toPlaceSelect.addEventListener('change', function () {
             filterDestinationItems();
             updateTitle();
-            document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
+            emitTripLegSelectionUpdated();
         });
-    }
-
-    if (destinationSelect) {
-        destinationSelect.addEventListener('change', refreshDependentUi);
     }
 
     if (fromDestinationItemSelect) {
         fromDestinationItemSelect.addEventListener('change', function () {
             updateTitle();
-            document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
+            emitTripLegSelectionUpdated();
         });
     }
 
     if (destinationItemSelect) {
         destinationItemSelect.addEventListener('change', function () {
             updateTitle();
-            document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
+            emitTripLegSelectionUpdated();
         });
     }
 
@@ -975,6 +981,6 @@ function updateTitle() {
     filterToPlaces();
     filterDestinationItems();
     updateTitle();
-    document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
+    emitTripLegSelectionUpdated();
 });
 </script>
