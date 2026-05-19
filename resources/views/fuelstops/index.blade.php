@@ -5,224 +5,121 @@
         </h2>
     </x-slot>
 
+    @php
+        $showCreate = request()->boolean('show_create');
+        $newFuelStop = $newFuelStop ?? new \App\Models\FuelStop();
+    @endphp
+
     <div class="py-6">
         <div class="w-full max-w-none mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 space-y-6">
+            @include('partials.admin.flash-messages')
+            @include('partials.admin.validation-summary')
 
-            @if (session('success'))
-                <div class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-                    {{ session('success') }}
-                </div>
-            @endif
+            <div class="bg-white shadow-sm sm:rounded-lg p-4">
+                <form method="GET" action="{{ route('fuel-stops.index') }}" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+                    <div>
+                        <label for="search" class="block text-sm font-medium text-gray-700">Search</label>
+                        <input
+                            type="text"
+                            name="search"
+                            id="search"
+                            value="{{ request('search') }}"
+                            class="mt-1 w-full rounded-md border-gray-300 shadow-sm"
+                            placeholder="Stop, brand, fuel type"
+                        >
+                    </div>
 
-            @if (session('error'))
-                <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-                    {{ session('error') }}
-                </div>
-            @endif
+                    <div>
+                        <label for="place_id" class="block text-sm font-medium text-gray-700">Place</label>
+                        <select
+                            name="place_id"
+                            id="place_id"
+                            class="mt-1 w-full rounded-md border-gray-300 shadow-sm"
+                        >
+                            <option value="">All places</option>
+                            @foreach ($places as $place)
+                                <option value="{{ $place->id }}" @selected((string) request('place_id') === (string) $place->id)>
+                                    {{ $place->placename }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
-            @if ($errors->any())
-                <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-                    <div class="font-semibold mb-2">Please fix the following:</div>
-                    <ul class="list-disc pl-5 space-y-1">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
+                    <div>
+                        <label for="brand" class="block text-sm font-medium text-gray-700">Brand</label>
+                        <input
+                            type="text"
+                            name="brand"
+                            id="brand"
+                            value="{{ request('brand') }}"
+                            class="mt-1 w-full rounded-md border-gray-300 shadow-sm"
+                            placeholder="Brand"
+                        >
+                    </div>
 
-            <div class="bg-white shadow-sm rounded-lg border border-gray-200">
-                <div class="p-4 border-b border-gray-200">
-                    <form method="GET" action="{{ route('fuel-stops.index') }}" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-                        <div>
-                            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Search</label>
-                            <input
-                                type="text"
-                                name="search"
-                                id="search"
-                                value="{{ request('search') }}"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                placeholder="Stop, brand, fuel type">
-                        </div>
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+                        <select
+                            name="status"
+                            id="status"
+                            class="mt-1 w-full rounded-md border-gray-300 shadow-sm"
+                        >
+                            <option value="">All</option>
+                            <option value="1" @selected(request('status') === '1')>Active</option>
+                            <option value="0" @selected(request('status') === '0')>Inactive</option>
+                        </select>
+                    </div>
 
-                        <div>
-                            <label for="place_id" class="block text-sm font-medium text-gray-700 mb-1">Place</label>
-                            <select
-                                name="place_id"
-                                id="place_id"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">All places</option>
-                                @foreach ($places as $place)
-                                    <option value="{{ $place->id }}" @selected((string) request('place_id') === (string) $place->id)>
-                                        {{ $place->placename }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
+                    <div class="xl:block hidden"></div>
 
-                        <div>
-                            <label for="brand" class="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-                            <input
-                                type="text"
-                                name="brand"
-                                id="brand"
-                                value="{{ request('brand') }}"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                placeholder="Brand">
-                        </div>
-
-                        <div>
-                            <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                            <select
-                                name="status"
-                                id="status"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">All</option>
-                                <option value="1" @selected(request('status') === '1')>Active</option>
-                                <option value="0" @selected(request('status') === '0')>Inactive</option>
-                            </select>
-                        </div>
-
-                        <div class="flex items-end gap-2">
-                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700">
+                    <div class="md:col-span-2 xl:col-span-5 flex items-center justify-between pt-2">
+                        <div class="space-x-2">
+                            <button type="submit" class="px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-800">
                                 Filter
                             </button>
-                            <a href="{{ route('fuel-stops.index') }}" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50">
+                            <a href="{{ route('fuel-stops.index') }}" class="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
                                 Reset
                             </a>
                         </div>
-                    </form>
-                </div>
 
-                <div class="p-4 border-b border-gray-200 bg-gray-50">
-                    <h3 class="text-sm font-semibold text-gray-800 mb-3">Add Fuel Stop</h3>
+                        <a href="{{ route('fuel-stops.index', array_merge(request()->query(), ['show_create' => 1])) }}"
+                           class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                            Add Fuel Stop
+                        </a>
+                    </div>
+                </form>
+            </div>
 
-                    <form method="POST" action="{{ route('fuel-stops.store') }}" class="space-y-4" data-dirty-form>
-                        @csrf
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                            <div>
-                                <label for="placeid" class="block text-sm font-medium text-gray-700 mb-1">Place</label>
-                                <select
-                                    name="placeid"
-                                    id="placeid"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    required>
-                                    <option value="">Select place</option>
-                                    @foreach ($places as $place)
-                                        <option value="{{ $place->id }}" @selected(old('placeid') == $place->id)>
-                                            {{ $place->placename }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div>
-                                <label for="stopname" class="block text-sm font-medium text-gray-700 mb-1">Stop Name</label>
-                                <input
-                                    type="text"
-                                    name="stopname"
-                                    id="stopname"
-                                    value="{{ old('stopname') }}"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    maxlength="200"
-                                    required>
-                            </div>
-
-                            <div>
-                                <label for="brandname" class="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-                                <input
-                                    type="text"
-                                    name="brandname"
-                                    id="brandname"
-                                    value="{{ old('brandname') }}"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    maxlength="100">
-                            </div>
-                        </div>
-
-                        <div>
-                            <span class="block text-sm font-medium text-gray-700 mb-2">Fuel Types Available</span>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                @foreach ($fuelTypes as $value => $label)
-                                    <label class="inline-flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            name="fueltypesavailable[]"
-                                            value="{{ $value }}"
-                                            class="rounded border-gray-300 text-indigo-600 shadow-sm"
-                                            @checked(in_array($value, old('fueltypesavailable', [])))>
-                                        <span class="text-sm text-gray-700">{{ $label }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                            <label class="inline-flex items-center gap-2">
-                                <input type="checkbox" name="hashighflowdiesel" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm" @checked(old('hashighflowdiesel'))>
-                                <span class="text-sm text-gray-700">High-flow diesel</span>
-                            </label>
-
-                            <label class="inline-flex items-center gap-2">
-                                <input type="checkbox" name="hasadblue" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm" @checked(old('hasadblue'))>
-                                <span class="text-sm text-gray-700">AdBlue</span>
-                            </label>
-
-                            <label class="inline-flex items-center gap-2">
-                                <input type="checkbox" name="hascarwash" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm" @checked(old('hascarwash'))>
-                                <span class="text-sm text-gray-700">Car wash</span>
-                            </label>
-
-                            <label class="inline-flex items-center gap-2">
-                                <input type="checkbox" name="hasairwater" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm" @checked(old('hasairwater'))>
-                                <span class="text-sm text-gray-700">Air / water</span>
-                            </label>
-                        </div>
-
-                        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                            <div>
-                                <label for="caravanaccessnotes" class="block text-sm font-medium text-gray-700 mb-1">Caravan Access Notes</label>
-                                <textarea
-                                    name="caravanaccessnotes"
-                                    id="caravanaccessnotes"
-                                    rows="3"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('caravanaccessnotes') }}</textarea>
-                            </div>
-
-                            <div>
-                                <label for="openingnotes" class="block text-sm font-medium text-gray-700 mb-1">Opening Notes</label>
-                                <textarea
-                                    name="openingnotes"
-                                    id="openingnotes"
-                                    rows="3"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('openingnotes') }}</textarea>
-                            </div>
-
-                            <div>
-                                <label for="generalnotes" class="block text-sm font-medium text-gray-700 mb-1">General Notes</label>
-                                <textarea
-                                    name="generalnotes"
-                                    id="generalnotes"
-                                    rows="3"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('generalnotes') }}</textarea>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center justify-between">
-                            <label class="inline-flex items-center gap-2">
-                                <input type="checkbox" name="isactive" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm" @checked(old('isactive', true))>
-                                <span class="text-sm text-gray-700">Active</span>
-                            </label>
-
-                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700">
-                                Add Fuel Stop
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
+            <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden">
                 <div class="overflow-x-auto">
+                    @if($showCreate)
+                        <div class="bg-white shadow-sm sm:rounded-lg p-6 border-b border-gray-200">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Add Fuel Stop</h3>
+
+                            <form method="POST" action="{{ route('fuel-stops.store') }}" class="space-y-6" data-dirty-form>
+                                @csrf
+
+                                @include('fuelstops._form', [
+                                    'fuelStop' => $newFuelStop,
+                                    'places' => $places,
+                                    'fuelTypes' => $fuelTypes,
+                                ])
+
+                                <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+                                    <a href="{{ route('fuel-stops.index', request()->except('show_create')) }}"
+                                       class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
+                                        Cancel
+                                    </a>
+
+                                    <button type="submit"
+                                            class="inline-flex items-center px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                                        Save Fuel Stop
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    @endif
+
                     <table class="min-w-full divide-y divide-gray-200 text-sm">
                         <thead class="bg-gray-50">
                             <tr>
@@ -318,7 +215,7 @@
                                     <td class="px-4 py-3 align-top text-right">
                                         <div class="flex items-center justify-end gap-2">
                                             <a href="{{ route('fuel-stops.edit', ['fuel_stop' => $fuelStop, 'return_to' => request()->fullUrl()]) }}"
-                                            class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50">
+                                               class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50">
                                                 Edit
                                             </a>
                                         </div>
@@ -344,25 +241,307 @@
         </div>
     </div>
 
-    <script>
-        (() => {
-            const forms = document.querySelectorAll('[data-dirty-form]');
-            forms.forEach((form) => {
-                let isDirty = false;
+    @if($showCreate)
+        <link rel="stylesheet"
+              href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+              integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+              crossorigin="" />
 
-                form.querySelectorAll('input, select, textarea').forEach((field) => {
-                    field.addEventListener('change', () => isDirty = true);
-                    field.addEventListener('input', () => isDirty = true);
+        <script defer
+                src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+                integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+                crossorigin=""></script>
+
+        <script>
+            window.addEventListener('load', function () {
+                const latInput = document.getElementById('latitude');
+                const lngInput = document.getElementById('longitude');
+                const searchInput = document.getElementById('fuel-map-search');
+                const searchButton = document.getElementById('fuel-map-search-button');
+                const useMyLocationButton = document.getElementById('fuel-use-my-location');
+                const syncFromFieldsButton = document.getElementById('fuel-sync-from-fields');
+                const mapStatus = document.getElementById('fuel-map-status');
+                const googleMapsLink = document.getElementById('fuel-open-in-google-maps');
+                const mapElement = document.getElementById('fuel-stop-map');
+
+                const placeSelect = document.getElementById('placeid');
+                const address1Input = document.getElementById('addressline1');
+                const address3Input = document.getElementById('addressline3');
+
+                if (!latInput || !lngInput || !mapElement) {
+                    return;
+                }
+
+                if (typeof window.L === 'undefined') {
+                    if (mapStatus) {
+                        mapStatus.textContent = 'Leaflet map library did not load.';
+                    }
+                    return;
+                }
+
+                let searchTouchedManually = false;
+
+                function coordsAreBlank() {
+                    return latInput.value.trim() === '' && lngInput.value.trim() === '';
+                }
+
+                function buildPreferredSearchText() {
+                    const parts = [];
+
+                    const addr1 = address1Input ? address1Input.value.trim() : '';
+                    const addr3 = address3Input ? address3Input.value.trim() : '';
+
+                    if (addr1 !== '') parts.push(addr1);
+                    if (addr3 !== '') parts.push(addr3);
+
+                    if (parts.length > 0) {
+                        return parts.join(', ');
+                    }
+
+                    if (placeSelect && placeSelect.value) {
+                        const opt = placeSelect.options[placeSelect.selectedIndex];
+                        if (opt) {
+                            const placeName = opt.text.trim();
+                            if (placeName !== '') {
+                                return placeName;
+                            }
+                        }
+                    }
+
+                    return '';
+                }
+
+                function shouldAutoFillSearch() {
+                    return searchInput && coordsAreBlank();
+                }
+
+                function syncSearchFromContext(force = false) {
+                    if (!searchInput) return;
+                    if (!shouldAutoFillSearch()) return;
+
+                    const preferred = buildPreferredSearchText();
+                    const current = searchInput.value.trim();
+
+                    if (preferred === '') return;
+
+                    if (force || !searchTouchedManually || current === '' || current === preferred) {
+                        searchInput.value = preferred;
+                    }
+                }
+
+                if (searchInput) {
+                    searchInput.addEventListener('input', function () {
+                        const preferred = buildPreferredSearchText();
+                        const current = searchInput.value.trim();
+                        searchTouchedManually = current !== '' && current !== preferred;
+                    });
+                }
+
+                if (placeSelect) {
+                    placeSelect.addEventListener('change', function () {
+                        searchTouchedManually = false;
+                        syncSearchFromContext();
+                    });
+                }
+
+                if (address1Input) {
+                    address1Input.addEventListener('input', function () {
+                        syncSearchFromContext();
+                    });
+                }
+
+                if (address3Input) {
+                    address3Input.addEventListener('input', function () {
+                        syncSearchFromContext();
+                    });
+                }
+
+                syncSearchFromContext(true);
+
+                const hasCoords = latInput.value !== '' && lngInput.value !== '';
+                const defaultLat = parseFloat(latInput.value || '-37.8136');
+                const defaultLng = parseFloat(lngInput.value || '144.9631');
+                const defaultZoom = hasCoords ? 15 : 6;
+
+                const map = L.map('fuel-stop-map').setView([defaultLat, defaultLng], defaultZoom);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(map);
+
+                const marker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(map);
+
+                function setStatus(message) {
+                    if (mapStatus) mapStatus.textContent = message;
+                }
+
+                function updateGoogleMapsLink(lat, lng) {
+                    if (googleMapsLink) {
+                        googleMapsLink.href = `https://www.google.com/maps?q=${lat},${lng}`;
+                    }
+                }
+
+                function updateFields(lat, lng) {
+                    latInput.value = Number(lat).toFixed(7);
+                    lngInput.value = Number(lng).toFixed(7);
+                    updateGoogleMapsLink(latInput.value, lngInput.value);
+                }
+
+                function updateMarker(lat, lng, zoom = null) {
+                    marker.setLatLng([lat, lng]);
+                    map.panTo([lat, lng]);
+
+                    if (zoom !== null) {
+                        map.setZoom(zoom);
+                    }
+
+                    updateFields(lat, lng);
+                }
+
+                marker.on('dragend', function () {
+                    const position = marker.getLatLng();
+                    updateFields(position.lat, position.lng);
+                    setStatus('Marker moved. Coordinates updated.');
                 });
 
-                form.addEventListener('submit', () => isDirty = false);
-
-                window.addEventListener('beforeunload', (event) => {
-                    if (!isDirty) return;
-                    event.preventDefault();
-                    event.returnValue = '';
+                map.on('click', function (event) {
+                    updateMarker(event.latlng.lat, event.latlng.lng);
+                    setStatus('Map clicked. Coordinates updated.');
                 });
+
+                latInput.addEventListener('change', function () {
+                    const lat = parseFloat(latInput.value);
+                    const lng = parseFloat(lngInput.value);
+
+                    if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+                        updateMarker(lat, lng);
+                        setStatus('Marker moved to typed coordinates.');
+                    }
+                });
+
+                lngInput.addEventListener('change', function () {
+                    const lat = parseFloat(latInput.value);
+                    const lng = parseFloat(lngInput.value);
+
+                    if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+                        updateMarker(lat, lng);
+                        setStatus('Marker moved to typed coordinates.');
+                    }
+                });
+
+                syncFromFieldsButton?.addEventListener('click', function () {
+                    const lat = parseFloat(latInput.value);
+                    const lng = parseFloat(lngInput.value);
+
+                    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+                        setStatus('Enter both latitude and longitude first.');
+                        return;
+                    }
+
+                    updateMarker(lat, lng, 15);
+                    setStatus('Marker moved to entered coordinates.');
+                });
+
+                searchButton?.addEventListener('click', async function () {
+                    const query = searchInput?.value.trim();
+
+                    if (!query) {
+                        setStatus('Enter a place or address to search.');
+                        return;
+                    }
+
+                    setStatus('Searching map...');
+
+                    try {
+                        const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`;
+                        const response = await fetch(url, {
+                            headers: { Accept: 'application/json' }
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`Search request failed with status ${response.status}`);
+                        }
+
+                        const results = await response.json();
+
+                        if (!results.length) {
+                            setStatus('No matching location found.');
+                            return;
+                        }
+
+                        const result = results[0];
+                        const lat = parseFloat(result.lat);
+                        const lng = parseFloat(result.lon);
+
+                        updateMarker(lat, lng, 15);
+                        setStatus(`Found: ${result.display_name}`);
+                    } catch (error) {
+                        setStatus(`Unable to search location right now. ${error.message}`);
+                    }
+                });
+
+                searchInput?.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        searchButton?.click();
+                    }
+                });
+
+                useMyLocationButton?.addEventListener('click', function () {
+                    if (!navigator.geolocation) {
+                        setStatus('Geolocation is not supported in this browser.');
+                        return;
+                    }
+
+                    setStatus('Finding your location...');
+
+                    navigator.geolocation.getCurrentPosition(
+                        function (position) {
+                            const lat = position.coords.latitude;
+                            const lng = position.coords.longitude;
+                            updateMarker(lat, lng, 15);
+                            setStatus('Current location loaded.');
+                        },
+                        function () {
+                            setStatus('Unable to retrieve your location.');
+                        },
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 10000,
+                        }
+                    );
+                });
+
+                updateGoogleMapsLink(defaultLat, defaultLng);
+                setStatus(hasCoords ? 'Loaded saved coordinates. Click the map or search to set coordinates.' : '');
+
+                requestAnimationFrame(() => map.invalidateSize());
+                setTimeout(() => map.invalidateSize(), 300);
             });
-        })();
-    </script>
+        </script>
+
+        <script>
+            (() => {
+                const forms = document.querySelectorAll('[data-dirty-form]');
+
+                forms.forEach((form) => {
+                    let isDirty = false;
+
+                    form.querySelectorAll('input, select, textarea').forEach((field) => {
+                        field.addEventListener('change', () => isDirty = true);
+                        field.addEventListener('input', () => isDirty = true);
+                    });
+
+                    form.addEventListener('submit', () => isDirty = false);
+
+                    window.addEventListener('beforeunload', (event) => {
+                        if (!isDirty) return;
+                        event.preventDefault();
+                        event.returnValue = '';
+                    });
+                });
+            })();
+        </script>
+    @endif
 </x-app-layout>
