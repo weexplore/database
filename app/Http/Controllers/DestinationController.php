@@ -65,6 +65,7 @@ private function typeOptions(): array
             'destinations' => $destinations,
             'places' => $places,
             'typeOptions' => $this->typeOptions(),
+            'revisitOptions' => self::revisitOptions(),
         ]);
     }
 
@@ -203,44 +204,45 @@ public function edit(Request $request, Destination $destination)
 }
 
     public function update(Request $request, Destination $destination)
-    {
-        $validated = $request->validate([
-            'placeid' => ['nullable', 'integer', 'exists:places,id'],
-            'destinationname' => ['required', 'string', 'max:200'],
-            'revisitinterestlevel' => ['nullable', 'string', Rule::in(array_keys($this->revisitOptions()))],
-            'overview' => ['nullable', 'string'],
-            'travelnotes' => ['nullable', 'string'],
-            'bestseason' => ['nullable', 'string', 'max:100'],
-            'suitability' => ['nullable', 'string'],
-            'accessnotes' => ['nullable', 'string'],
-            'personalcommentary' => ['nullable', 'string'],
-            'isfeatured' => ['nullable', 'boolean'],
-        ]);
+{
+    $validated = $request->validate([
+        'placeid' => ['nullable', 'integer', 'exists:places,id'],
+        'destinationname' => ['required', 'string', 'max:200'],
+        'destinationtype' => ['required', 'string', Rule::in($this->typeOptions())],
+        'revisitinterestlevel' => ['nullable', 'string', Rule::in(array_keys($this->revisitOptions()))],
+        'overview' => ['nullable', 'string'],
+        'travelnotes' => ['nullable', 'string'],
+        'bestseason' => ['nullable', 'string', 'max:100'],
+        'suitability' => ['nullable', 'string'],
+        'accessnotes' => ['nullable', 'string'],
+        'personalcommentary' => ['nullable', 'string'],
+        'isfeatured' => ['nullable', 'boolean'],
+    ]);
 
-        $destination->update([
-            'placeid' => $validated['placeid'] ?? null,
-            'destinationname' => trim($validated['destinationname']),
-            'destinationtype' => ['required', 'string', Rule::in($this->typeOptions())],
-            'overview' => $validated['overview'] ?? null,
-            'travelnotes' => $validated['travelnotes'] ?? null,
-            'bestseason' => $validated['bestseason'] ?? null,
-            'suitability' => $validated['suitability'] ?? null,
-            'accessnotes' => $validated['accessnotes'] ?? null,
-            'personalcommentary' => $validated['personalcommentary'] ?? null,
-            'revisitinterestlevel' => $validated['revisitinterestlevel'] ?? null,
-            'isfeatured' => (bool) ($validated['isfeatured'] ?? false),
-        ]);
+    $destination->update([
+        'placeid' => $validated['placeid'] ?? null,
+        'destinationname' => trim($validated['destinationname']),
+        'destinationtype' => $validated['destinationtype'],
+        'overview' => $validated['overview'] ?? null,
+        'travelnotes' => $validated['travelnotes'] ?? null,
+        'bestseason' => $validated['bestseason'] ?? null,
+        'suitability' => $validated['suitability'] ?? null,
+        'accessnotes' => $validated['accessnotes'] ?? null,
+        'personalcommentary' => $validated['personalcommentary'] ?? null,
+        'revisitinterestlevel' => $validated['revisitinterestlevel'] ?? null,
+        'isfeatured' => (bool) ($validated['isfeatured'] ?? false),
+    ]);
 
-        $returnTo = $request->input('return_to');
+    $returnTo = $request->input('return_to');
 
-        if ($returnTo) {
-            return redirect($returnTo)->with('success', 'Destination updated successfully.');
-        }
-
-        return redirect()
-            ->route('destinations.edit', $destination)
-            ->with('success', 'Destination updated successfully.');
+    if ($returnTo) {
+        return redirect($returnTo)->with('success', 'Destination updated successfully.');
     }
+
+    return redirect()
+        ->route('destinations.edit', $destination)
+        ->with('success', 'Destination updated successfully.');
+}
 
     public function destroy(Request $request, Destination $destination)
     {

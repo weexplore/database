@@ -104,10 +104,19 @@ protected $casts = [
         return $this->hasMany(KnowledgeProperty::class, 'knowledgeitemid');
     }
 
-    public function attachments(): HasMany
-    {
-        return $this->hasMany(KnowledgeAttachment::class, 'knowledgeitemid');
-    }
+    public function attachments()
+{
+    return $this->belongsToMany(
+        KnowledgeAttachment::class,
+        'knowledgeitem_attachments',
+        'knowledgeitemid',
+        'knowledgeattachmentid'
+    )->withPivot([
+        'description',
+        'isprimary',
+        'sortorder',
+    ]);
+}
 
     public function reviewLogs(): HasMany
     {
@@ -151,5 +160,7 @@ protected $casts = [
     {
         return $this->hasOne(Instrument::class, 'knowledgeitemid');
     }
+
+
 
 }

@@ -40,4 +40,17 @@ class KnowledgeAttachment extends Model
     {
         return $this->belongsTo(KnowledgeItem::class, 'knowledgeitemid');
     }
+    public function items()
+{
+    return $this->belongsToMany(
+        KnowledgeItem::class,
+        'knowledgeitem_attachments',
+        'knowledgeattachmentid',
+        'knowledgeitemid'
+    )->withPivot([
+        'description',
+        'isprimary',
+        'sortorder',
+    ]);
+}
 }

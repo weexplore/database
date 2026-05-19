@@ -21,7 +21,12 @@
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div class="xl:col-span-2">
                     <div class="bg-white shadow-sm sm:rounded-lg p-6">
-                        <form method="POST" action="{{ route('knowledge.attachments.update', $knowledgeAttachment) }}" class="space-y-6">
+                        <form method="POST"
+                            action="{{ route('knowledge.attachments.update', [
+                                'knowledgeItem' => $knowledgeItem,
+                                'knowledgeAttachment' => $knowledgeAttachment,
+                            ]) }}"
+                            class="space-y-6">
                             @csrf
                             @method('PUT')
 
@@ -50,7 +55,10 @@
                     <div class="bg-white shadow-sm sm:rounded-lg p-4">
                         <h3 class="text-sm font-semibold text-gray-900">File Actions</h3>
                         <div class="mt-4 flex flex-wrap gap-2">
-                            <a href="{{ route('knowledge.attachments.view', $knowledgeAttachment) }}"
+                            <a href="{{ route('knowledge.attachments.view', [
+                                    'knowledgeItem' => $knowledgeItem,
+                                    'knowledgeAttachment' => $knowledgeAttachment,
+                                ]) }}"
                                target="_blank"
                                rel="noopener noreferrer"
                                class="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-sm">
@@ -65,7 +73,10 @@
 
                     <div class="bg-white shadow-sm sm:rounded-lg p-4">
                         <h3 class="text-sm font-semibold text-gray-900">Delete Attachment</h3>
-                        <form method="POST" action="{{ route('knowledge.attachments.destroy', $knowledgeAttachment) }}" class="mt-4" onsubmit="return confirm('Delete this attachment?');">
+                        <form method="POST" action="{{ route('knowledge.attachments.destroy', [
+                            'knowledgeItem' => $knowledgeItem,
+                            'knowledgeAttachment' => $knowledgeAttachment,
+                        ]) }}" class="mt-4" onsubmit="return confirm('Delete this attachment?');">
                             @csrf
                             @method('DELETE')
                             <input type="hidden" name="return_to" value="{{ $returnTo }}">

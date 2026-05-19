@@ -289,12 +289,17 @@
                                         </select>
                                     </td>
 
-                                    <td class="px-3 py-2">
-                                        <input type="text"
-                                               name="new[itemstatus]"
-                                               value="{{ old('new.itemstatus', 'active') }}"
-                                               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                               placeholder="Status">
+                                    <td class="px-3 py-2 min-w-[160px]">
+                                        <select name="new[itemstatus]"
+                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                            <option value="">Select status</option>
+                                            @foreach($itemStatusOptions as $value => $label)
+                                                <option value="{{ $value }}"
+                                                    @selected(old('new.itemstatus', 'active') === $value)>
+                                                    {{ $label }}
+                                                </option>
+                                            @endforeach
+                                        </select>
                                     </td>
 
                                     <td class="px-3 py-2">

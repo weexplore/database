@@ -11,7 +11,6 @@
 </head>
 <body class="font-sans antialiased bg-gray-100">
     <div class="min-h-screen">
-        {{-- Header --}}
         @if (isset($header))
             <header class="bg-white shadow">
                 <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
@@ -20,58 +19,51 @@
             </header>
         @endif
 
-        {{-- Top navigation --}}
         <nav class="bg-blue-700 border-b border-blue-800">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex space-x-8">
-                    <a href="{{ url('/') }}" 
+                <div class="flex flex-wrap gap-x-8">
+                    <a href="{{ url('/') }}"
                        class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
-                              {{ request()->is('/') ? 'border-b-2 border-white text-white' : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
-                        Travel Planning
+                            {{ request()->routeIs('home')
+                                ? 'border-b-2 border-white text-white'
+                                : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
+                        Home
                     </a>
-                    <a href="{{ route('trips.index') }}" 
+
+                    <a href="{{ route('trips.index') }}"
                        class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
-                              {{ request()->is('trips*') ? 'border-b-2 border-white text-white' : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
+                            {{ request()->routeIs('trips.*')
+                                ? 'border-b-2 border-white text-white'
+                                : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
                         Trips
                     </a>
-                    <a href="{{ route('places.index') }}" 
+
+                    <a href="{{ route('places.index') }}"
                        class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
-                              {{ request()->is('places*') ? 'border-b-2 border-white text-white' : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
+                            {{ request()->routeIs('places.*')
+                                ? 'border-b-2 border-white text-white'
+                                : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
                         Places
                     </a>
-                    <a href="{{ route('knowledge-categories.index', ['domainid' => 0, 'categoryid' => 0]) }}" 
+
+                    <a href="{{ route('knowledge-categories.index', ['domainid' => 0, 'categoryid' => 0]) }}"
                        class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
-                              {{ request()->is('Knowledge*') ? 'border-b-2 border-white text-white' : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
+                            {{ request()->routeIs('knowledge-categories.*')
+                                || request()->routeIs('knowledge.items.*')
+                                || request()->routeIs('knowledge.attachments.*')
+                                || request()->routeIs('knowledge.sources.*')
+                                || request()->routeIs('knowledge.relationships.*')
+                                || request()->routeIs('knowledge.notes.*')
+                                || request()->routeIs('knowledge.reports.*')
+                                    ? 'border-b-2 border-white text-white'
+                                    : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
                         Knowledge
                     </a>
 
-                    <a href="{{ route('research.index') }}"
-                    class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
-                            {{ request()->routeIs('research.*')
-                                || request()->routeIs('knowledge-domains.*')
-                                || request()->routeIs('knowledge-tags.*')
-                                || request()->routeIs('bible-versions.*')
-                                || request()->routeIs('bible-books.*')
-                                    ? 'border-b-2 border-white text-white'
-                                    : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
-                        Research
-                    </a>
-
-                    <a href="{{ route('investments.index') }}"
-                    class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
-                            {{ request()->routeIs('investments.*')
-                                || request()->routeIs('exchanges.*')
-                                || request()->routeIs('instrument-types.*')
-                                || request()->routeIs('portfolios.*')
-                                    ? 'border-b-2 border-white text-white'
-                                    : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
-                        Investments
-                    </a>
                 </div>
             </div>
         </nav>
 
-        {{-- Page Content --}}
         <main>
             {{ $slot }}
         </main>

@@ -225,6 +225,68 @@
                                         </div>
                                     @endif
 
+@if($knowledgeItem->bibleReferences->isNotEmpty())
+    <div class="rounded-lg border border-gray-200 p-4 space-y-3">
+        <h5 class="text-sm font-semibold text-gray-900">Bible References</h5>
+
+        <div class="space-y-3">
+            @foreach($knowledgeItem->bibleReferences as $reference)
+                <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0 space-y-2">
+                    <div class="flex flex-wrap gap-2 text-xs">
+                        @if($reference->version)
+                            <span class="inline-flex items-center px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                {{ $reference->version->versionname ?? $reference->version->abbreviation ?? 'Version' }}
+                            </span>
+                        @endif
+
+                        @if(!empty($reference->cachedreferencetext))
+                            <span class="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                {{ $reference->cachedreferencetext }}
+                            </span>
+                        @endif
+                    </div>
+
+                    <div class="text-sm text-gray-800">
+                        @php
+                            $bookName = $reference->book?->bookname ?? 'Unknown book';
+                            $chapterFrom = $reference->chapterfrom;
+                            $verseFrom = $reference->versefrom;
+                            $chapterTo = $reference->chapterto;
+                            $verseTo = $reference->verseto;
+                        @endphp
+
+                        <span class="font-medium">{{ $bookName }}</span>
+
+                        @if(!is_null($chapterFrom))
+                            {{ ' ' . $chapterFrom }}
+                            @if(!is_null($verseFrom))
+                                :{{ $verseFrom }}
+                            @endif
+
+                            @if(!is_null($chapterTo) || !is_null($verseTo))
+                                –
+                                {{ $chapterTo ?? $chapterFrom }}
+                                @if(!is_null($verseTo))
+                                    :{{ $verseTo }}
+                                @endif
+                            @endif
+                        @endif
+                    </div>
+
+                    @if(!empty($reference->cachedpassagetext))
+                        <div class="rounded-md bg-gray-50 border border-gray-200 px-3 py-2">
+                            <div class="text-xs font-medium text-gray-500 mb-1">Cached Passage Text</div>
+                            <div class="text-sm text-gray-700 whitespace-pre-line">
+                                {{ $reference->cachedpassagetext }}
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+    </div>
+@endif
+
                                     @if($knowledgeItem->detailednotes || $knowledgeItem->reviewnotes)
                                         <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
                                             @if($knowledgeItem->detailednotes)

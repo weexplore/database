@@ -25,121 +25,157 @@ class KnowledgeAttachmentController extends Controller
     }
 
     public function store(Request $request, KnowledgeItem $knowledgeItem): RedirectResponse
-    {
-        $attachmentTypeOptions = array_keys($this->attachmentTypeOptions());
+{
+    $attachmentTypeOptions = array_keys($this->attachmentTypeOptions());
 
-        $data = $request->validate([
-            'attachmenttype' => ['nullable', Rule::in($attachmentTypeOptions)],
-            'description' => ['nullable', 'string'],
-            'uploadedby' => ['nullable', 'string', 'max:100'],
-            'isprimary' => ['nullable', 'boolean'],
-            'file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
-            'return_to' => ['nullable', 'string'],
-        ]);
+    $data = $request->validate([
+        'attachmenttype' => ['nullable', Rule::in($attachmentTypeOptions)],
+        'description' => ['nullable', 'string'],
+        'uploadedby' => ['nullable', 'string', 'max:100'],
+        'isprimary' => ['nullable', 'boolean'],
+        'sortorder' => ['nullable', 'integer', 'min:0'],
+        'file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+        'return_to' => ['nullable', 'string'],
+    ]);
 
-        $file = $request->file('file');
-        $storedPath = $file->store('knowledge-attachments');
+    $file = $request->file('file');
+    $storedPath = $file->store('knowledge-attachments');
 
-        if (!empty($data['isprimary'])) {
-            KnowledgeAttachment::query()
-                ->where('knowledgeitemid', $knowledgeItem->id)
-                ->update(['isprimary' => false]);
-        }
+    $attachment = KnowledgeAttachment::create([
+        'attachmenttype' => $data['attachmenttype'] ?? 'document',
+        'filename' => $storedPath,
+        'originalfilename' => $file->getClientOriginalName(),
+        'mimetype' => $file->getClientMimeType(),
+        'filesizebytes' => $file->getSize(),
+        'uploadedat' => now(),
+        'uploadedby' => $data['uploadedby'] ?? (auth()->user()->name ?? null),
+    ]);
 
-        KnowledgeAttachment::create([
-            'knowledgeitemid' => $knowledgeItem->id,
-            'attachmenttype' => $data['attachmenttype'] ?? 'document',
-            'filename' => $storedPath,
-            'originalfilename' => $file->getClientOriginalName(),
-            'mimetype' => $file->getClientMimeType(),
-            'filesizebytes' => $file->getSize(),
-            'description' => $data['description'] ?? null,
-            'uploadedat' => now(),
-            'uploadedby' => $data['uploadedby'] ?? (auth()->user()->name ?? null),
-            'isprimary' => !empty($data['isprimary']),
-        ]);
-
-        return redirect($data['return_to'] ?: route('knowledge.items.edit', [
-            'knowledgeItem' => $knowledgeItem,
-            'tab' => 'attachments',
-        ]))->with('success', 'Attachment uploaded successfully.');
+    if (!empty($data['isprimary'])) {
+        $knowledgeItem->attachments()->updateExistingPivot(
+            $knowledgeItem->attachments()->pluck('knowledgeattachments.id')->all(),
+            ['isprimary' => false]
+        );
     }
 
-    public function edit(Request $request, KnowledgeAttachment $knowledgeAttachment): View
-    {
-        $knowledgeAttachment->load('item.primaryCategory');
+    $knowledgeItem->attachments()->attach($attachment->id, [
+        'description' => $data['description'] ?? null,
+        'isprimary' => !empty($data['isprimary']),
+        'sortorder' => $data['sortorder'] ?? 0,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
 
-        $knowledgeItem = $knowledgeAttachment->item;
-        $returnTo = $request->input('return_to', route('knowledge.items.edit', [
-            'knowledgeItem' => $knowledgeItem,
-            'tab' => 'attachments',
-        ]));
+    return redirect($data['return_to'] ?: route('knowledge.items.edit', [
+        'knowledgeItem' => $knowledgeItem,
+        'tab' => 'attachments',
+    ]))->with('success', 'Attachment uploaded successfully.');
+}
 
-        $attachments = KnowledgeAttachment::query()
+    public function edit(Request $request, KnowledgeItem $knowledgeItem, KnowledgeAttachment $knowledgeAttachment): View
+{
+    abort_unless(
+        $knowledgeItem->attachments()
+            ->where('knowledgeattachments.id', $knowledgeAttachment->id)
+            ->exists(),
+        404
+    );
+
+    $knowledgeAttachment->load([
+        'items' => function ($query) {
+            $query->with('primaryCategory');
+        },
+    ]);
+
+    $returnTo = $request->input('return_to', route('knowledge.items.edit', [
+        'knowledgeItem' => $knowledgeItem,
+        'tab' => 'attachments',
+    ]));
+
+    $attachments = $knowledgeItem->attachments()
+        ->orderByPivot('isprimary', 'desc')
+        ->orderByPivot('sortorder')
+        ->orderByDesc('uploadedat')
+        ->orderByDesc('knowledgeattachments.id')
+        ->get();
+
+    return view('knowledge-attachments.edit', [
+        'knowledgeAttachment' => $knowledgeAttachment,
+        'knowledgeItem' => $knowledgeItem,
+        'attachmentTypeOptions' => $this->attachmentTypeOptions(),
+        'returnTo' => $returnTo,
+        'attachments' => $attachments,
+    ]);
+}
+
+    public function update(Request $request, KnowledgeItem $knowledgeItem, KnowledgeAttachment $knowledgeAttachment): RedirectResponse
+{
+    abort_unless(
+        $knowledgeItem->attachments()->where('knowledgeattachments.id', $knowledgeAttachment->id)->exists(),
+        404
+    );
+
+    $attachmentTypeOptions = array_keys($this->attachmentTypeOptions());
+
+    $data = $request->validate([
+        'attachmenttype' => ['nullable', Rule::in($attachmentTypeOptions)],
+        'description' => ['nullable', 'string'],
+        'uploadedby' => ['nullable', 'string', 'max:100'],
+        'isprimary' => ['nullable', 'boolean'],
+        'sortorder' => ['nullable', 'integer', 'min:0'],
+        'return_to' => ['nullable', 'string'],
+    ]);
+
+    if (!empty($data['isprimary'])) {
+        \DB::table('knowledgeitem_attachments')
             ->where('knowledgeitemid', $knowledgeItem->id)
-            ->orderByDesc('isprimary')
-            ->orderByDesc('uploadedat')
-            ->orderByDesc('id')
-            ->get();
-
-        return view('knowledge-attachments.edit', [
-            'knowledgeAttachment' => $knowledgeAttachment,
-            'knowledgeItem' => $knowledgeItem,
-            'attachmentTypeOptions' => $this->attachmentTypeOptions(),
-            'returnTo' => $returnTo,
-            'attachments' => $attachments,
-        ]);
+            ->where('knowledgeattachmentid', '!=', $knowledgeAttachment->id)
+            ->update(['isprimary' => false, 'updated_at' => now()]);
     }
 
-    public function update(Request $request, KnowledgeAttachment $knowledgeAttachment): RedirectResponse
-    {
-        $attachmentTypeOptions = array_keys($this->attachmentTypeOptions());
+    $knowledgeAttachment->update([
+        'attachmenttype' => $data['attachmenttype'] ?? $knowledgeAttachment->attachmenttype,
+        'uploadedby' => $data['uploadedby'] ?? null,
+    ]);
 
-        $data = $request->validate([
-            'attachmenttype' => ['nullable', Rule::in($attachmentTypeOptions)],
-            'description' => ['nullable', 'string'],
-            'uploadedby' => ['nullable', 'string', 'max:100'],
-            'isprimary' => ['nullable', 'boolean'],
-            'return_to' => ['nullable', 'string'],
-        ]);
+    $knowledgeItem->attachments()->updateExistingPivot($knowledgeAttachment->id, [
+        'description' => $data['description'] ?? null,
+        'isprimary' => !empty($data['isprimary']),
+        'sortorder' => $data['sortorder'] ?? 0,
+        'updated_at' => now(),
+    ]);
 
-        if (!empty($data['isprimary'])) {
-            KnowledgeAttachment::query()
-                ->where('knowledgeitemid', $knowledgeAttachment->knowledgeitemid)
-                ->where('id', '!=', $knowledgeAttachment->id)
-                ->update(['isprimary' => false]);
-        }
+    return redirect($data['return_to'] ?: route('knowledge.items.edit', [
+        'knowledgeItem' => $knowledgeItem,
+        'tab' => 'attachments',
+    ]))->with('success', 'Attachment updated successfully.');
+}
 
-        $knowledgeAttachment->update([
-            'attachmenttype' => $data['attachmenttype'] ?? $knowledgeAttachment->attachmenttype,
-            'description' => $data['description'] ?? null,
-            'uploadedby' => $data['uploadedby'] ?? null,
-            'isprimary' => !empty($data['isprimary']),
-        ]);
+    public function destroy(Request $request, KnowledgeItem $knowledgeItem, KnowledgeAttachment $knowledgeAttachment): RedirectResponse
+{
+    $returnTo = $request->input('return_to', route('knowledge.items.edit', [
+        'knowledgeItem' => $knowledgeItem,
+        'tab' => 'attachments',
+    ]));
 
-        return redirect($data['return_to'] ?: route('knowledge.attachments.edit', $knowledgeAttachment))
-            ->with('success', 'Attachment updated successfully.');
-    }
+    try {
+        $knowledgeItem->attachments()->detach($knowledgeAttachment->id);
 
-    public function destroy(Request $request, KnowledgeAttachment $knowledgeAttachment): RedirectResponse
-    {
-        $returnTo = $request->input('return_to', route('knowledge.items.edit', [
-            'knowledgeItem' => $knowledgeAttachment->knowledgeitemid,
-            'tab' => 'attachments',
-        ]));
+        $remainingLinks = $knowledgeAttachment->items()->count();
 
-        try {
+        if ($remainingLinks === 0) {
             if ($knowledgeAttachment->filename && Storage::exists($knowledgeAttachment->filename)) {
                 Storage::delete($knowledgeAttachment->filename);
             }
 
             $knowledgeAttachment->delete();
-
-            return redirect($returnTo)->with('success', 'Attachment deleted successfully.');
-        } catch (\Throwable $e) {
-            return redirect($returnTo)->with('error', 'This attachment could not be deleted.');
         }
+
+        return redirect($returnTo)->with('success', 'Attachment removed successfully.');
+    } catch (\Throwable $e) {
+        return redirect($returnTo)->with('error', 'This attachment could not be removed.');
     }
+}
 
     public function download(KnowledgeAttachment $knowledgeAttachment)
     {
@@ -161,4 +197,45 @@ class KnowledgeAttachmentController extends Controller
             'Content-Disposition' => 'inline; filename="' . $knowledgeAttachment->originalfilename . '"',
         ]);
     }
+
+    public function attachExisting(Request $request, KnowledgeItem $knowledgeItem): RedirectResponse
+{
+    $data = $request->validate([
+        'knowledgeattachmentid' => ['required', 'integer', Rule::exists('knowledgeattachments', 'id')],
+        'description' => ['nullable', 'string'],
+        'isprimary' => ['nullable', 'boolean'],
+        'sortorder' => ['nullable', 'integer', 'min:0'],
+        'return_to' => ['nullable', 'string'],
+    ]);
+
+    $attachmentId = (int) $data['knowledgeattachmentid'];
+
+    $alreadyLinked = $knowledgeItem->attachments()
+        ->where('knowledgeattachments.id', $attachmentId)
+        ->exists();
+
+    if ($alreadyLinked) {
+        return redirect($data['return_to'] ?: route('knowledge.items.edit', [
+            'knowledgeItem' => $knowledgeItem,
+            'tab' => 'attachments',
+        ]))->with('error', 'That attachment is already linked to this knowledge item.');
+    }
+
+    if (!empty($data['isprimary'])) {
+        \DB::table('knowledgeitem_attachments')
+            ->where('knowledgeitemid', $knowledgeItem->id)
+            ->update(['isprimary' => false]);
+    }
+
+    $knowledgeItem->attachments()->attach($attachmentId, [
+        'description' => $data['description'] ?? null,
+        'isprimary' => !empty($data['isprimary']),
+        'sortorder' => $data['sortorder'] ?? 0,
+    ]);
+
+    return redirect($data['return_to'] ?: route('knowledge.items.edit', [
+        'knowledgeItem' => $knowledgeItem,
+        'tab' => 'attachments',
+    ]))->with('success', 'Existing attachment linked successfully.');
+}
 }

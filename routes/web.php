@@ -31,14 +31,13 @@ use App\Http\Controllers\BibleReferenceController;
 use App\Http\Controllers\BibleVersionController;
 use App\Http\Controllers\ExchangeController;
 use App\Http\Controllers\InstrumentTypeController;
-use App\Http\Controllers\InvestmentDashboardController;
 use App\Http\Controllers\KnowledgeCategoryController;
 use App\Http\Controllers\KnowledgeDomainController;
 use App\Http\Controllers\KnowledgeItemController;
 use App\Http\Controllers\KnowledgeItemTypeController;
 use App\Http\Controllers\KnowledgeTagController;
 use App\Http\Controllers\PortfolioController;
-use App\Http\Controllers\ResearchDashboardController;
+use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\KnowledgeItemNoteController;
 use App\Http\Controllers\KnowledgeItemSourceController;
 use App\Http\Controllers\KnowledgeItemReviewLogController;
@@ -58,7 +57,7 @@ use App\Http\Controllers\KnowledgeReportController;
 |--------------------------------------------------------------------------
 | Main application landing page.
 */
-Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+Route::get('/', [AdminDashboardController::class, 'index'])->name('home');
 
 /*
 |--------------------------------------------------------------------------
@@ -66,8 +65,7 @@ Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 |--------------------------------------------------------------------------
 | Secondary top-level dashboard areas.
 */
-Route::get('/research', [ResearchDashboardController::class, 'index'])->name('research.index');
-Route::get('/investments', [InvestmentDashboardController::class, 'index'])->name('investments.index');
+Route::get('/admin', [AdminDashboardController::class, 'index'])->name('admin.index');
 
 /*
 |--------------------------------------------------------------------------
@@ -389,12 +387,6 @@ Route::prefix('knowledge')->name('knowledge.')->group(function () {
                 'review-logs' => 'knowledgeReviewLog',
             ]);
 
-        Route::resource('{knowledgeItem}/attachments', KnowledgeItemAttachmentController::class)
-            ->except(['index', 'show', 'create'])
-            ->parameters([
-                'attachments' => 'knowledgeAttachment',
-            ]);
-
         Route::resource('{knowledgeItem}/relationships', KnowledgeItemRelationshipController::class)
             ->except(['index', 'show', 'create'])
             ->parameters([
@@ -456,15 +448,17 @@ Route::prefix('knowledge')->name('knowledge.')->group(function () {
 | record-based rather than nested under the item URL.
 */
 Route::prefix('knowledge-attachments')->name('knowledge.attachments.')->group(function () {
-    Route::get('{knowledgeAttachment}/edit', [KnowledgeAttachmentController::class, 'edit'])->name('edit');
-    Route::put('{knowledgeAttachment}', [KnowledgeAttachmentController::class, 'update'])->name('update');
-    Route::delete('{knowledgeAttachment}', [KnowledgeAttachmentController::class, 'destroy'])->name('destroy');
     Route::get('{knowledgeAttachment}/view', [KnowledgeAttachmentController::class, 'view'])->name('view');
     Route::get('{knowledgeAttachment}/download', [KnowledgeAttachmentController::class, 'download'])->name('download');
 });
 
-Route::post('knowledge-items/{knowledgeItem}/attachments', [KnowledgeAttachmentController::class, 'store'])
-    ->name('knowledge.attachments.store');
+Route::prefix('knowledge-items/{knowledgeItem}/attachments')->name('knowledge.attachments.')->group(function () {
+    Route::post('/', [KnowledgeAttachmentController::class, 'store'])->name('store');
+    Route::post('attach-existing', [KnowledgeAttachmentController::class, 'attachExisting'])->name('attach-existing');
+    Route::get('{knowledgeAttachment}/edit', [KnowledgeAttachmentController::class, 'edit'])->name('edit');
+    Route::put('{knowledgeAttachment}', [KnowledgeAttachmentController::class, 'update'])->name('update');
+    Route::delete('{knowledgeAttachment}', [KnowledgeAttachmentController::class, 'destroy'])->name('destroy');
+});
 
 Route::prefix('bible-references')->name('knowledge.items.bible-references.')->group(function () {
     Route::get('{bibleReference}/edit', [BibleReferenceController::class, 'edit'])->name('edit');
