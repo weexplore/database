@@ -35,21 +35,7 @@
 
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
                 <form method="GET" action="{{ route('trips.legs.index', $trip) }}">
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div>
-                            <label for="destination_id" class="block text-sm font-medium text-gray-700 mb-1">
-                                Destination
-                            </label>
-                            <select name="destination_id" id="destination_id" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                <option value="">All destinations</option>
-                                @foreach($destinations as $destination)
-                                    <option value="{{ $destination->id }}" @selected((string) request('destination_id') === (string) $destination->id)>
-                                        {{ $destination->destinationname }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div>
                             <label for="fromplace_id" class="block text-sm font-medium text-gray-700 mb-1">
                                 From Place
@@ -59,6 +45,19 @@
                                 @foreach($places as $place)
                                     <option value="{{ $place->id }}" @selected((string) request('fromplace_id') === (string) $place->id)>
                                         {{ $place->placename }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label for="fromdestination_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                From Destination
+                            </label>
+                            <select name="fromdestination_id" id="fromdestination_id" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                <option value="">All origin destinations</option>
+                                @foreach($destinations as $destination)
+                                    <option value="{{ $destination->id }}" @selected((string) request('fromdestination_id') === (string) $destination->id)>
+                                        {{ $destination->destinationname }}
                                     </option>
                                 @endforeach
                             </select>
@@ -78,6 +77,22 @@
                             </select>
                         </div>
 
+                        <div>
+                            <label for="todestination_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                To Destination
+                            </label>
+                            <select name="todestination_id" id="todestination_id" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                <option value="">All destination destinations</option>
+                                @foreach($destinations as $destination)
+                                    <option value="{{ $destination->id }}" @selected((string) request('todestination_id') === (string) $destination->id)>
+                                        {{ $destination->destinationname }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+
+
                         <div class="flex items-end gap-2">
                             <button type="submit"
                                     class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
@@ -85,7 +100,7 @@
                             </button>
 
                             <a href="{{ route('trips.legs.index', $trip) }}"
-                               class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
+                            class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
                                 Reset
                             </a>
                         </div>
@@ -109,8 +124,11 @@
                         'tripLeg' => $tripLeg,
                         'places' => $places,
                         'destinations' => $destinations,
-                        'selectedDestinationId' => $selectedDestinationId ?? null,
+                        'destinationItems' => $destinationItems,
+                        'vehicles' => $vehicles,
+                        'selectedFromDestinationId' => $selectedFromDestinationId ?? null,
                         'selectedFromPlaceId' => $selectedFromPlaceId ?? null,
+                        'selectedToDestinationId' => $selectedToDestinationId ?? null,
                         'selectedToPlaceId' => $selectedToPlaceId ?? null,
                         'isCreate' => true,
                     ])
@@ -145,7 +163,6 @@
                                     <th class="px-4 py-3 text-left font-medium text-gray-600">Dates</th>
                                     <th class="px-4 py-3 text-left font-medium text-gray-600">From</th>
                                     <th class="px-4 py-3 text-left font-medium text-gray-600">To</th>
-                                    <th class="px-4 py-3 text-left font-medium text-gray-600">Destination</th>
                                     <th class="px-4 py-3 text-left font-medium text-gray-600">Distance</th>
                                     <th class="px-4 py-3 text-left font-medium text-gray-600">Title</th>
                                     <th class="px-4 py-3 text-right font-medium text-gray-600">Actions</th>
@@ -154,40 +171,74 @@
                             <tbody class="divide-y divide-gray-100 bg-white">
                                 @foreach($legs as $leg)
                                     <tr>
-                                        <td class="px-4 py-3">
+                                        <td class="px-4 py-3 align-top">
                                             {{ $leg->legnumber ?? '—' }}
                                         </td>
-                                        <td class="px-4 py-3">
+
+                                        <td class="px-4 py-3 align-top">
                                             <div>{{ $leg->startdate ? \Illuminate\Support\Carbon::parse($leg->startdate)->format('d/m/Y') : '—' }}</div>
-                                            <div class="text-xs text-gray-500">{{ $leg->enddate ? \Illuminate\Support\Carbon::parse($leg->enddate)->format('d/m/Y') : '—' }}</div>
+                                            <div class="text-xs text-gray-500">
+                                                {{ $leg->enddate ? \Illuminate\Support\Carbon::parse($leg->enddate)->format('d/m/Y') : '—' }}
+                                            </div>
                                         </td>
-                                        <td class="px-4 py-3">
-                                            {{ $leg->fromPlace?->placename ?? '—' }}
+
+                                        <td class="px-4 py-3 align-top">
+                                            <div class="text-sm text-gray-900">
+                                                {{ $leg->fromPlace?->placename ?? '—' }}
+                                            </div>
+
+                                            @if($leg->fromDestination?->destinationname)
+                                                <div class="text-xs text-gray-500">
+                                                    Destination: {{ $leg->fromDestination->destinationname }}
+                                                </div>
+                                            @endif
+
+                                            @if($leg->fromDestinationItem?->itemname)
+                                                <div class="text-xs text-gray-500">
+                                                    Item: {{ $leg->fromDestinationItem->itemname }}
+                                                </div>
+                                            @endif
                                         </td>
-                                        <td class="px-4 py-3">
-                                            {{ $leg->toPlace?->placename ?? '—' }}
+
+                                        <td class="px-4 py-3 align-top">
+                                            <div class="text-sm text-gray-900">
+                                                {{ $leg->toPlace?->placename ?? '—' }}
+                                            </div>
+
+                                            @if($leg->toDestination?->destinationname)
+                                                <div class="text-xs text-gray-500">
+                                                    Destination: {{ $leg->toDestination->destinationname }}
+                                                </div>
+                                            @endif
+
+                                            @if($leg->toDestinationItem?->itemname)
+                                                <div class="text-xs text-gray-500">
+                                                    Item: {{ $leg->toDestinationItem->itemname }}
+                                                </div>
+                                            @endif
                                         </td>
-                                        <td class="px-4 py-3">
-                                            {{ $leg->destination?->destinationname ?? '—' }}
-                                        </td>
-                                        <td class="px-4 py-3">
+
+                                        <td class="px-4 py-3 align-top">
                                             {{ $leg->distancekm !== null ? number_format((float) $leg->distancekm, 1) . ' km' : '—' }}
                                         </td>
-                                        <td class="px-4 py-3">
+
+                                        <td class="px-4 py-3 align-top">
                                             {{ $leg->title ?: '—' }}
                                         </td>
-                                        <td class="px-4 py-3">
+
+                                        <td class="px-4 py-3 align-top">
                                             <div class="flex items-center justify-end gap-2">
                                                 <a href="{{ route('trips.legs.edit', ['trip' => $trip, 'tripLeg' => $leg]) }}"
-                                                   class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs">
+                                                class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs">
                                                     Edit
                                                 </a>
 
                                                 <form method="POST"
-                                                      action="{{ route('trips.legs.destroy', ['trip' => $trip, 'tripLeg' => $leg]) }}"
-                                                      onsubmit="return confirm('Delete this trip leg?');">
+                                                    action="{{ route('trips.legs.destroy', ['trip' => $trip, 'tripLeg' => $leg]) }}"
+                                                    onsubmit="return confirm('Delete this trip leg?');">
                                                     @csrf
                                                     @method('DELETE')
+
                                                     <button type="submit"
                                                             class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-xs">
                                                         Delete

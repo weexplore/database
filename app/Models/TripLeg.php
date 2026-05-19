@@ -17,44 +17,47 @@ class TripLeg extends Model
     const CREATED_AT = 'createdat';
     const UPDATED_AT = 'updatedat';
 
-protected $fillable = [
-    'tripid',
-    'legnumber',
-    'startdate',
-    'enddate',
-    'nightsplanned',
-    'fromplaceid',
-    'toplaceid',
-    'destinationid',
-    'fromdestinationitemid',
-    'destinationitemid',
-    'title',
-    'description',
-    'distancekm',
-    'elevationgainm',
-    'elevationlossm',
-    'drivingnotes',
-    'planningnotes',
-    'actualnotes',
-    'sortorder',
-    'plannerstatus',
-];
+    protected $fillable = [
+        'tripid',
+        'legnumber',
+        'startdate',
+        'enddate',
+        'nightsplanned',
+        'fromplaceid',
+        'fromdestinationid',
+        'fromdestinationitemid',
+        'toplaceid',
+        'todestinationid',
+        'todestinationitemid',
+        'title',
+        'description',
+        'distancekm',
+        'elevationgainm',
+        'elevationlossm',
+        'drivingnotes',
+        'planningnotes',
+        'actualnotes',
+        'sortorder',
+        'plannerstatus',
+    ];
 
-protected $casts = [
-    'tripid' => 'integer',
-    'legnumber' => 'integer',
-    'startdate' => 'date',
-    'enddate' => 'date',
-    'nightsplanned' => 'integer',
-    'fromplaceid' => 'integer',
-    'toplaceid' => 'integer',
-    'destinationid' => 'integer',
-    'fromdestinationitemid' => 'integer',
-    'distancekm' => 'decimal:1',
-    'elevationgainm' => 'decimal:1',
-    'elevationlossm' => 'decimal:1',
-    'sortorder' => 'integer',
-];
+    protected $casts = [
+        'tripid' => 'integer',
+        'legnumber' => 'integer',
+        'startdate' => 'date',
+        'enddate' => 'date',
+        'nightsplanned' => 'integer',
+        'fromplaceid' => 'integer',
+        'fromdestinationid' => 'integer',
+        'fromdestinationitemid' => 'integer',
+        'toplaceid' => 'integer',
+        'todestinationid' => 'integer',
+        'todestinationitemid' => 'integer',
+        'distancekm' => 'decimal:1',
+        'elevationgainm' => 'decimal:1',
+        'elevationlossm' => 'decimal:1',
+        'sortorder' => 'integer',
+    ];
 
     public function trip(): BelongsTo
     {
@@ -71,9 +74,24 @@ protected $casts = [
         return $this->belongsTo(Place::class, 'toplaceid');
     }
 
-    public function destination(): BelongsTo
+    public function fromDestination(): BelongsTo
     {
-        return $this->belongsTo(Destination::class, 'destinationid');
+        return $this->belongsTo(Destination::class, 'fromdestinationid');
+    }
+
+    public function toDestination(): BelongsTo
+    {
+        return $this->belongsTo(Destination::class, 'todestinationid');
+    }
+
+    public function fromDestinationItem(): BelongsTo
+    {
+        return $this->belongsTo(DestinationItem::class, 'fromdestinationitemid');
+    }
+
+    public function toDestinationItem(): BelongsTo
+    {
+        return $this->belongsTo(DestinationItem::class, 'todestinationitemid');
     }
 
     public function stays(): HasMany
@@ -101,9 +119,9 @@ protected $casts = [
         return $this->hasMany(TripLegVehicle::class, 'triplegid');
     }
 
-    public function vehicles()
+    public function vehicles(): BelongsToMany
     {
-        return $this->belongsToMany(\App\Models\Vehicle::class, 'triplegvehicles', 'triplegid', 'vehicleid')
+        return $this->belongsToMany(Vehicle::class, 'triplegvehicles', 'triplegid', 'vehicleid')
             ->withPivot(['vehiclerole', 'sortorder'])
             ->orderByRaw('COALESCE(triplegvehicles.sortorder, 999999), vehicles.id');
     }
@@ -136,14 +154,7 @@ protected $casts = [
             ->withPivot(['id', 'sequence_no', 'linkrole', 'notes', 'planneddate', 'createdat', 'updatedat'])
             ->withTimestamps('createdat', 'updatedat');
     }
-    public function fromDestinationItem(): BelongsTo
-    {
-        return $this->belongsTo(DestinationItem::class, 'fromdestinationitemid');
-    }
-    public function destinationItem(): BelongsTo
-    {
-        return $this->belongsTo(DestinationItem::class, 'destinationitemid');
-    }
+
     public function legPoints(): HasMany
     {
         return $this->hasMany(TripLegPoint::class, 'triplegid')

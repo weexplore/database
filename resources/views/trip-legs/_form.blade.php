@@ -1,9 +1,10 @@
 @php
-    $selectedDestinationId = old('destinationid', old('destination_id', $tripLeg->destinationid ?? $selectedDestinationId ?? ''));
+    $selectedFromDestinationId = old('fromdestinationid', old('fromdestination_id', $tripLeg->fromdestinationid ?? $selectedFromDestinationId ?? ''));
     $selectedFromPlaceId = old('fromplaceid', old('fromplace_id', $tripLeg->fromplaceid ?? $selectedFromPlaceId ?? ''));
+    $selectedToDestinationId = old('todestinationid', old('todestination_id', $tripLeg->todestinationid ?? $selectedToDestinationId ?? ''));
     $selectedToPlaceId = old('toplaceid', old('toplace_id', $tripLeg->toplaceid ?? $selectedToPlaceId ?? ''));
     $selectedFromDestinationItemId = old('fromdestinationitemid', $tripLeg->fromdestinationitemid ?? '');
-    $selectedDestinationItemId = old('destinationitemid', $tripLeg->destinationitemid ?? '');
+    $selectedToDestinationItemId = old('todestinationitemid', $tripLeg->todestinationitemid ?? '');
     $isCreate = $isCreate ?? false;
 
     $selectedLegPoints = old('leg_points');
@@ -21,9 +22,6 @@
                     'destinationitemid' => $point->destinationitemid,
                     'title' => $point->title,
                     'notes' => $point->notes,
-                    'planneddate' => optional($point->planneddate)->format('Y-m-d'),
-                    'starttime' => $point->starttime,
-                    'endtime' => $point->endtime,
                 ];
             })
             ->values()
@@ -103,7 +101,7 @@
             @endif
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
             <div>
                 <label for="legnumber" class="block text-sm font-medium text-gray-700 mb-1">Leg Number</label>
                 <input type="number"
@@ -154,7 +152,7 @@
         </div>
 
         <div class="border-t border-gray-200 pt-6 space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div>
                     <label for="fromplaceid" class="block text-sm font-medium text-gray-700 mb-1">From Place</label>
                     <select name="fromplaceid" id="fromplaceid" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
@@ -168,6 +166,21 @@
                             </option>
                         @endforeach
                     </select>
+                </div>
+
+                <div>
+                    <label for="fromdestinationid" class="block text-sm font-medium text-gray-700 mb-1">From Destination</label>
+                    <select name="fromdestinationid" id="fromdestinationid" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                        <option value="">Select origin destination</option>
+                        @foreach($destinations as $destination)
+                            <option value="{{ $destination->id }}"
+                                    data-place-id="{{ $destination->placeid ?? '' }}"
+                                    @selected((string) $selectedFromDestinationId === (string) $destination->id)>
+                                {{ $destination->destinationname }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">Optional editorial destination within the selected From Place.</p>
                 </div>
 
                 <div>
@@ -186,20 +199,15 @@
                                     data-lat="{{ $resolvedLat ?? '' }}"
                                     data-lng="{{ $resolvedLng ?? '' }}"
                                     @selected((string) $selectedFromDestinationItemId === (string) $destinationItem->id)>
-                                {{ $destinationItem->itemname }}
-                                @if($destinationItem->destination?->destinationname)
-                                    - {{ $destinationItem->destination->destinationname }}
-                                @endif
+                                {{ $destinationItem->itemname }}@if($destinationItem->destination?->destinationname) - {{ $destinationItem->destination->destinationname }}@endif
                             </option>
                         @endforeach
                     </select>
-                    <p class="mt-1 text-xs text-gray-500">
-                        If selected, this item is used as the route start point instead of the From Place.
-                    </p>
+                    <p class="mt-1 text-xs text-gray-500">If selected, this item is used as the route start point instead of the From Place.</p>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div>
                     <label for="toplaceid" class="block text-sm font-medium text-gray-700 mb-1">To Place</label>
                     <select name="toplaceid" id="toplaceid" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
@@ -216,25 +224,23 @@
                 </div>
 
                 <div>
-                    <label for="destinationid" class="block text-sm font-medium text-gray-700 mb-1">To Destination</label>
-                    <select name="destinationid" id="destinationid" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <label for="todestinationid" class="block text-sm font-medium text-gray-700 mb-1">To Destination</label>
+                    <select name="todestinationid" id="todestinationid" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                         <option value="">Select destination</option>
                         @foreach($destinations as $destination)
                             <option value="{{ $destination->id }}"
                                     data-place-id="{{ $destination->placeid ?? '' }}"
-                                    @selected((string) $selectedDestinationId === (string) $destination->id)>
+                                    @selected((string) $selectedToDestinationId === (string) $destination->id)>
                                 {{ $destination->destinationname }}
                             </option>
                         @endforeach
                     </select>
-                    <p class="mt-1 text-xs text-gray-500">
-                        Optional editorial destination within the selected To Place.
-                    </p>
+                    <p class="mt-1 text-xs text-gray-500">Optional editorial destination within the selected To Place.</p>
                 </div>
 
                 <div>
-                    <label for="destinationitemid" class="block text-sm font-medium text-gray-700 mb-1">To Destination Item</label>
-                    <select name="destinationitemid" id="destinationitemid" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <label for="todestinationitemid" class="block text-sm font-medium text-gray-700 mb-1">To Destination Item</label>
+                    <select name="todestinationitemid" id="todestinationitemid" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                         <option value="">Select end destination item</option>
                         @foreach($destinationItems as $destinationItem)
                             @php
@@ -247,17 +253,12 @@
                                     data-place-id="{{ $resolvedPlaceId ?? '' }}"
                                     data-lat="{{ $resolvedLat ?? '' }}"
                                     data-lng="{{ $resolvedLng ?? '' }}"
-                                    @selected((string) $selectedDestinationItemId === (string) $destinationItem->id)>
-                                {{ $destinationItem->itemname }}
-                                @if($destinationItem->destination?->destinationname)
-                                    - {{ $destinationItem->destination->destinationname }}
-                                @endif
+                                    @selected((string) $selectedToDestinationItemId === (string) $destinationItem->id)>
+                                {{ $destinationItem->itemname }}@if($destinationItem->destination?->destinationname) - {{ $destinationItem->destination->destinationname }}@endif
                             </option>
                         @endforeach
                     </select>
-                    <p class="mt-1 text-xs text-gray-500">
-                        If selected, this item is used as the route end point instead of the To Place.
-                    </p>
+                    <p class="mt-1 text-xs text-gray-500">If selected, this item is used as the route end point instead of the To Place.</p>
                 </div>
             </div>
 
@@ -312,7 +313,7 @@
                 <div>
                     <h3 class="text-lg font-medium text-gray-900">Route Map</h3>
                     <p class="mt-1 text-sm text-gray-500">
-                        Preview the trip leg between the selected From Destination Item or From Place, and the selected Destination Item or To Place.
+                        Preview the trip leg between the selected From Destination Item or From Place, and the selected To Destination Item or To Place.
                     </p>
                 </div>
 
@@ -402,7 +403,7 @@
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Destination</label>
                                     <select name="leg_points[{{ $index }}][destinationid]" class="leg-point-destination w-full rounded-md border-gray-300 shadow-sm text-sm">
                                         <option value="">Select destination</option>
-                                        @foreach($destinations as $destination)
+                                        @foreach ($destinations as $destination)
                                             <option value="{{ $destination->id }}"
                                                     data-place-id="{{ $destination->placeid ?? '' }}"
                                                     @selected((string) ($point['destinationid'] ?? '') === (string) $destination->id)>
@@ -435,30 +436,6 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                </div>
-
-                                <div class="md:col-span-3">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Planned Date</label>
-                                    <input type="date"
-                                           name="leg_points[{{ $index }}][planneddate]"
-                                           value="{{ $point['planneddate'] ?? '' }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                </div>
-
-                                <div class="md:col-span-3">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                                    <input type="time"
-                                           name="leg_points[{{ $index }}][starttime]"
-                                           value="{{ $point['starttime'] ?? '' }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                </div>
-
-                                <div class="md:col-span-3">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                                    <input type="time"
-                                           name="leg_points[{{ $index }}][endtime]"
-                                           value="{{ $point['endtime'] ?? '' }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 </div>
 
                                 <div class="md:col-span-12">
@@ -564,30 +541,6 @@
                                 </select>
                             </div>
 
-                            <div class="md:col-span-3">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Planned Date</label>
-                                <input type="date"
-                                       name="leg_points[__INDEX__][planneddate]"
-                                       value=""
-                                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                            </div>
-
-                            <div class="md:col-span-3">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                                <input type="time"
-                                       name="leg_points[__INDEX__][starttime]"
-                                       value=""
-                                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                            </div>
-
-                            <div class="md:col-span-3">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                                <input type="time"
-                                       name="leg_points[__INDEX__][endtime]"
-                                       value=""
-                                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                            </div>
-
                             <div class="md:col-span-12">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                                 <textarea name="leg_points[__INDEX__][notes]"
@@ -628,6 +581,7 @@
                         <label for="elevationgainm" class="block text-sm font-medium text-gray-700 mb-1">Elevation Gain (m)</label>
                         <input type="number"
                                step="0.1"
+                               min="0"
                                name="elevationgainm"
                                id="elevationgainm"
                                value="{{ old('elevationgainm', $tripLeg->elevationgainm ?? '') }}"
@@ -638,6 +592,7 @@
                         <label for="elevationlossm" class="block text-sm font-medium text-gray-700 mb-1">Elevation Loss (m)</label>
                         <input type="number"
                                step="0.1"
+                               min="0"
                                name="elevationlossm"
                                id="elevationlossm"
                                value="{{ old('elevationlossm', $tripLeg->elevationlossm ?? '') }}"
@@ -722,33 +677,33 @@
                     <div>
                         <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
                         <textarea name="description"
-                                id="description"
-                                rows="4"
-                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('description', $tripLeg->description ?? '') }}</textarea>
+                                  id="description"
+                                  rows="4"
+                                  class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('description', $tripLeg->description ?? '') }}</textarea>
                     </div>
 
                     <div>
                         <label for="drivingnotes" class="block text-sm font-medium text-gray-700 mb-1">Driving Notes</label>
                         <textarea name="drivingnotes"
-                                id="drivingnotes"
-                                rows="4"
-                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('drivingnotes', $tripLeg->drivingnotes ?? '') }}</textarea>
+                                  id="drivingnotes"
+                                  rows="4"
+                                  class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('drivingnotes', $tripLeg->drivingnotes ?? '') }}</textarea>
                     </div>
 
                     <div>
                         <label for="planningnotes" class="block text-sm font-medium text-gray-700 mb-1">Planning Notes</label>
                         <textarea name="planningnotes"
-                                id="planningnotes"
-                                rows="5"
-                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('planningnotes', $tripLeg->planningnotes ?? '') }}</textarea>
+                                  id="planningnotes"
+                                  rows="5"
+                                  class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('planningnotes', $tripLeg->planningnotes ?? '') }}</textarea>
                     </div>
 
                     <div>
                         <label for="actualnotes" class="block text-sm font-medium text-gray-700 mb-1">Actual Notes</label>
                         <textarea name="actualnotes"
-                                id="actualnotes"
-                                rows="5"
-                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('actualnotes', $tripLeg->actualnotes ?? '') }}</textarea>
+                                  id="actualnotes"
+                                  rows="5"
+                                  class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('actualnotes', $tripLeg->actualnotes ?? '') }}</textarea>
                     </div>
                 </div>
             </div>
@@ -771,10 +726,13 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const fromPlaceSelect = document.getElementById('fromplaceid');
-    const toPlaceSelect = document.getElementById('toplaceid');
-    const destinationSelect = document.getElementById('destinationid');
+    const fromDestinationSelect = document.getElementById('fromdestinationid');
     const fromDestinationItemSelect = document.getElementById('fromdestinationitemid');
-    const destinationItemSelect = document.getElementById('destinationitemid');
+
+    const toPlaceSelect = document.getElementById('toplaceid');
+    const toDestinationSelect = document.getElementById('todestinationid');
+    const toDestinationItemSelect = document.getElementById('todestinationitemid');
+
     const titleInput = document.getElementById('title');
 
     const activeTabInput = document.getElementById('active-trip-leg-tab');
@@ -859,111 +817,98 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    const fromDestinationOptions = buildOptionCache(fromDestinationSelect);
     const fromDestinationItemOptions = buildOptionCache(fromDestinationItemSelect);
-    const destinationItemOptions = buildOptionCache(destinationItemSelect);
-    const toPlaceOptions = buildOptionCache(toPlaceSelect);
+    const toDestinationOptions = buildOptionCache(toDestinationSelect);
+    const toDestinationItemOptions = buildOptionCache(toDestinationItemSelect);
+
+    function filterFromDestinations() {
+        if (!fromDestinationSelect) return;
+
+        const selectedFromPlaceId = fromPlaceSelect ? fromPlaceSelect.value : '';
+        const currentValue = fromDestinationSelect.value;
+
+        const filtered = fromDestinationOptions.filter(option => {
+            if (!option.value) return false;
+            if (selectedFromPlaceId) {
+                return String(option.placeId) === String(selectedFromPlaceId);
+            }
+            return true;
+        });
+
+        const stillValid = filtered.some(option => String(option.value) === String(currentValue));
+        rebuildSelect(fromDestinationSelect, filtered, 'Select origin destination', stillValid ? currentValue : '');
+
+        if (!stillValid) {
+            fromDestinationSelect.value = '';
+        }
+    }
 
     function filterFromDestinationItems() {
         if (!fromDestinationItemSelect) return;
 
         const selectedFromPlaceId = fromPlaceSelect ? fromPlaceSelect.value : '';
+        const selectedFromDestinationId = fromDestinationSelect ? fromDestinationSelect.value : '';
         const currentValue = fromDestinationItemSelect.value;
 
         const filtered = fromDestinationItemOptions.filter(option => {
             if (!option.value) return false;
-
-            if (selectedFromPlaceId) {
-                return String(option.placeId) === String(selectedFromPlaceId);
-            }
-
+            if (selectedFromPlaceId && String(option.placeId) !== String(selectedFromPlaceId)) return false;
+            if (selectedFromDestinationId && String(option.destinationId) !== String(selectedFromDestinationId)) return false;
+            if (!selectedFromDestinationId && selectedFromPlaceId) return String(option.placeId) === String(selectedFromPlaceId);
             return true;
         });
 
         const stillValid = filtered.some(option => String(option.value) === String(currentValue));
-
-        rebuildSelect(
-            fromDestinationItemSelect,
-            filtered,
-            'Select start destination item',
-            stillValid ? currentValue : ''
-        );
+        rebuildSelect(fromDestinationItemSelect, filtered, 'Select start destination item', stillValid ? currentValue : '');
 
         if (!stillValid) {
             fromDestinationItemSelect.value = '';
         }
     }
 
-    function filterToPlaces() {
-        if (!toPlaceSelect) return;
+    function filterToDestinations() {
+        if (!toDestinationSelect) return;
 
-        const selectedDestinationOption = destinationSelect
-            ? destinationSelect.options[destinationSelect.selectedIndex]
-            : null;
-
-        const selectedDestinationPlaceId = selectedDestinationOption?.dataset.placeId || '';
-        const currentValue = toPlaceSelect.value;
-
-        const filtered = toPlaceOptions.filter(option => {
-            if (!option.value) return false;
-
-            if (selectedDestinationPlaceId) {
-                return String(option.value) === String(selectedDestinationPlaceId);
-            }
-
-            return true;
-        });
-
-        const preferredValue = selectedDestinationPlaceId || currentValue;
-        const stillValid = filtered.some(option => String(option.value) === String(preferredValue));
-
-        rebuildSelect(
-            toPlaceSelect,
-            filtered,
-            'Select destination place',
-            stillValid ? preferredValue : ''
-        );
-
-        if (!stillValid) {
-            toPlaceSelect.value = '';
-        }
-    }
-
-    function filterDestinationItems() {
-        if (!destinationItemSelect) return;
-
-        const selectedDestinationId = destinationSelect ? destinationSelect.value : '';
         const selectedToPlaceId = toPlaceSelect ? toPlaceSelect.value : '';
-        const currentValue = destinationItemSelect.value;
+        const currentValue = toDestinationSelect.value;
 
-        const filtered = destinationItemOptions.filter(option => {
+        const filtered = toDestinationOptions.filter(option => {
             if (!option.value) return false;
-
-            if (selectedDestinationId && String(option.destinationId) !== String(selectedDestinationId)) {
-                return false;
-            }
-
-            if (selectedToPlaceId && String(option.placeId) !== String(selectedToPlaceId)) {
-                return false;
-            }
-
-            if (!selectedDestinationId && selectedToPlaceId) {
+            if (selectedToPlaceId) {
                 return String(option.placeId) === String(selectedToPlaceId);
             }
-
             return true;
         });
 
         const stillValid = filtered.some(option => String(option.value) === String(currentValue));
-
-        rebuildSelect(
-            destinationItemSelect,
-            filtered,
-            'Select end destination item',
-            stillValid ? currentValue : ''
-        );
+        rebuildSelect(toDestinationSelect, filtered, 'Select destination', stillValid ? currentValue : '');
 
         if (!stillValid) {
-            destinationItemSelect.value = '';
+            toDestinationSelect.value = '';
+        }
+    }
+
+    function filterToDestinationItems() {
+        if (!toDestinationItemSelect) return;
+
+        const selectedToPlaceId = toPlaceSelect ? toPlaceSelect.value : '';
+        const selectedToDestinationId = toDestinationSelect ? toDestinationSelect.value : '';
+        const currentValue = toDestinationItemSelect.value;
+
+        const filtered = toDestinationItemOptions.filter(option => {
+            if (!option.value) return false;
+            if (selectedToPlaceId && String(option.placeId) !== String(selectedToPlaceId)) return false;
+            if (selectedToDestinationId && String(option.destinationId) !== String(selectedToDestinationId)) return false;
+            if (!selectedToDestinationId && selectedToPlaceId) return String(option.placeId) === String(selectedToPlaceId);
+            return true;
+        });
+
+        const stillValid = filtered.some(option => String(option.value) === String(currentValue));
+        rebuildSelect(toDestinationItemSelect, filtered, 'Select end destination item', stillValid ? currentValue : '');
+
+        if (!stillValid) {
+            toDestinationItemSelect.value = '';
         }
     }
 
@@ -990,12 +935,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const fromDestinationItemText = getSelectedText(fromDestinationItemSelect);
         const fromPlaceText = getSelectedText(fromPlaceSelect);
-        const destinationItemText = getSelectedText(destinationItemSelect);
+        const toDestinationItemText = getSelectedText(toDestinationItemSelect);
         const toPlaceText = getSelectedText(toPlaceSelect);
-        const destinationText = getSelectedText(destinationSelect);
+        const toDestinationText = getSelectedText(toDestinationSelect);
 
         const fromLabel = fromDestinationItemText || fromPlaceText;
-        const toLabel = destinationItemText || toPlaceText || destinationText;
+        const toLabel = toDestinationItemText || toPlaceText || toDestinationText;
 
         let computed = '';
 
@@ -1150,8 +1095,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    
-
     function emitTripLegSelectionUpdated() {
         window.setTimeout(() => {
             document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
@@ -1159,9 +1102,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function refreshDependentUi() {
+        filterFromDestinations();
         filterFromDestinationItems();
-        filterToPlaces();
-        filterDestinationItems();
+        filterToDestinations();
+        filterToDestinationItems();
         updateTitle();
         bindAllLegPointRows();
         emitTripLegSelectionUpdated();
@@ -1171,13 +1115,21 @@ document.addEventListener('DOMContentLoaded', function () {
         fromPlaceSelect.addEventListener('change', refreshDependentUi);
     }
 
-    if (destinationSelect) {
-        destinationSelect.addEventListener('change', refreshDependentUi);
+    if (fromDestinationSelect) {
+        fromDestinationSelect.addEventListener('change', function () {
+            filterFromDestinationItems();
+            updateTitle();
+            emitTripLegSelectionUpdated();
+        });
     }
 
     if (toPlaceSelect) {
-        toPlaceSelect.addEventListener('change', function () {
-            filterDestinationItems();
+        toPlaceSelect.addEventListener('change', refreshDependentUi);
+    }
+
+    if (toDestinationSelect) {
+        toDestinationSelect.addEventListener('change', function () {
+            filterToDestinationItems();
             updateTitle();
             emitTripLegSelectionUpdated();
         });
@@ -1190,8 +1142,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    if (destinationItemSelect) {
-        destinationItemSelect.addEventListener('change', function () {
+    if (toDestinationItemSelect) {
+        toDestinationItemSelect.addEventListener('change', function () {
             updateTitle();
             emitTripLegSelectionUpdated();
         });
@@ -1206,10 +1158,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     bindAllLegPointRows();
-    filterFromDestinationItems();
-    filterToPlaces();
-    filterDestinationItems();
-    updateTitle();
-    emitTripLegSelectionUpdated();
+    refreshDependentUi();
 });
 </script>

@@ -32,24 +32,6 @@
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
     <div>
-        <label for="destinationid" class="block text-sm font-medium text-gray-700 mb-1">
-            Destination
-        </label>
-        <select id="destinationid"
-                name="destinationid"
-                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                required>
-            <option value="">Select</option>
-            @foreach($destinations as $destination)
-                <option value="{{ $destination->id }}"
-                    @selected((string) $currentDestinationId === (string) $destination->id)>
-                    {{ $destination->destinationname }}
-                </option>
-            @endforeach
-        </select>
-    </div>
-
-    <div>
         <label for="placeid" class="block text-sm font-medium text-gray-700 mb-1">
             Linked Place
         </label>
@@ -64,6 +46,29 @@
                 </option>
             @endforeach
         </select>
+    </div>
+
+    <div>
+        <label for="destinationid" class="block text-sm font-medium text-gray-700 mb-1">
+            Destination
+        </label>
+        <select id="destinationid"
+                name="destinationid"
+                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                required
+                data-selected-destination-id="{{ (string) $currentDestinationId }}">
+            <option value="">Select</option>
+            @foreach($destinations as $destination)
+                <option value="{{ $destination->id }}"
+                        data-place-id="{{ $destination->placeid }}"
+                        @selected((string) $currentDestinationId === (string) $destination->id)>
+                    {{ $destination->destinationname }}
+                </option>
+            @endforeach
+        </select>
+        <p class="mt-1 text-xs text-gray-500">
+            Destination list is filtered by the selected place.
+        </p>
     </div>
 
     <div class="md:col-span-2">
@@ -250,13 +255,22 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const placeSelect = document.getElementById('placeid');
+    const destinationSelect = document.getElementById('destinationid');
     const toggleButton = document.getElementById('toggle-item-types-panel');
     const panel = document.getElementById('item-types-panel');
     const summary = document.getElementById('selected-item-types-summary');
 
-    const autoExpandTextareas = Array.from(
-        document.querySelectorAll('.js-auto-expand')
-    );
+    const autoExpandTextareas = Array.from(document.querySelectorAll('.js-auto-expand'));
+    const destinationOptions = destinationSelect
+        ? Array.from(destinationSelect.querySelectorAll('option'))
+            .filter(option => option.value !== '')
+            .map(option => ({
+                value: option.value,
+                label: option.textContent.trim(),
+                placeId: option.dataset.placeId ? String(option.dataset.placeId) : '',
+            }))
+        : [];
 
     function resizeTextarea(textarea) {
         textarea.style.height = 'auto';
@@ -266,11 +280,63 @@ document.addEventListener('DOMContentLoaded', function () {
 
     autoExpandTextareas.forEach(textarea => {
         resizeTextarea(textarea);
-
         textarea.addEventListener('input', function () {
             resizeTextarea(textarea);
         });
     });
+
+    function rebuildDestinationOptions() {
+        if (!placeSelect || !destinationSelect) {
+            return;
+        }
+
+        const selectedPlaceId = placeSelect.value ? String(placeSelect.value) : '';
+        const previousDestinationId = destinationSelect.value || destinationSelect.dataset.selectedDestinationId || '';
+
+        destinationSelect.innerHTML = '';
+
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = selectedPlaceId ? 'Select destination' : 'Select place first';
+        destinationSelect.appendChild(placeholder);
+
+        const matchingDestinations = destinationOptions.filter(option => {
+            if (!selectedPlaceId) {
+                return false;
+            }
+
+            return option.placeId === selectedPlaceId;
+        });
+
+        matchingDestinations.forEach(option => {
+            const el = document.createElement('option');
+            el.value = option.value;
+            el.textContent = option.label;
+
+            if (String(option.value) === String(previousDestinationId)) {
+                el.selected = true;
+            }
+
+            destinationSelect.appendChild(el);
+        });
+
+        const selectedStillExists = matchingDestinations.some(option => String(option.value) === String(previousDestinationId));
+
+        if (!selectedStillExists) {
+            destinationSelect.value = '';
+        }
+
+        destinationSelect.dataset.selectedDestinationId = destinationSelect.value || '';
+        destinationSelect.disabled = !selectedPlaceId;
+    }
+
+    if (placeSelect && destinationSelect) {
+        placeSelect.addEventListener('change', function () {
+            rebuildDestinationOptions();
+        });
+
+        rebuildDestinationOptions();
+    }
 
     if (!toggleButton || !panel || !summary) {
         return;

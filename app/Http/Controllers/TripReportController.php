@@ -12,22 +12,29 @@ class TripReportController extends Controller
         // In TripReportController@book
 
         $trip->load([
-            'travellers',
-    'legs' => function ($query) {
-        $query
-            ->with([
-                'fromPlace',
-                'toPlace',
-                'destination',
-                'legPoints' => function ($q) {
-                    $q->with(['place', 'destination', 'destinationItem'])
-                      ->orderBy('sequence_no')   // <— use the real column name
-                      ->orderBy('id');
-                },
-            ])
-            ->orderBy('legnumber')
-            ->orderBy('id');
-    },
+                    'travellers',
+            'legs' => function ($query) {
+                $query
+                    ->with([
+                        'fromPlace',
+                        'fromDestination',
+                        'fromDestinationItem',
+                        'toPlace',
+                        'toDestination',
+                        'toDestinationItem',
+                        'legPoints' => function ($q) {
+                            $q->with([
+                                'place',
+                                'destination',
+                                'destinationItem',
+                            ])
+                            ->orderBy('sequence_no')
+                            ->orderBy('id');
+                        },
+                    ])
+                    ->orderBy('legnumber')
+                    ->orderBy('id');
+            },
             'stays' => function ($query) {
                 $query
                     ->with(['place', 'tripLeg', 'travelledFromPlace'])

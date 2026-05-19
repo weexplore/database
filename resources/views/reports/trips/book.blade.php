@@ -237,7 +237,7 @@
                 </div>
             </div>
 
-            {{-- Trip legs --}}
+                        {{-- Trip legs --}}
             <div class="bg-white shadow-sm sm:rounded-lg">
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h3 class="text-sm font-semibold text-gray-900">
@@ -260,12 +260,33 @@
                                 $end = $leg->enddate ? $leg->enddate->format('d M Y') : null;
 
                                 $fromPlace = $leg->fromPlace;
-                                $toPlace = $leg->toPlace;
+                                $fromDestination = $leg->fromDestination;
+                                $fromDestinationItem = $leg->fromDestinationItem;
 
-                                $fromLat = $fromPlace?->latitude;
-                                $fromLng = $fromPlace?->longitude;
-                                $toLat = $toPlace?->latitude;
-                                $toLng = $toPlace?->longitude;
+                                $toPlace = $leg->toPlace;
+                                $toDestination = $leg->toDestination;
+                                $toDestinationItem = $leg->toDestinationItem;
+
+                                $fromLabel = $fromDestinationItem?->itemname
+                                    ?? $fromPlace?->placename
+                                    ?? '—';
+
+                                $toLabel = $toDestinationItem?->itemname
+                                    ?? $toPlace?->placename
+                                    ?? '—';
+
+                                $fromLat = $fromDestinationItem?->latitude ?? $fromPlace?->latitude;
+                                $fromLng = $fromDestinationItem?->longitude ?? $fromPlace?->longitude;
+                                $toLat = $toDestinationItem?->latitude ?? $toPlace?->latitude;
+                                $toLng = $toDestinationItem?->longitude ?? $toPlace?->longitude;
+
+                                $fromMapName = $fromDestinationItem?->itemname
+                                    ?? $fromPlace?->placename
+                                    ?? 'Start';
+
+                                $toMapName = $toDestinationItem?->itemname
+                                    ?? $toPlace?->placename
+                                    ?? 'Destination';
 
                                 $hasMap = $fromLat !== null && $fromLng !== null && $toLat !== null && $toLng !== null;
                             @endphp
@@ -281,6 +302,9 @@
                                         </h4>
                                         <p class="mt-1 text-xs text-gray-500">
                                             {{ $start ?: 'Unknown' }} – {{ $end ?: 'Unknown' }}
+                                            @if ($leg->nightsplanned !== null)
+                                                • {{ $leg->nightsplanned }} night{{ (int) $leg->nightsplanned === 1 ? '' : 's' }}
+                                            @endif
                                         </p>
                                     </div>
 
@@ -293,171 +317,196 @@
                                 </div>
 
                                 <div class="p-4 space-y-4">
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                        <div>
+                                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
+                                        <div class="border border-gray-200 rounded-lg p-3">
                                             <div class="text-xs uppercase tracking-wide text-gray-500">From</div>
-                                            <div class="mt-1 text-gray-900">
-                                                {{ $fromPlace?->placename ?: '—' }}
+                                            <div class="mt-1 font-medium text-gray-900">
+                                                {{ $fromLabel }}
+                                            </div>
+
+                                            <div class="mt-3 grid grid-cols-1 gap-2 text-xs">
+                                                <div>
+                                                    <span class="uppercase tracking-wide text-gray-500">Place</span>
+                                                    <div class="mt-0.5 text-gray-800">
+                                                        {{ $fromPlace?->placename ?: '—' }}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <span class="uppercase tracking-wide text-gray-500">Destination</span>
+                                                    <div class="mt-0.5 text-gray-800">
+                                                        {{ $fromDestination?->destinationname ?: '—' }}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <span class="uppercase tracking-wide text-gray-500">Destination item</span>
+                                                    <div class="mt-0.5 text-gray-800">
+                                                        {{ $fromDestinationItem?->itemname ?: '—' }}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <div>
+                                        <div class="border border-gray-200 rounded-lg p-3">
                                             <div class="text-xs uppercase tracking-wide text-gray-500">To</div>
-                                            <div class="mt-1 text-gray-900">
-                                                {{ $toPlace?->placename ?: '—' }}
+                                            <div class="mt-1 font-medium text-gray-900">
+                                                {{ $toLabel }}
+                                            </div>
+
+                                            <div class="mt-3 grid grid-cols-1 gap-2 text-xs">
+                                                <div>
+                                                    <span class="uppercase tracking-wide text-gray-500">Place</span>
+                                                    <div class="mt-0.5 text-gray-800">
+                                                        {{ $toPlace?->placename ?: '—' }}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <span class="uppercase tracking-wide text-gray-500">Destination</span>
+                                                    <div class="mt-0.5 text-gray-800">
+                                                        {{ $toDestination?->destinationname ?: '—' }}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <span class="uppercase tracking-wide text-gray-500">Destination item</span>
+                                                    <div class="mt-0.5 text-gray-800">
+                                                        {{ $toDestinationItem?->itemname ?: '—' }}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="p-4 space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div>
-                        <div class="text-xs uppercase tracking-wide text-gray-500">From</div>
-                        <div class="mt-1 text-gray-900">
-                            {{ $fromPlace?->placename ?: '—' }}
-                        </div>
-                    </div>
 
-                    <div>
-                        <div class="text-xs uppercase tracking-wide text-gray-500">To</div>
-                        <div class="mt-1 text-gray-900">
-                            {{ $toPlace?->placename ?: '—' }}
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Trip leg points (anchors and planned stops) --}}
-                @if ($leg->legPoints && $leg->legPoints->isNotEmpty())
-                    <div class="border border-gray-200 rounded-lg">
-                        <div class="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                            <div class="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                                Leg points
-                            </div>
-                            <div class="text-xs text-gray-500">
-                                {{ $leg->legPoints->count() }} point{{ $leg->legPoints->count() === 1 ? '' : 's' }}
-                            </div>
-                        </div>
-                        <div class="divide-y divide-gray-100 text-xs">
-                            @foreach ($leg->legPoints as $point)
-                                @php
-                                    $label =
-                                        $point->title
-                                        ?? optional($point->destinationItem)->itemname
-                                        ?? optional($point->destination)->destinationname
-                                        ?? optional($point->place)->placename
-                                        ?? 'Point';
-
-                                    $pointTypeLabel = $point->pointtype
-                                        ? ucfirst(str_replace('_', ' ', $point->pointtype))
-                                        : 'Point';
-
-                                    $plannedDate = $point->planneddate
-                                        ? $point->planneddate->format('d M Y')
-                                        : null;
-
-                                    $timeRange = null;
-                                    if ($point->starttime || $point->endtime) {
-                                        $fromTime = $point->starttime ? substr($point->starttime, 0, 5) : '—';
-                                        $toTime = $point->endtime ? substr($point->endtime, 0, 5) : '—';
-                                        $timeRange = $fromTime . ' – ' . $toTime;
-                                    }
-                                @endphp
-                                <div class="px-3 py-2 flex items-start justify-between gap-3">
-                                    <div>
-                                        <div class="font-medium text-gray-900">
-                                            {{ $label }}
-                                        </div>
-                                        <div class="mt-0.5 text-[11px] text-gray-500">
-                                            {{ $pointTypeLabel }}
-                                            @if ($plannedDate)
-                                                • {{ $plannedDate }}
-                                            @endif
-                                            @if ($timeRange)
-                                                • {{ $timeRange }}
-                                            @endif
-                                        </div>
-                                        @if ($point->notes)
-                                            <div class="mt-1 text-[11px] text-gray-700 whitespace-pre-line">
-                                                {{ $point->notes }}
+                                    @if ($leg->legPoints && $leg->legPoints->isNotEmpty())
+                                        <div class="border border-gray-200 rounded-lg">
+                                            <div class="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                                                <div class="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                                                    Leg points
+                                                </div>
+                                                <div class="text-xs text-gray-500">
+                                                    {{ $leg->legPoints->count() }} point{{ $leg->legPoints->count() === 1 ? '' : 's' }}
+                                                </div>
                                             </div>
-                                        @endif
-                                    </div>
-                                    @if ($point->sequenceno !== null)
-                                        <div class="text-[11px] text-gray-500 font-semibold">
-                                            #{{ $point->sequenceno }}
+
+                                            <div class="divide-y divide-gray-100 text-xs">
+                                                @foreach ($leg->legPoints as $point)
+                                                    @php
+                                                        $label =
+                                                            $point->title
+                                                            ?? optional($point->destinationItem)->itemname
+                                                            ?? optional($point->destination)->destinationname
+                                                            ?? optional($point->place)->placename
+                                                            ?? 'Point';
+
+                                                        $pointTypeLabel = $point->pointtype
+                                                            ? ucfirst(str_replace('_', ' ', $point->pointtype))
+                                                            : 'Point';
+                                                    @endphp
+
+                                                    <div class="px-3 py-2 flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <div class="font-medium text-gray-900">
+                                                                {{ $label }}
+                                                            </div>
+
+                                                            <div class="mt-0.5 text-[11px] text-gray-500">
+                                                                {{ $pointTypeLabel }}
+                                                                @if ($point->place)
+                                                                    • Place: {{ $point->place->placename }}
+                                                                @endif
+                                                                @if ($point->destination)
+                                                                    • Destination: {{ $point->destination->destinationname }}
+                                                                @endif
+                                                                @if ($point->destinationItem)
+                                                                    • Item: {{ $point->destinationItem->itemname }}
+                                                                @endif
+                                                            </div>
+
+                                                            @if ($point->notes)
+                                                                <div class="mt-1 text-[11px] text-gray-700 whitespace-pre-line">
+                                                                    {{ $point->notes }}
+                                                                </div>
+                                                            @endif
+                                                        </div>
+
+                                                        @if ($point->sequence_no !== null)
+                                                            <div class="text-[11px] text-gray-500 font-semibold">
+                                                                #{{ $point->sequence_no }}
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
+
+                                    @if ($hasMap)
+                                        <div class="trip-leg-map-wrap">
+                                            <div
+                                                id="trip-leg-map-{{ $leg->id }}"
+                                                class="trip-leg-map rounded-lg border border-gray-300"
+                                                data-from-lat="{{ $fromLat }}"
+                                                data-from-lng="{{ $fromLng }}"
+                                                data-to-lat="{{ $toLat }}"
+                                                data-to-lng="{{ $toLng }}"
+                                                data-from-name="{{ $fromMapName }}"
+                                                data-to-name="{{ $toMapName }}"
+                                            ></div>
+                                        </div>
+                                    @else
+                                        <div class="rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+                                            Map unavailable because the selected start or end point does not have coordinates.
+                                        </div>
+                                    @endif
+
+                                    @if ($leg->description || $leg->drivingnotes || $leg->planningnotes || $leg->actualnotes)
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                            @if ($leg->description)
+                                                <div>
+                                                    <div class="text-xs uppercase tracking-wide text-gray-500">Description</div>
+                                                    <div class="mt-1 text-gray-700 whitespace-pre-line">{{ $leg->description }}</div>
+                                                </div>
+                                            @endif
+
+                                            @if ($leg->drivingnotes)
+                                                <div>
+                                                    <div class="text-xs uppercase tracking-wide text-gray-500">Driving notes</div>
+                                                    <div class="mt-1 text-gray-700 whitespace-pre-line">{{ $leg->drivingnotes }}</div>
+                                                </div>
+                                            @endif
+
+                                            @if ($leg->planningnotes)
+                                                <div>
+                                                    <div class="text-xs uppercase tracking-wide text-gray-500">Planning notes</div>
+                                                    <div class="mt-1 text-gray-700 whitespace-pre-line">{{ $leg->planningnotes }}</div>
+                                                </div>
+                                            @endif
+
+                                            @if ($leg->actualnotes)
+                                                <div>
+                                                    <div class="text-xs uppercase tracking-wide text-gray-500">Actual notes</div>
+                                                    <div class="mt-1 text-gray-700 whitespace-pre-line">{{ $leg->actualnotes }}</div>
+                                                </div>
+                                            @endif
                                         </div>
                                     @endif
                                 </div>
-                            @endforeach
+                            </div>
+                        @endforeach
+
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+                            <div class="flex items-center justify-between gap-4 text-sm">
+                                <div class="font-semibold text-gray-900">Total distance</div>
+                                <div class="font-semibold text-gray-900">
+                                    {{ number_format((float) $trip->legs->sum('distancekm'), 1) }} km
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                @endif
-
-                @if ($hasMap)
-                    <div class="trip-leg-map-wrap">
-                        <div
-                            id="trip-leg-map-{{ $leg->id }}"
-                            class="trip-leg-map rounded-lg border border-gray-300"
-                            data-from-lat="{{ $fromLat }}"
-                            data-from-lng="{{ $fromLng }}"
-                            data-to-lat="{{ $toLat }}"
-                            data-to-lng="{{ $toLng }}"
-                            data-from-name="{{ $fromPlace?->placename }}"
-                            data-to-name="{{ $toPlace?->placename }}"
-                        ></div>
-                    </div>
-                @else
-                    <div class="rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
-                        Map unavailable because one or both linked places do not have coordinates.
-                    </div>
-                @endif
-
-                @if ($leg->description || $leg->drivingnotes || $leg->planningnotes || $leg->actualnotes)
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        @if ($leg->description)
-                            <div>
-                                <div class="text-xs uppercase tracking-wide text-gray-500">Description</div>
-                                <div class="mt-1 text-gray-700 whitespace-pre-line">{{ $leg->description }}</div>
-                            </div>
-                        @endif
-
-                        @if ($leg->drivingnotes)
-                            <div>
-                                <div class="text-xs uppercase tracking-wide text-gray-500">Driving notes</div>
-                                <div class="mt-1 text-gray-700 whitespace-pre-line">{{ $leg->drivingnotes }}</div>
-                            </div>
-                        @endif
-
-                        @if ($leg->planningnotes)
-                            <div>
-                                <div class="text-xs uppercase tracking-wide text-gray-500">Planning notes</div>
-                                <div class="mt-1 text-gray-700 whitespace-pre-line">{{ $leg->planningnotes }}</div>
-                            </div>
-                        @endif
-
-                        @if ($leg->actualnotes)
-                            <div>
-                                <div class="text-xs uppercase tracking-wide text-gray-500">Actual notes</div>
-                                <div class="mt-1 text-gray-700 whitespace-pre-line">{{ $leg->actualnotes }}</div>
-                            </div>
-                        @endif
-                    </div>
-                @endif
-            </div>
-
-                </div>
-            @endforeach
-
-            <div class="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
-                <div class="flex items-center justify-between gap-4 text-sm">
-                    <div class="font-semibold text-gray-900">Total distance</div>
-                    <div class="font-semibold text-gray-900">
-                        {{ number_format((float) $trip->legs->sum('distancekm'), 1) }} km
-                    </div>
+                    @endif
                 </div>
             </div>
-        @endif
-    </div>
-</div>
 
             {{-- Trip stays --}}
             <div class="bg-white shadow-sm sm:rounded-lg">
