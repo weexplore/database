@@ -206,17 +206,32 @@
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div class="md:col-span-2">
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Related Item</label>
-                                    <select name="toitemid"
-                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                            required>
-                                        <option value="">Select related item</option>
-                                        @foreach($relationshipItems as $item)
-                                            <option value="{{ $item->id }}"
-                                                @selected((string) old('toitemid', $relationship->toitemid) === (string) $item->id)>
-                                                {{ $item->primaryCategory?->categoryname ?? 'Uncategorised' }}: {{ $item->itemname }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+
+                                    @if($direction === 'incoming')
+                                        <select name="fromitemid"
+                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                                required>
+                                            <option value="">Select related item</option>
+                                            @foreach($relationshipItems as $item)
+                                                <option value="{{ $item->id }}"
+                                                    @selected((string) old('fromitemid', $relationship->fromitemid) === (string) $item->id)>
+                                                    {{ $item->primaryCategory?->categoryname ?? 'Uncategorised' }}: {{ $item->itemname }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    @else
+                                        <select name="toitemid"
+                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                                required>
+                                            <option value="">Select related item</option>
+                                            @foreach($relationshipItems as $item)
+                                                <option value="{{ $item->id }}"
+                                                    @selected((string) old('toitemid', $relationship->toitemid) === (string) $item->id)>
+                                                    {{ $item->primaryCategory?->categoryname ?? 'Uncategorised' }}: {{ $item->itemname }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    @endif
                                 </div>
 
                                 <div>
