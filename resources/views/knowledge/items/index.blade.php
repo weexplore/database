@@ -132,6 +132,7 @@
                     <input type="hidden" name="itemtype" value="{{ $filters['itemtype'] ?? '' }}">
                     <input type="hidden" name="itemstatus" value="{{ $filters['itemstatus'] ?? '' }}">
                     <input type="hidden" name="active" value="{{ $filters['active'] ?? '' }}">
+                    <input type="hidden" name="page" value="{{ request('page', 1) }}">
 
                     <div class="overflow-x-auto">
                         <table class="w-full divide-y divide-gray-200">
@@ -174,20 +175,20 @@
                                             </select>
                                         </td>
 
-<td class="px-3 py-2 min-w-[140px]">
-    <select name="existing[{{ $item->id }}][itemtype]"
-            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-        <option value="">Select type</option>
-        @foreach($itemTypes as $itemType)
-            <option value="{{ $itemType->id }}"
-                @selected((string) old("existing.{$item->id}.itemtype", $item->itemtype) === (string) $itemType->id)>
-                {{ $itemType->typename }}
-            </option>
-        @endforeach
-    </select>
-</td>
+                                        <td class="px-3 py-2 min-w-[140px]">
+                                            <select name="existing[{{ $item->id }}][itemtype]"
+                                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                <option value="">Select type</option>
+                                                @foreach($itemTypes as $itemType)
+                                                    <option value="{{ $itemType->id }}"
+                                                        @selected((string) old("existing.{$item->id}.itemtype", $item->itemtype) === (string) $itemType->id)>
+                                                        {{ $itemType->typename }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </td>
 
-                                        <<td class="px-3 py-2 min-w-[160px]">
+                                        <td class="px-3 py-2 min-w-[160px]">
                                             <select name="existing[{{ $item->id }}][itemstatus]"
                                                     class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                                 <option value="">Select status</option>
@@ -275,18 +276,18 @@
                                         </select>
                                     </td>
 
-<td class="px-3 py-2 min-w-[140px]">
-    <select name="new[itemtype]"
-            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-        <option value="">Select type</option>
-        @foreach($itemTypes as $itemType)
-            <option value="{{ $itemType->id }}"
-                @selected((string) old('new.itemtype') === (string) $itemType->id)>
-                {{ $itemType->typename }}
-            </option>
-        @endforeach
-    </select>
-</td>
+                                    <td class="px-3 py-2 min-w-[140px]">
+                                        <select name="new[itemtype]"
+                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                            <option value="">Select type</option>
+                                            @foreach($itemTypes as $itemType)
+                                                <option value="{{ $itemType->id }}"
+                                                    @selected((string) old('new.itemtype') === (string) $itemType->id)>
+                                                    {{ $itemType->typename }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </td>
 
                                     <td class="px-3 py-2">
                                         <input type="text"
@@ -344,30 +345,30 @@
                         </table>
                     </div>
 
-<div class="p-6 border-t border-gray-200 flex items-center justify-between">
-    <p class="text-sm text-gray-500">
-        Quick update key fields here, then open full edit for richer notes, relationships, and review content.
-    </p>
+                    <div class="p-6 border-t border-gray-200 flex items-center justify-between">
+                        <p class="text-sm text-gray-500">
+                            Quick update key fields here, then open full edit for richer notes, relationships, and review content.
+                        </p>
 
-    <div class="flex items-center gap-2">
-        <a href="{{ route('knowledge.items.index', array_filter([
-                'domainid' => $filters['domainid'] ?? request('domainid'),
-                'categoryid' => $filters['categoryid'] ?? request('categoryid'),
-                'search' => $filters['search'] ?? request('search'),
-                'itemtype' => $filters['itemtype'] ?? request('itemtype'),
-                'itemstatus' => $filters['itemstatus'] ?? request('itemstatus'),
-                'active' => $filters['active'] ?? request('active'),
-            ], fn ($value) => $value !== null && $value !== '')) }}"
-           class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-semibold text-gray-700 hover:bg-gray-50">
-            Cancel
-        </a>
+                        <div class="flex items-center gap-2">
+                            <a href="{{ route('knowledge.items.index', array_filter([
+                                    'domainid' => $filters['domainid'] ?? request('domainid'),
+                                    'categoryid' => $filters['categoryid'] ?? request('categoryid'),
+                                    'search' => $filters['search'] ?? request('search'),
+                                    'itemtype' => $filters['itemtype'] ?? request('itemtype'),
+                                    'itemstatus' => $filters['itemstatus'] ?? request('itemstatus'),
+                                    'active' => $filters['active'] ?? request('active'),
+                                ], fn ($value) => $value !== null && $value !== '')) }}"
+                            class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                                Cancel
+                            </a>
 
-        <button type="submit"
-                class="inline-flex items-center px-5 py-2 bg-green-600 border border-transparent rounded-md text-sm font-semibold text-white hover:bg-green-700">
-            Save Changes
-        </button>
-    </div>
-</div>
+                            <button type="submit"
+                                    class="inline-flex items-center px-5 py-2 bg-green-600 border border-transparent rounded-md text-sm font-semibold text-white hover:bg-green-700">
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
                 </form>
             </div>
         </div>

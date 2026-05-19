@@ -108,6 +108,7 @@ class TripController extends Controller
             'tripstatus' => ['nullable', 'string', Rule::in($this->statusOptions)],
             'year' => ['nullable', 'integer'],
             'search' => ['nullable', 'string'],
+            'page' => ['nullable', 'integer', 'min:1'],
         ]);
 
         DB::transaction(function () use ($validated) {
@@ -163,6 +164,7 @@ class TripController extends Controller
                 'tripstatus' => $request->input('tripstatus'),
                 'year' => $request->input('year'),
                 'search' => $request->input('search'),
+                'page' => $request->input('page'),
             ])
             ->with('success', 'Trips saved successfully.');
     }
@@ -337,6 +339,7 @@ class TripController extends Controller
                     'tripstatus' => $request->input('tripstatus'),
                     'year' => $request->input('year'),
                     'search' => $request->input('search'),
+                    'page' => $request->input('page'),
                 ])
                 ->with('success', 'Trip deleted successfully.');
         } catch (\Throwable $e) {

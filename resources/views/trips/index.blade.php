@@ -87,6 +87,7 @@
                     <input type="hidden" name="tripstatus" value="{{ request('tripstatus') }}">
                     <input type="hidden" name="year" value="{{ request('year') }}">
                     <input type="hidden" name="search" value="{{ request('search') }}">
+                    <input type="hidden" name="page" value="{{ request('page', 1) }}">
 
                     <div class="overflow-x-auto">
                         <table class="w-full divide-y divide-gray-200">

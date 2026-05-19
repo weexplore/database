@@ -273,6 +273,11 @@
                                                         @else
                                                             <span class="text-xs text-gray-500">Missing related item</span>
                                                         @endif
+                                                        @if($entry['effectiveDate'])
+                                                            <span class="text-xs text-gray-500">
+                                                                · Effective {{ $entry['effectiveDate']->format('d M Y') }}
+                                                            </span>
+                                                        @endif
                                                     </li>
                                                 @endforeach
                                             </ul>

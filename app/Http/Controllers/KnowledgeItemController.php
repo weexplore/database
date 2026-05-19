@@ -162,6 +162,7 @@ class KnowledgeItemController extends Controller
         'itemtype' => $itemTypeRule,
         'itemstatus' => ['nullable', 'string'],
         'active' => ['nullable', 'in:0,1'],
+        'page' => ['nullable', 'integer', 'min:1'],
     ];
 
     $validated = $request->validate($rules, [], [
@@ -235,6 +236,7 @@ class KnowledgeItemController extends Controller
         'itemtype' => $request->input('itemtype'),
         'itemstatus' => $request->input('itemstatus'),
         'active' => $request->input('active'),
+        'page' => $request->input('page'),
     ])->with('success', 'Knowledge items saved successfully.');
 }
 

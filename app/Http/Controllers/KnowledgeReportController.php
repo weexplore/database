@@ -269,6 +269,7 @@ class KnowledgeReportController extends Controller
                                 'displayTypeLabel' => $relationship->relationshipTypeLabel(),
                                 'sortorder' => $relationship->sortorder ?? 0,
                                 'relatedSortName' => mb_strtolower($relationship->toItem?->itemname ?? 'zzzz'),
+                                'effectiveDate' => $relationship->effective_date,
                             ];
                         })
                         ->merge(
@@ -282,6 +283,7 @@ class KnowledgeReportController extends Controller
                                         'displayTypeLabel' => $relationship->inverseRelationshipTypeLabel(),
                                         'sortorder' => $relationship->sortorder ?? 0,
                                         'relatedSortName' => mb_strtolower($relationship->fromItem?->itemname ?? 'zzzz'),
+                                        'effectiveDate' => $relationship->effective_date,
                                     ];
                                 })
                         )
