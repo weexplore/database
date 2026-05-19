@@ -14,19 +14,79 @@
                     {{ $knowledgeItem->sources->count() }} total
                 </span>
 
+                @if(!($showFetchSource ?? false))
+                    <a href="{{ route('knowledge.items.edit', [
+                            'knowledgeItem' => $knowledgeItem,
+                            'tab' => 'sources',
+                            'show_fetch_source' => 1,
+                        ]) }}"
+                    class="inline-flex items-center px-3 py-1.5 bg-slate-700 text-white rounded text-sm hover:bg-slate-800">
+                        Fetch from Internet
+                    </a>
+                @endif
+
                 @if(!($showAddSource ?? false))
                     <a href="{{ route('knowledge.items.edit', [
                             'knowledgeItem' => $knowledgeItem,
                             'tab' => 'sources',
                             'show_add_source' => 1,
                         ]) }}"
-                       class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+                    class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
                         Add Source
                     </a>
                 @endif
             </div>
         </div>
     </div>
+
+    @if($showFetchSource ?? false)
+        <div class="p-6 border-b border-gray-200 space-y-4 bg-slate-50">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-900">Fetch Source from Internet</h4>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Fetch page metadata and imported notes for review before saving.
+                    </p>
+                </div>
+
+                <a href="{{ route('knowledge.items.edit', [
+                    'knowledgeItem' => $knowledgeItem,
+                    'tab' => 'sources',
+                ]) }}"
+                class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-sm hover:bg-gray-300">
+                    Cancel
+                </a>
+            </div>
+
+            <form method="POST"
+                action="{{ route('knowledge.items.sources.fetch', $knowledgeItem) }}"
+                class="space-y-4">
+                @csrf
+
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div class="md:col-span-4">
+                        <label for="fetch_url" class="block text-sm font-medium text-gray-700 mb-1">
+                            Page URL
+                        </label>
+                        <input type="url"
+                            name="fetch_url"
+                            id="fetch_url"
+                            value="{{ old('fetch_url') }}"
+                            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                            placeholder="https://"
+                            required>
+                    </div>
+
+                    <div class="flex items-end">
+                        <button type="submit"
+                                class="inline-flex items-center justify-center w-full px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 text-sm">
+                            Fetch
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    @endif
 
     @if($showAddSource ?? false)
         <div class="p-6 border-b border-gray-200 space-y-4">
@@ -142,12 +202,46 @@
 
                 <div>
                     <label for="source_importedsummary" class="block text-sm font-medium text-gray-700 mb-1">
-                        Imported Summary / Notes
+                        Imported Summary
                     </label>
                     <textarea name="importedsummary"
                               id="source_importedsummary"
                               rows="3"
                               class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('importedsummary') }}</textarea>
+                </div>
+<div>
+    <label for="source_importednotes" class="block text-sm font-medium text-gray-700 mb-1">
+        Imported Notes
+    </label>
+    <textarea name="importednotes"
+              id="source_importednotes"
+              rows="3"
+              class="js-autosize w-full rounded-md border-gray-300 shadow-sm text-sm resize-none overflow-hidden"
+              oninput="autoResizeTextarea(this)">{{ old('importednotes') }}</textarea>
+</div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="source_reviewedby" class="block text-sm font-medium text-gray-700 mb-1">
+                            Reviewed By
+                        </label>
+                        <input type="text"
+                            name="reviewedby"
+                            id="source_reviewedby"
+                            value="{{ old('reviewedby') }}"
+                            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                            maxlength="100">
+                    </div>
+
+                    <div>
+                        <label for="source_internalnotes" class="block text-sm font-medium text-gray-700 mb-1">
+                            Internal Notes
+                        </label>
+                        <textarea name="internalnotes"
+                                id="source_internalnotes"
+                                rows="3"
+                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('internalnotes') }}</textarea>
+                    </div>
                 </div>
 
                 <div class="flex items-center justify-end">
@@ -185,12 +279,17 @@
                                 </a>
                             </div>
                         @endif
+@if($source->importedsummary)
+    <div class="text-sm text-gray-700 line-clamp-2">
+        {{ $source->importedsummary }}
+    </div>
+@endif
 
-                        @if($source->importedsummary)
-                            <div class="text-sm text-gray-700 line-clamp-2">
-                                {{ $source->importedsummary }}
-                            </div>
-                        @endif
+@if($source->importednotes)
+    <div class="text-sm text-gray-700 whitespace-pre-line line-clamp-3">
+        {{ $source->importednotes }}
+    </div>
+@endif
                     </div>
 
                     <div class="flex flex-col items-end gap-2 text-xs text-gray-500 whitespace-nowrap">
@@ -306,6 +405,37 @@
                                           rows="3"
                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('importedsummary', $source->importedsummary) }}</textarea>
                             </div>
+<div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Imported Notes</label>
+    <textarea name="importednotes"
+              rows="3"
+              class="js-autosize w-full rounded-md border-gray-300 shadow-sm text-sm resize-none overflow-hidden"
+              oninput="autoResizeTextarea(this)">{{ old('importednotes', $source->importednotes) }}</textarea>
+</div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="source_reviewedby" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Reviewed By
+                                    </label>
+                                    <input type="text"
+                                        name="reviewedby"
+                                        id="source_reviewedby"
+                                        value="{{ old('reviewedby', $source->reviewedby) }}"
+                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                        maxlength="100">
+                                </div>
+
+                                <div>
+                                    <label for="source_internalnotes" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Internal Notes
+                                    </label>
+                                    <textarea name="internalnotes"
+                                            id="source_internalnotes"
+                                            rows="3"
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('internalnotes', $source->internalnotes) }}</textarea>
+                                </div>
+                            </div>
 
                             <div class="flex items-center justify-end gap-2">
                                 <a href="{{ route('knowledge.items.edit', [
@@ -323,7 +453,7 @@
                             </div>
                         </form>
                         <form method="POST"
-                            action="{{ route('knowledge.items.sources.destroy', [$knowledgeItem, $knowledgeSource]) }}"
+                            action="{{ route('knowledge.items.sources.destroy', [$knowledgeItem, $source]) }}"
                             class="inline">
                             @csrf
                             @method('DELETE')
@@ -344,3 +474,17 @@
         @endforelse
     </div>
 </div>
+@once
+    <script>
+        function autoResizeTextarea(el) {
+            el.style.height = 'auto';
+            el.style.height = el.scrollHeight + 'px';
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.js-autosize').forEach(function (el) {
+                autoResizeTextarea(el);
+            });
+        });
+    </script>
+@endonce

@@ -187,11 +187,17 @@
     </select>
 </td>
 
-                                        <td class="px-3 py-2 min-w-[140px]">
-                                            <input type="text"
-                                                   name="existing[{{ $item->id }}][itemstatus]"
-                                                   value="{{ old("existing.{$item->id}.itemstatus", $item->itemstatus) }}"
-                                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                        <<td class="px-3 py-2 min-w-[160px]">
+                                            <select name="existing[{{ $item->id }}][itemstatus]"
+                                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                <option value="">Select status</option>
+                                                @foreach($itemStatusOptions as $value => $label)
+                                                    <option value="{{ $value }}"
+                                                        @selected(old("existing.{$item->id}.itemstatus", $item->itemstatus ?? 'active') === $value)>
+                                                        {{ $label }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
                                         </td>
 
                                         <td class="px-3 py-2 min-w-[260px]">

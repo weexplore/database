@@ -374,6 +374,15 @@ Route::prefix('knowledge')->name('knowledge.')->group(function () {
                 'sources' => 'knowledgeSource',
             ]);
 
+        Route::post('{knowledgeItem}/sources/fetch', [KnowledgeItemSourceController::class, 'fetchFromInternet'])
+            ->name('sources.fetch');
+
+        Route::resource('{knowledgeItem}/sources', KnowledgeItemSourceController::class)
+            ->except(['index', 'show', 'create'])
+            ->parameters([
+                'sources' => 'knowledgeSource',
+            ]);
+
         Route::resource('{knowledgeItem}/review-logs', KnowledgeItemReviewLogController::class)
             ->except(['index', 'show', 'create'])
             ->parameters([

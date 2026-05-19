@@ -95,6 +95,14 @@ class KnowledgeItemController extends Controller
             ->orderBy('itemstatus')
             ->pluck('itemstatus');
 
+        $itemStatusOptions = [
+            'active' => 'Active',
+            'draft' => 'Draft',
+            'archived' => 'Archived',
+            'reference' => 'Reference',
+            'review' => 'Review',
+        ];
+
         $selectedCategory = null;
 
         if (!empty($filters['categoryid'])) {
@@ -113,6 +121,7 @@ class KnowledgeItemController extends Controller
             'items' => $items,
             'itemTypes' => $itemTypes,
             'itemStatuses' => $itemStatuses,
+            'itemStatusOptions' => $itemStatusOptions,
         ]);
     }
 
@@ -334,6 +343,7 @@ class KnowledgeItemController extends Controller
 
     $editingSourceId = $request->integer('editing_source_id');
     $showAddSource = $request->boolean('show_add_source');
+    $showFetchSource = $request->boolean('show_fetch_source');
 
     $editingReviewLogId = $request->integer('editing_review_log_id');
     $showAddReviewLog = $request->boolean('show_add_review_log');
@@ -370,6 +380,7 @@ class KnowledgeItemController extends Controller
         'showAddNote' => $showAddNote,
         'editingSourceId' => $editingSourceId,
         'showAddSource' => $showAddSource,
+        'showFetchSource' => $showFetchSource,
         'editingReviewLogId' => $editingReviewLogId,
         'showAddReviewLog' => $showAddReviewLog,
         'editingRelationshipId' => $editingRelationshipId,
@@ -385,6 +396,7 @@ class KnowledgeItemController extends Controller
             'draft' => 'Draft',
             'archived' => 'Archived',
             'reference' => 'Reference',
+            'review' => 'Review',
         ],
         'noteTypeOptions' => KnowledgeNote::typeOptions(),
         'sourceTypeOptions' => KnowledgeSource::typeOptions(),
