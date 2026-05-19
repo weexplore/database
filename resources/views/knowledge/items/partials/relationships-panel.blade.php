@@ -5,13 +5,13 @@
             <div>
                 <h3 class="text-sm font-semibold text-gray-900">Relationships</h3>
                 <p class="mt-1 text-sm text-gray-500">
-                    Link this knowledge item to related items in the same domain.
+                    Link this knowledge item to related items in the same domain. Relationships are shown from both sides.
                 </p>
             </div>
 
             <div class="flex items-center gap-2">
                 <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
-                    {{ $knowledgeItem->relationships->count() }} total
+                    {{ $displayRelationships->count() }} total
                 </span>
 
                 @if(!($showAddRelationship ?? false))
@@ -82,15 +82,16 @@
                         </select>
                     </div>
                 </div>
+
                 <div>
                     <label for="relationship_effective_date" class="block text-sm font-medium text-gray-700 mb-1">
                         Effective Date
                     </label>
                     <input type="date"
-                        name="effective_date"
-                        id="relationship_effective_date"
-                        value="{{ old('effective_date') }}"
-                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                           name="effective_date"
+                           id="relationship_effective_date"
+                           value="{{ old('effective_date') }}"
+                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                 </div>
 
                 <div>
@@ -128,20 +129,29 @@
     @endif
 
     <div class="divide-y divide-gray-200">
-        @forelse($knowledgeItem->relationships->sortBy('sortorder') as $relationship)
+        @forelse($displayRelationships as $entry)
+            @php
+                $relationship = $entry['relationship'];
+                $relatedItem = $entry['relatedItem'];
+                $displayTypeLabel = $entry['displayTypeLabel'];
+                $direction = $entry['direction'];
+                $isEditingThis = isset($editingRelationshipId) && (int) $editingRelationshipId === (int) $relationship->id;
+            @endphp
+
             <div class="p-4 space-y-3">
                 <div class="flex items-start justify-between gap-4">
                     <div class="space-y-1 min-w-0">
                         <div class="text-sm font-semibold text-gray-900">
-                            @if($relationship->toItem)
-                                {{ $relationship->toItem->primaryCategory?->categoryname ?? 'Uncategorised' }}: {{ $relationship->toItem->itemname }}
+                            @if($relatedItem)
+                                {{ $relatedItem->primaryCategory?->categoryname ?? 'Uncategorised' }}: {{ $relatedItem->itemname }}
                             @else
                                 Missing related item
                             @endif
                         </div>
 
                         <div class="text-xs text-gray-500">
-                            Type: {{ $relationship->relationshiptype ?: '—' }}
+                            Type: {{ $displayTypeLabel ?: '—' }}
+                            · Direction: {{ ucfirst($direction) }}
                             · Effective: {{ $relationship->effective_date ? $relationship->effective_date->format('d M Y') : '—' }}
                             · Sort: {{ $relationship->sortorder ?? 0 }}
                         </div>
@@ -181,8 +191,12 @@
                     </div>
                 </div>
 
-                @if(isset($editingRelationshipId) && (int) $editingRelationshipId === $relationship->id)
+                @if($isEditingThis)
                     <div class="mt-4 border-t border-gray-200 pt-4">
+                        <div class="mb-3 text-xs text-gray-500">
+                            Editing the stored relationship record. For incoming rows, the displayed label may be the inverse view.
+                        </div>
+
                         <form method="POST"
                               action="{{ route('knowledge.items.relationships.update', [$knowledgeItem, $relationship]) }}"
                               class="space-y-4">
@@ -219,12 +233,13 @@
                                     </select>
                                 </div>
                             </div>
+
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Effective Date</label>
                                 <input type="date"
-                                    name="effective_date"
-                                    value="{{ old('effective_date', optional($relationship->effective_date)->format('Y-m-d')) }}"
-                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                       name="effective_date"
+                                       value="{{ old('effective_date', optional($relationship->effective_date)->format('Y-m-d')) }}"
+                                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                             </div>
 
                             <div>
@@ -260,9 +275,10 @@
                                 </button>
                             </div>
                         </form>
+
                         <form method="POST"
-                            action="{{ route('knowledge.items.relationships.destroy', [$knowledgeItem, $relationship]) }}"
-                            class="inline">
+                              action="{{ route('knowledge.items.relationships.destroy', [$knowledgeItem, $relationship]) }}"
+                              class="inline">
                             @csrf
                             @method('DELETE')
 

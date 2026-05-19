@@ -10,6 +10,7 @@ use Illuminate\Validation\Rule;
 
 class KnowledgeItemRelationshipController extends Controller
 {
+    
     public function store(Request $request, KnowledgeItem $knowledgeItem): RedirectResponse
     {
         $validated = $request->validate([
@@ -53,7 +54,11 @@ class KnowledgeItemRelationshipController extends Controller
         KnowledgeItem $knowledgeItem,
         KnowledgeRelationship $knowledgeRelationship
     ): RedirectResponse {
-        abort_unless((int) $knowledgeRelationship->fromitemid === (int) $knowledgeItem->id, 404);
+        abort_unless(
+          (int) $knowledgeRelationship->fromitemid === (int) $knowledgeItem->id
+            || (int) $knowledgeRelationship->toitemid === (int) $knowledgeItem->id,
+            404
+        );
 
         $validated = $request->validate([
             'toitemid' => [
@@ -93,7 +98,11 @@ class KnowledgeItemRelationshipController extends Controller
         KnowledgeItem $knowledgeItem,
         KnowledgeRelationship $knowledgeRelationship
     ): RedirectResponse {
-        abort_unless((int) $knowledgeRelationship->fromitemid === (int) $knowledgeItem->id, 404);
+        abort_unless(
+            (int) $knowledgeRelationship->fromitemid === (int) $knowledgeItem->id
+            || (int) $knowledgeRelationship->toitemid === (int) $knowledgeItem->id,
+            404
+        );
 
         $knowledgeRelationship->delete();
 

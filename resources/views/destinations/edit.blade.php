@@ -112,13 +112,27 @@
                                     <label for="revisitinterestlevel" class="block text-sm font-medium text-gray-700 mb-1">
                                         Revisit Interest Level
                                     </label>
-                                    <input type="number"
-                                           name="revisitinterestlevel"
-                                           id="revisitinterestlevel"
-                                           value="{{ old('revisitinterestlevel', $destination->revisitinterestlevel) }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                           min="0"
-                                           max="10">
+                                    @php
+                                        $revisitOptions = [
+                                            'very_likely' => 'Very Likely',
+                                            'likely' => 'Likely',
+                                            'neutral' => 'Neutral',
+                                            'unlikely' => 'Unlikely',
+                                            'very_unlikely' => 'Very Unlikely',
+                                        ];
+                                    @endphp
+
+                                    <select name="revisitinterestlevel"
+                                            id="revisitinterestlevel"
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                        <option value="">Select revisit interest</option>
+                                        @foreach($revisitOptions as $value => $label)
+                                            <option value="{{ $value }}"
+                                                @selected(old('revisitinterestlevel', $destination->revisitinterestlevel) === $value)>
+                                                {{ $label }}
+                                            </option>
+                                        @endforeach
+                                    </select>
                                 </div>
 
                                 <div class="flex items-end">

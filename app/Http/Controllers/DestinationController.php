@@ -13,14 +13,6 @@ use App\Models\DestinationSource;
 
 class DestinationController extends Controller
 {
-    protected array $typeOptions = [
-        'town',
-        'suburb',
-        'region',
-        'locality',
-        'attraction',
-    ];
-
 private function typeOptions(): array
 {
     return [
@@ -72,7 +64,7 @@ private function typeOptions(): array
         return view('destinations.index', [
             'destinations' => $destinations,
             'places' => $places,
-            'typeOptions' => $this->typeOptions,
+            'typeOptions' => $this->typeOptions(),
         ]);
     }
 
@@ -83,24 +75,25 @@ private function typeOptions(): array
 
             'existing.*.placeid' => ['nullable', 'integer', 'exists:places,id'],
             'existing.*.destinationname' => ['required', 'string', 'max:200'],
-            'existing.*.destinationtype' => ['required', 'string', Rule::in($this->typeOptions)],
+            'existing.*.destinationtype' => ['required', 'string', Rule::in($this->typeOptions())],
             'existing.*.bestseason' => ['nullable', 'string', 'max:100'],
-            'existing.*.revisitinterestlevel' => ['nullable', 'integer', 'min:0', 'max:10'],
+            'existing.*.revisitinterestlevel' => ['nullable', 'string', Rule::in(array_keys($this->revisitOptions()))],
             'existing.*.isfeatured' => ['nullable', 'boolean'],
 
             'new' => ['nullable', 'array'],
             'new.placeid' => ['nullable', 'integer', 'exists:places,id'],
             'new.destinationname' => ['nullable', 'string', 'max:200'],
-            'new.destinationtype' => ['nullable', 'string', Rule::in($this->typeOptions)],
+            'new.destinationtype' => ['nullable', 'string', Rule::in($this->typeOptions())],
             'new.bestseason' => ['nullable', 'string', 'max:100'],
-            'new.revisitinterestlevel' => ['nullable', 'integer', 'min:0', 'max:10'],
+            'new.revisitinterestlevel' => ['nullable', 'string', Rule::in(array_keys($this->revisitOptions()))],
             'new.isfeatured' => ['nullable', 'boolean'],
 
             'placeid' => ['nullable', 'integer', 'exists:places,id'],
-            'destinationtype' => ['nullable', 'string', Rule::in($this->typeOptions)],
+            'destinationtype' => ['nullable', 'string', Rule::in($this->typeOptions())],
             'featured' => ['nullable', 'in:0,1'],
             'search' => ['nullable', 'string'],
         ]);
+
 
         DB::transaction(function () use ($validated) {
             foreach ($validated['existing'] ?? [] as $destinationId => $row) {
@@ -214,21 +207,20 @@ public function edit(Request $request, Destination $destination)
         $validated = $request->validate([
             'placeid' => ['nullable', 'integer', 'exists:places,id'],
             'destinationname' => ['required', 'string', 'max:200'],
-            'destinationtype' => ['required', 'string', Rule::in($this->typeOptions)],
+            'revisitinterestlevel' => ['nullable', 'string', Rule::in(array_keys($this->revisitOptions()))],
             'overview' => ['nullable', 'string'],
             'travelnotes' => ['nullable', 'string'],
             'bestseason' => ['nullable', 'string', 'max:100'],
             'suitability' => ['nullable', 'string'],
             'accessnotes' => ['nullable', 'string'],
             'personalcommentary' => ['nullable', 'string'],
-            'revisitinterestlevel' => ['nullable', 'integer', 'min:0', 'max:10'],
             'isfeatured' => ['nullable', 'boolean'],
         ]);
 
         $destination->update([
             'placeid' => $validated['placeid'] ?? null,
             'destinationname' => trim($validated['destinationname']),
-            'destinationtype' => $validated['destinationtype'],
+            'destinationtype' => ['required', 'string', Rule::in($this->typeOptions())],
             'overview' => $validated['overview'] ?? null,
             'travelnotes' => $validated['travelnotes'] ?? null,
             'bestseason' => $validated['bestseason'] ?? null,
@@ -372,6 +364,17 @@ public function create(Request $request)
         'destination_id' => $request->input('destination_id'),
         'return_to' => $request->input('return_to'),
     ]));
+}
+
+public static function revisitOptions(): array
+{
+    return [
+        'very_likely' => 'Very Likely',
+        'likely' => 'Likely',
+        'neutral' => 'Neutral',
+        'unlikely' => 'Unlikely',
+        'very_unlikely' => 'Very Unlikely',
+    ];
 }
 
 }

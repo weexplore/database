@@ -36,6 +36,18 @@
                         </div>
 
                         <div>
+                            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">
+                                Search
+                            </label>
+                            <input type="text"
+                                   name="search"
+                                   id="search"
+                                   value="{{ request('search') }}"
+                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                   placeholder="Name, best season, overview">
+                        </div>
+
+                        <div>
                             <label for="destinationtype" class="block text-sm font-medium text-gray-700 mb-1">
                                 Type
                             </label>
@@ -65,17 +77,7 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">
-                                Search
-                            </label>
-                            <input type="text"
-                                   name="search"
-                                   id="search"
-                                   value="{{ request('search') }}"
-                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                   placeholder="Name, best season, overview">
-                        </div>
+
 
                         <div class="md:col-span-4 flex items-end gap-2">
                             <button type="submit"
@@ -181,14 +183,27 @@
                                                    value="{{ old("existing.{$destination->id}.bestseason", $destination->bestseason) }}"
                                                    class="w-40 rounded-md border-gray-300 shadow-sm text-sm">
                                         </td>
+                                        @php
+                                            $revisitOptions = [
+                                                'very_likely' => 'Very Likely',
+                                                'likely' => 'Likely',
+                                                'neutral' => 'Neutral',
+                                                'unlikely' => 'Unlikely',
+                                                'very_unlikely' => 'Very Unlikely',
+                                            ];
+                                        @endphp
 
                                         <td class="px-3 py-2">
-                                            <input type="number"
-                                                   name="existing[{{ $destination->id }}][revisitinterestlevel]"
-                                                   value="{{ old("existing.{$destination->id}.revisitinterestlevel", $destination->revisitinterestlevel) }}"
-                                                   class="w-24 rounded-md border-gray-300 shadow-sm text-sm"
-                                                   min="0"
-                                                   max="10">
+                                            <select name="existing[{{ $destination->id }}][revisitinterestlevel]"
+                                                    class="w-40 rounded-md border-gray-300 shadow-sm text-sm">
+                                                <option value="">Select</option>
+                                                @foreach($revisitOptions as $value => $label)
+                                                    <option value="{{ $value }}"
+                                                        @selected(old("existing.{$destination->id}.revisitinterestlevel", $destination->revisitinterestlevel) === $value)>
+                                                        {{ $label }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
                                         </td>
 
                                         <td class="px-3 py-2 text-center">
@@ -266,13 +281,16 @@
                                     </td>
 
                                     <td class="px-3 py-2">
-                                        <input type="number"
-                                               name="new[revisitinterestlevel]"
-                                               value="{{ old('new.revisitinterestlevel') }}"
-                                               class="w-24 rounded-md border-gray-300 shadow-sm text-sm"
-                                               min="0"
-                                               max="10"
-                                               placeholder="0-10">
+                                        <select name="new[revisitinterestlevel]"
+                                                class="w-40 rounded-md border-gray-300 shadow-sm text-sm">
+                                            <option value="">Select</option>
+                                            @foreach($revisitOptions as $value => $label)
+                                                <option value="{{ $value }}"
+                                                    @selected(old('new.revisitinterestlevel') === $value)>
+                                                    {{ $label }}
+                                                </option>
+                                            @endforeach
+                                        </select>
                                     </td>
 
                                     <td class="px-3 py-2 text-center">

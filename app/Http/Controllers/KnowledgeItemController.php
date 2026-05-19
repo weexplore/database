@@ -242,7 +242,8 @@ class KnowledgeItemController extends Controller
         'attachments',
         'reviewLogs',
         'itemType',
-        'relationships.toItem',
+        'outgoingRelationships.toItem.primaryCategory',
+        'incomingRelationships.fromItem.primaryCategory',
         'bibleReferences.book',
         'bibleReferences.version',
         'instrument.instrumentType',
@@ -255,7 +256,6 @@ class KnowledgeItemController extends Controller
     ]);
 
     $domainId = optional($knowledgeItem->primaryCategory)->domainid;
-
     $domain = $knowledgeItem->primaryCategory?->domain;
 
     $hasBibleTools = (bool) ($domain?->hasbibletools ?? false);
@@ -300,6 +300,35 @@ class KnowledgeItemController extends Controller
         })
         ->values();
 
+    $displayRelationships = collect(
+        $knowledgeItem->outgoingRelationships->map(function ($relationship) {
+            return [
+                'relationship' => $relationship,
+                'direction' => 'outgoing',
+                'relatedItem' => $relationship->toItem,
+                'displayTypeLabel' => $relationship->relationshipTypeLabel(),
+                'sortorder' => $relationship->sortorder ?? 0,
+                'relatedSortName' => mb_strtolower($relationship->toItem?->itemname ?? 'zzzz'),
+            ];
+        })->all()
+    )->merge(
+        collect(
+            $knowledgeItem->incomingRelationships->map(function ($relationship) {
+                return [
+                    'relationship' => $relationship,
+                    'direction' => 'incoming',
+                    'relatedItem' => $relationship->fromItem,
+                    'displayTypeLabel' => $relationship->inverseRelationshipTypeLabel(),
+                    'sortorder' => $relationship->sortorder ?? 0,
+                    'relatedSortName' => mb_strtolower($relationship->fromItem?->itemname ?? 'zzzz'),
+                ];
+            })->all()
+        )
+    )->sortBy([
+        ['sortorder', 'asc'],
+        ['relatedSortName', 'asc'],
+    ])->values();
+
     $editingNoteId = $request->integer('editing_note_id');
     $showAddNote = $request->boolean('show_add_note');
 
@@ -313,27 +342,26 @@ class KnowledgeItemController extends Controller
     $showAddRelationship = $request->boolean('show_add_relationship');
 
     $allowedTabs = ['details', 'info', 'notes', 'sources', 'review-logs', 'relationships', 'attachments'];
+
     if (!empty($hasBibleTools)) {
-    $allowedTabs[] = 'bible-references';
+        $allowedTabs[] = 'bible-references';
     }
 
     if (!empty($hasInvestmentTools)) {
         $allowedTabs[] = 'investments';
     }
+
     $activeTab = $request->string('tab')->value() ?: 'details';
 
-    if (! in_array($activeTab, $allowedTabs, true)) {
+    if (!in_array($activeTab, $allowedTabs, true)) {
         $activeTab = 'details';
     }
-    
-    
 
     $places = Place::query()
         ->where('isactive', true)
         ->orderBy('placename')
         ->orderBy('locality')
         ->get(['id', 'placename', 'locality', 'placetype']);
-    
 
     return view('knowledge.items.edit', [
         'pageTitle' => 'Edit Knowledge Item',
@@ -347,6 +375,7 @@ class KnowledgeItemController extends Controller
         'editingRelationshipId' => $editingRelationshipId,
         'showAddRelationship' => $showAddRelationship,
         'relationshipItems' => $relationshipItems,
+        'displayRelationships' => $displayRelationships,
         'domainId' => $domainId,
         'categories' => $categories,
         'parentItems' => $parentItems,
@@ -378,7 +407,7 @@ class KnowledgeItemController extends Controller
             ->orderBy('exchangename')
             ->get(),
         'corporateActionTypeOptions' => InstrumentCorporateActionController::actionTypeOptions(),
-            'transactionTypeOptions' => InstrumentTransactionController::transactionTypeOptions(),
+        'transactionTypeOptions' => InstrumentTransactionController::transactionTypeOptions(),
         'portfolios' => Portfolio::query()
             ->where('isactive', 1)
             ->orderBy('portfolioname')

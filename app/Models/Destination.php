@@ -35,7 +35,6 @@ class Destination extends Model
     protected $casts = [
        'id' => 'integer',
         'placeid' => 'integer',
-        'revisitinterestlevel' => 'integer',
         'isfeatured' => 'boolean',
         'createdat' => 'datetime',
         'updatedat' => 'datetime',

@@ -42,6 +42,15 @@ class KnowledgeRelationship extends Model
         'married' => 'Married',
     ];
 
+    public const INVERSE_TYPE_MAP = [
+        'related' => 'related',
+        'supports' => 'supported-by',
+        'contradicts' => 'contradicts',
+        'depends-on' => 'required-by',
+        'parent-of' => 'child-of',
+        'child-of' => 'parent-of',
+        'married' => 'married',
+    ];
     public static function typeOptions(): array
     {
         return self::TYPE_OPTIONS;
@@ -59,5 +68,23 @@ class KnowledgeRelationship extends Model
     public function toItem(): BelongsTo
     {
         return $this->belongsTo(KnowledgeItem::class, 'toitemid');
+    }
+
+    public function inverseRelationshipType(): ?string
+    {
+        return self::INVERSE_TYPE_MAP[$this->relationshiptype] ?? $this->relationshiptype;
+    }
+
+    public function relationshipTypeLabel(): string
+    {
+        return self::TYPE_OPTIONS[$this->relationshiptype] ?? $this->relationshiptype;
+    }
+
+    public function inverseRelationshipTypeLabel(): string
+    {
+        $inverse = $this->inverseRelationshipType();
+
+        return self::TYPE_OPTIONS[$inverse]
+            ?? str($inverse)->replace('-', ' ')->title()->toString();
     }
 }

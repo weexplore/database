@@ -151,4 +151,5 @@ protected $casts = [
     {
         return $this->hasOne(Instrument::class, 'knowledgeitemid');
     }
+
 }
