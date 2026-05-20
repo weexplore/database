@@ -304,6 +304,7 @@ Route::prefix('knowledge-tags')->name('knowledge-tags.')->group(function () {
 
 Route::prefix('knowledge-categories')->name('knowledge-categories.')->group(function () {
     Route::get('/', [KnowledgeCategoryController::class, 'index'])->name('index');
+    Route::post('bulk-save', [KnowledgeCategoryController::class, 'bulkSave'])->name('bulk-save');
     Route::get('create', [KnowledgeCategoryController::class, 'create'])->name('create');
     Route::post('/', [KnowledgeCategoryController::class, 'store'])->name('store');
     Route::put('{knowledgeCategory}', [KnowledgeCategoryController::class, 'update'])->name('update');

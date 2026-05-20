@@ -32,7 +32,7 @@
             @endif
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="grid grid-cols-1 xl:grid-cols-[320px_minmax(380px,460px)_minmax(0,1fr)] min-h-[720px]">
+                <div class="grid grid-cols-1 xl:grid-cols-[320px_minmax(420px,520px)_minmax(0,1fr)] min-h-[720px]">
 
                     <aside class="bg-slate-950 text-slate-100 border-r border-slate-800">
                         <div class="p-4 border-b border-slate-800 space-y-4">
@@ -59,7 +59,7 @@
 
                                 <input type="hidden" name="categoryid" value="{{ $filters['categoryid'] ?? '' }}">
                                 <input type="hidden" name="search" value="{{ $filters['search'] ?? '' }}">
-                                <input type="hidden" name="itemtype" value="{{ $filters['itemtype'] ?? '' }}">
+                                <input type="hidden" name="knowledgeitemtypeid" value="{{ $filters['knowledgeitemtypeid'] ?? '' }}">
                                 <input type="hidden" name="itemstatus" value="{{ $filters['itemstatus'] ?? '' }}">
 
                                 <div class="space-y-2">
@@ -67,7 +67,6 @@
                                        class="inline-flex w-full items-center justify-center rounded-md bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700">
                                         Add root category
                                     </a>
-                                    
 
                                     @if($selectedCategory)
                                         <a href="{{ route('knowledge-categories.create', [
@@ -78,28 +77,30 @@
                                             Add child under {{ $selectedCategory->categoryname }}
                                         </a>
                                     @endif
+
                                     @if(!empty($filters['domainid']))
                                         <a href="{{ route('reports.knowledge.domains.reference-book', [
                                                 'domainid' => $filters['domainid'],
                                                 'return_to' => url()->full(),
                                             ]) }}"
-                                        class="inline-flex w-full items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+                                           class="inline-flex w-full items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">
                                             Domain Report
                                         </a>
                                     @endif
+
                                     @if($selectedCategory)
                                         <a href="{{ route('reports.knowledge.categories.reference-book', [
                                                 'category_ids' => [$selectedCategory->id],
                                                 'return_to' => url()->full(),
                                             ]) }}"
-                                        class="inline-flex w-full items-center justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                                           class="inline-flex w-full items-center justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
                                             Category Report
                                         </a>
-                                            <a href="{{ route('reports.knowledge.categories.tree-reference-book', [
+                                        <a href="{{ route('reports.knowledge.categories.tree-reference-book', [
                                                 'categoryid' => $selectedCategory->id,
                                                 'return_to' => url()->full(),
                                             ]) }}"
-                                        class="inline-flex w-full items-center justify-center rounded-md bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700">
+                                           class="inline-flex w-full items-center justify-center rounded-md bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700">
                                             Category Tree Report
                                         </a>
                                     @endif
@@ -175,7 +176,7 @@
                                             <label class="block text-sm font-medium text-gray-700 mb-1">Parent category</label>
                                             <select name="parentcategoryid" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                                 <option value="">No parent</option>
-                                                @foreach($parentOptions as $option)
+                                                @foreach(($parentOptions ?? []) as $option)
                                                     @if((int) $option['id'] !== (int) $selectedCategory->id)
                                                         <option value="{{ $option['id'] }}"
                                                             @selected((string) old('parentcategoryid', $selectedCategory->parentcategoryid) === (string) $option['id'])>
@@ -269,31 +270,225 @@
                                 </div>
                             @endif
                         </div>
+
                         @if($selectedCategory)
-                        <div class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg border border-red-200">
-                            <div class="px-5 py-4 border-b border-red-200">
-                                <h3 class="text-sm font-semibold text-red-800">Delete Category</h3>
+                            @php
+                                $showChildCategories = (bool) old(
+                                    'show_child_categories',
+                                    request()->boolean('show_child_categories', false)
+                                ) || collect($errors->keys())->contains(fn ($key) =>
+                                    str_starts_with($key, 'existing.') || str_starts_with($key, 'new.')
+                                );
+                            @endphp
+
+                            <div class="px-5 pb-5">
+                                <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+                                    <form method="POST"
+                                          action="{{ route('knowledge-categories.bulk-save') }}"
+                                          id="knowledge-child-categories-form">
+                                        @csrf
+
+                                        <input type="hidden" name="domainid" value="{{ $selectedCategory->domainid }}">
+                                        <input type="hidden" name="categoryid" value="{{ $selectedCategory->id }}">
+                                        <input type="hidden" name="search" value="{{ $filters['search'] ?? '' }}">
+                                        <input type="hidden" name="knowledgeitemtypeid" value="{{ $filters['knowledgeitemtypeid'] ?? '' }}">
+                                        <input type="hidden" name="itemstatus" value="{{ $filters['itemstatus'] ?? '' }}">
+
+                                        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-3">
+                                            <div>
+                                                <h3 class="text-sm font-semibold text-gray-900">
+                                                    Child categories under {{ $selectedCategory->categoryname }}
+                                                </h3>
+                                                <p class="text-xs text-gray-500">
+                                                    Show only when you want to add or quickly edit immediate child folders
+                                                </p>
+                                            </div>
+
+                                            <label class="inline-flex items-center gap-2 text-sm text-gray-700 whitespace-nowrap">
+                                                <input type="hidden" name="show_child_categories" value="0">
+                                                <input type="checkbox"
+                                                       id="toggle-child-categories"
+                                                       name="show_child_categories"
+                                                       value="1"
+                                                       class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                                       @checked($showChildCategories)>
+                                                Show child categories
+                                            </label>
+                                        </div>
+
+                                        <div id="child-categories-panel" class="{{ $showChildCategories ? '' : 'hidden' }}">
+                                            <div class="px-4 py-3 border-b border-gray-200 flex items-start justify-between gap-3 bg-gray-50">
+                                                <div>
+                                                    <p class="text-xs text-gray-500">
+                                                        Quick entry and maintenance for immediate child folders
+                                                    </p>
+                                                </div>
+
+                                                <a href="{{ route('knowledge-categories.create', [
+                                                        'domainid' => $selectedCategory->domainid,
+                                                        'parentcategoryid' => $selectedCategory->id,
+                                                    ]) }}"
+                                                   class="inline-flex items-center px-3 py-2 bg-slate-700 text-white rounded-md hover:bg-slate-600 text-sm whitespace-nowrap">
+                                                    Open full form
+                                                </a>
+                                            </div>
+
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full divide-y divide-gray-200">
+                                                    <thead class="bg-gray-50">
+                                                        <tr>
+                                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Category name</th>
+                                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sort order</th>
+                                                        </tr>
+                                                    </thead>
+
+                                                    <tbody class="bg-white divide-y divide-gray-200">
+                                                        @forelse($editableCategories as $category)
+                                                            <tr>
+                                                                <td class="px-3 py-2 min-w-[220px]">
+                                                                    <input type="text"
+                                                                           name="existing[{{ $category->id }}][categoryname]"
+                                                                           value="{{ old("existing.{$category->id}.categoryname", $category->categoryname) }}"
+                                                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                                                           required>
+
+                                                                    <input type="hidden"
+                                                                           name="existing[{{ $category->id }}][parentcategoryid]"
+                                                                           value="{{ old("existing.{$category->id}.parentcategoryid", $category->parentcategoryid) }}">
+
+                                                                    <input type="hidden"
+                                                                           name="existing[{{ $category->id }}][nextreviewdate]"
+                                                                           value="{{ old("existing.{$category->id}.nextreviewdate", $category->nextreviewdate ? \Illuminate\Support\Carbon::parse($category->nextreviewdate)->format('Y-m-d') : '') }}">
+
+                                                                    <input type="hidden"
+                                                                           name="existing[{{ $category->id }}][isfeatured]"
+                                                                           value="{{ old("existing.{$category->id}.isfeatured", $category->isfeatured ? 1 : 0) }}">
+
+                                                                    <input type="hidden"
+                                                                           name="existing[{{ $category->id }}][isactive]"
+                                                                           value="{{ old("existing.{$category->id}.isactive", $category->isactive ? 1 : 0) }}">
+                                                                </td>
+
+                                                                <td class="px-3 py-2 min-w-[160px]">
+                                                                    <select name="existing[{{ $category->id }}][categorytype]"
+                                                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                                        <option value="">Select type</option>
+                                                                        @foreach($categoryTypeOptions as $value => $label)
+                                                                            <option value="{{ $value }}"
+                                                                                @selected(old("existing.{$category->id}.categorytype", $category->categorytype) === $value)>
+                                                                                {{ $label }}
+                                                                            </option>
+                                                                        @endforeach
+                                                                    </select>
+                                                                </td>
+
+                                                                <td class="px-3 py-2 w-[8ch]">
+                                                                    <input type="number"
+                                                                           name="existing[{{ $category->id }}][sortorder]"
+                                                                           value="{{ old("existing.{$category->id}.sortorder", $category->sortorder) }}"
+                                                                           class="w-[8ch] rounded-md border-gray-300 shadow-sm text-sm"
+                                                                           min="0">
+                                                                </td>
+                                                            </tr>
+                                                        @empty
+                                                            <tr>
+                                                                <td colspan="3" class="px-3 py-6 text-center text-sm text-gray-500">
+                                                                    No child categories found. Add the first child row below.
+                                                                </td>
+                                                            </tr>
+                                                        @endforelse
+
+                                                        <tr class="bg-blue-50">
+                                                            <td class="px-3 py-2">
+                                                                <input type="text"
+                                                                       name="new[categoryname]"
+                                                                       value="{{ old('new.categoryname') }}"
+                                                                       class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                                                       placeholder="New child category">
+
+                                                                <input type="hidden" name="new[parentcategoryid]" value="{{ $selectedCategory->id }}">
+                                                                <input type="hidden" name="new[isfeatured]" value="0">
+                                                                <input type="hidden" name="new[isactive]" value="1">
+                                                            </td>
+
+                                                            <td class="px-3 py-2 min-w-[160px]">
+                                                                <select name="new[categorytype]"
+                                                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                                    <option value="">Select type</option>
+                                                                    @foreach($categoryTypeOptions as $value => $label)
+                                                                        <option value="{{ $value }}"
+                                                                            @selected(old('new.categorytype') === $value)>
+                                                                            {{ $label }}
+                                                                        </option>
+                                                                    @endforeach
+                                                                </select>
+                                                            </td>
+
+                                                            <td class="px-3 py-2 w-[8ch]">
+                                                                <input type="number"
+                                                                       name="new[sortorder]"
+                                                                       value="{{ old('new.sortorder', 0) }}"
+                                                                       class="w-[8ch] rounded-md border-gray-300 shadow-sm text-sm"
+                                                                       min="0">
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <div class="px-4 py-3 border-t border-gray-200 flex items-center justify-between gap-3">
+                                                <p class="text-xs text-gray-500">
+                                                    Parent is inherited from the selected category above.
+                                                </p>
+
+                                                <button type="submit"
+                                                        class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
+                                                    Save child categories
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
 
-                            <div class="p-5 space-y-4">
-                                <p class="text-sm text-gray-600">
-                                    Delete this category only if it is no longer needed and has no child categories or knowledge items attached.
-                                </p>
+                            <div class="mt-1 mx-5 mb-5 bg-white overflow-hidden shadow-sm sm:rounded-lg border border-red-200">
+                                <div class="px-5 py-4 border-b border-red-200">
+                                    <h3 class="text-sm font-semibold text-red-800">Delete Category</h3>
+                                </div>
 
-                                <form method="POST"
-                                    action="{{ route('knowledge-categories.destroy', $selectedCategory) }}"
-                                    onsubmit="return confirm('Delete category {{ addslashes($selectedCategory->categoryname) }}? This cannot be undone.');">
-                                    @csrf
-                                    @method('DELETE')
+                                <div class="p-5 space-y-4">
+                                    <p class="text-sm text-gray-600">
+                                        Delete this category only if it is no longer needed and has no child categories or knowledge items attached.
+                                    </p>
 
-                                    <button type="submit"
-                                            class="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm">
-                                        Delete Category
-                                    </button>
-                                </form>
+                                    <form method="POST"
+                                          action="{{ route('knowledge-categories.destroy', $selectedCategory) }}"
+                                          onsubmit="return confirm('Delete category {{ addslashes($selectedCategory->categoryname) }}? This cannot be undone.');">
+                                        @csrf
+                                        @method('DELETE')
+
+                                        <button type="submit"
+                                                class="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm">
+                                            Delete Category
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
-                        </div>
-                    @endif
+
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function () {
+                                    const toggle = document.getElementById('toggle-child-categories');
+                                    const panel = document.getElementById('child-categories-panel');
+
+                                    if (toggle && panel) {
+                                        toggle.addEventListener('change', function () {
+                                            panel.classList.toggle('hidden', !this.checked);
+                                        });
+                                    }
+                                });
+                            </script>
+                        @endif
                     </section>
 
                     <section>
@@ -305,26 +500,48 @@
                                 <p class="text-sm text-gray-500">Register view filtered by the selected folder</p>
                             </div>
 
-                            @if($selectedCategory)
-                                <a href="{{ route('knowledge.items.index', [
-                                        'domainid' => $selectedCategory->domainid ?? ($filters['domainid'] ?? null),
-                                        'categoryid' => $selectedCategory->id,
-                                        'show_create' => 1,
-                                    ]) }}"
-                                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm whitespace-nowrap">
-                                    New knowledge item
-                                </a>
-                            @else
-                                <button type="button"
-                                        disabled
-                                        class="px-4 py-2 bg-gray-300 text-gray-500 rounded-md text-sm whitespace-nowrap cursor-not-allowed">
-                                    New knowledge item
-                                </button>
-                            @endif
+                            <div class="flex items-center gap-2">
+                                @if($selectedCategory)
+                                    <a href="{{ route('knowledge.items.index', [
+                                            'domainid' => $selectedCategory->domainid ?? ($filters['domainid'] ?? null),
+                                            'categoryid' => $selectedCategory->id,
+                                            'show_create' => 0,
+                                        ]) }}"
+                                       class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm whitespace-nowrap">
+                                        Knowledge item table
+                                    </a>
+                                @else
+                                    <button type="button"
+                                            disabled
+                                            class="px-4 py-2 bg-gray-300 text-gray-500 rounded-md text-sm whitespace-nowrap cursor-not-allowed">
+                                        Knowledge item table
+                                    </button>
+                                @endif
+
+                                @if($selectedCategory)
+                                    <a href="{{ route('knowledge.items.index', [
+                                            'domainid' => $selectedCategory->domainid ?? ($filters['domainid'] ?? null),
+                                            'categoryid' => $selectedCategory->id,
+                                            'show_create' => 1,
+                                        ]) }}"
+                                       class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm whitespace-nowrap">
+                                        New knowledge item
+                                    </a>
+                                @else
+                                    <button type="button"
+                                            disabled
+                                            class="px-4 py-2 bg-gray-300 text-gray-500 rounded-md text-sm whitespace-nowrap cursor-not-allowed">
+                                        New knowledge item
+                                    </button>
+                                @endif
+                            </div>
                         </div>
 
                         <div class="p-5 space-y-5">
-                            <form method="GET" action="{{ route('knowledge-categories.index') }}" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <form method="GET"
+                                  action="{{ route('knowledge-categories.index') }}"
+                                  class="grid grid-cols-1 md:grid-cols-4 gap-4"
+                                  id="knowledge-category-items-filter-form">
                                 <input type="hidden" name="domainid" value="{{ $filters['domainid'] }}">
                                 <input type="hidden" name="categoryid" value="{{ $filters['categoryid'] }}">
 
@@ -381,63 +598,244 @@
                                 </div>
                             </form>
 
-                            <div class="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table class="w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50">
-                                        <tr>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Next Review</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Summary</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="bg-white divide-y divide-gray-200">
-                                        @forelse($items as $item)
-                                            <tr>
-                                                <td class="px-4 py-3 align-top">
-                                                    <div class="font-medium text-gray-900">{{ $item->itemname }}</div>
-                                                    <div class="text-xs text-gray-500 mt-1">
-                                                        Primary category: {{ $selectedCategory?->categoryname }}
-                                                    </div>
-                                                </td>
+                            @if($selectedCategory)
+                                <form method="POST"
+                                      action="{{ route('knowledge.items.bulk-save') }}"
+                                      id="knowledge-category-items-form">
+                                    @csrf
 
-                                                <td class="px-4 py-3 text-sm text-gray-700">
-                                                    {{ $item->itemtype ?: '—' }}
-                                                </td>
+                                    <input type="hidden" name="domainid" value="{{ $filters['domainid'] ?? '' }}">
+                                    <input type="hidden" name="categoryid" value="{{ $filters['categoryid'] ?? '' }}">
+                                    <input type="hidden" name="search" value="{{ $filters['search'] ?? '' }}">
+                                    <input type="hidden" name="itemtype" value="{{ $filters['knowledgeitemtypeid'] ?? '' }}">
+                                    <input type="hidden" name="itemstatus" value="{{ $filters['itemstatus'] ?? '' }}">
+                                    <input type="hidden" name="active" value="{{ $filters['active'] ?? '' }}">
+                                    <input type="hidden" name="page" value="{{ request('page', 1) }}">
+                                    <input type="hidden" name="return_to" value="{{ url()->full() }}">
 
-                                                <td class="px-4 py-3">
-                                                    <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium {{ $item->itemstatus === 'active' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800' }}">
-                                                        {{ $item->itemstatus ?: 'n/a' }}
-                                                    </span>
-                                                </td>
+                                    <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                                        <table class="w-full divide-y divide-gray-200">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+                                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Next Review</th>
+                                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Summary</th>
+                                                    <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Featured</th>
+                                                    <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Active</th>
+                                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sort</th>
+                                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                                </tr>
+                                            </thead>
 
-                                                <td class="px-4 py-3 text-sm text-gray-700">
-                                                    {{ $item->nextreviewdate ? \Illuminate\Support\Carbon::parse($item->nextreviewdate)->format('d M Y') : '—' }}
-                                                </td>
+                                            <tbody class="bg-white divide-y divide-gray-200">
+                                                @forelse($items as $item)
+                                                    <tr>
+                                                        <td class="px-3 py-2 min-w-[220px]">
+                                                            <input type="text"
+                                                                   name="existing[{{ $item->id }}][itemname]"
+                                                                   value="{{ old("existing.{$item->id}.itemname", $item->itemname) }}"
+                                                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                                                   required>
+                                                        </td>
 
-                                                <td class="px-4 py-3 text-sm text-gray-600">
-                                                    {{ $item->summary }}
-                                                </td>
+                                                        <td class="px-3 py-2 min-w-[150px]">
+                                                            <select name="existing[{{ $item->id }}][itemtype]"
+                                                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                                <option value="">Select type</option>
+                                                                @foreach($itemTypes as $itemType)
+                                                                    <option value="{{ $itemType->id }}"
+                                                                        @selected((string) old("existing.{$item->id}.itemtype", $item->itemtype) === (string) $itemType->id)>
+                                                                        {{ $itemType->typename }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                            <input type="hidden"
+                                                                   name="existing[{{ $item->id }}][primarycategoryid]"
+                                                                   value="{{ $selectedCategory->id }}">
+                                                        </td>
 
-                                                <td class="px-4 py-3 whitespace-nowrap">
-                                                    <a href="{{ route('knowledge.items.edit', $item) }}"
-                                                    class="inline-flex items-center px-3 py-1.5 bg-slate-700 text-white rounded hover:bg-slate-600 text-sm">
-                                                        Open
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">
-                                                    No knowledge items found for this category and filter set.
-                                                </td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
+                                                        <td class="px-3 py-2 min-w-[160px]">
+                                                            <select name="existing[{{ $item->id }}][itemstatus]"
+                                                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                                <option value="">Select status</option>
+                                                                @foreach($itemStatusOptions as $value => $label)
+                                                                    <option value="{{ $value }}"
+                                                                        @selected(old("existing.{$item->id}.itemstatus", $item->itemstatus ?? 'active') === $value)>
+                                                                        {{ $label }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                        </td>
+
+                                                        <td class="px-3 py-2 min-w-[150px]">
+                                                            <input type="date"
+                                                                   name="existing[{{ $item->id }}][nextreviewdate]"
+                                                                   value="{{ old("existing.{$item->id}.nextreviewdate", optional($item->nextreviewdate)->format('Y-m-d')) }}"
+                                                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                        </td>
+
+                                                        <td class="px-3 py-2 min-w-[260px]">
+                                                            <textarea name="existing[{{ $item->id }}][summary]"
+                                                                      rows="2"
+                                                                      class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old("existing.{$item->id}.summary", $item->summary) }}</textarea>
+                                                        </td>
+
+                                                        <td class="px-3 py-2 text-center">
+                                                            <input type="hidden" name="existing[{{ $item->id }}][isfeatured]" value="0">
+                                                            <input type="checkbox"
+                                                                   name="existing[{{ $item->id }}][isfeatured]"
+                                                                   value="1"
+                                                                   class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                                                   @checked(old("existing.{$item->id}.isfeatured", $item->isfeatured))>
+                                                        </td>
+
+                                                        <td class="px-3 py-2 text-center">
+                                                            <input type="hidden" name="existing[{{ $item->id }}][isactive]" value="0">
+                                                            <input type="checkbox"
+                                                                   name="existing[{{ $item->id }}][isactive]"
+                                                                   value="1"
+                                                                   class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                                                   @checked(old("existing.{$item->id}.isactive", $item->isactive))>
+                                                        </td>
+
+                                                        <td class="px-3 py-2 w-[90px]">
+                                                            <input type="number"
+                                                                   name="existing[{{ $item->id }}][sortorder]"
+                                                                   value="{{ old("existing.{$item->id}.sortorder", $item->sortorder) }}"
+                                                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                                                   min="0">
+                                                        </td>
+
+                                                        <td class="px-3 py-2 whitespace-nowrap">
+                                                            <a href="{{ route('knowledge.items.edit', $item) }}"
+                                                               class="inline-flex items-center px-3 py-1.5 bg-slate-700 text-white rounded hover:bg-slate-600 text-sm">
+                                                                Open
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                @empty
+                                                    <tr>
+                                                        <td colspan="9" class="px-3 py-6 text-center text-sm text-gray-500">
+                                                            No knowledge items found for this category and filter set.
+                                                        </td>
+                                                    </tr>
+                                                @endforelse
+
+                                                <tr class="bg-blue-50">
+                                                    <td class="px-3 py-2">
+                                                        <input type="text"
+                                                               name="new[itemname]"
+                                                               value="{{ old('new.itemname') }}"
+                                                               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                                               placeholder="New knowledge item">
+                                                    </td>
+
+                                                    <td class="px-3 py-2 min-w-[150px]">
+                                                        <select name="new[itemtype]"
+                                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                            <option value="">Select type</option>
+                                                            @foreach($itemTypes as $itemType)
+                                                                <option value="{{ $itemType->id }}"
+                                                                    @selected((string) old('new.itemtype') === (string) $itemType->id)>
+                                                                    {{ $itemType->typename }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                        <input type="hidden" name="new[primarycategoryid]" value="{{ $selectedCategory->id }}">
+                                                    </td>
+
+                                                    <td class="px-3 py-2 min-w-[160px]">
+                                                        <select name="new[itemstatus]"
+                                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                            <option value="">Select status</option>
+                                                            @foreach($itemStatusOptions as $value => $label)
+                                                                <option value="{{ $value }}"
+                                                                    @selected(old('new.itemstatus', 'active') === $value)>
+                                                                    {{ $label }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                    </td>
+
+                                                    <td class="px-3 py-2">
+                                                        <input type="date"
+                                                               name="new[nextreviewdate]"
+                                                               value="{{ old('new.nextreviewdate') }}"
+                                                               class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                    </td>
+
+                                                    <td class="px-3 py-2">
+                                                        <textarea name="new[summary]"
+                                                                  rows="2"
+                                                                  class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                                                  placeholder="Short summary">{{ old('new.summary') }}</textarea>
+                                                    </td>
+
+                                                    <td class="px-3 py-2 text-center">
+                                                        <input type="hidden" name="new[isfeatured]" value="0">
+                                                        <input type="checkbox"
+                                                               name="new[isfeatured]"
+                                                               value="1"
+                                                               class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                                               @checked(old('new.isfeatured', false))>
+                                                    </td>
+
+                                                    <td class="px-3 py-2 text-center">
+                                                        <input type="hidden" name="new[isactive]" value="0">
+                                                        <input type="checkbox"
+                                                               name="new[isactive]"
+                                                               value="1"
+                                                               class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                                               @checked(old('new.isactive', true))>
+                                                    </td>
+
+                                                    <td class="px-3 py-2" [160px]>
+                                                        <input type="number"
+                                                               name="new[sortorder]"
+                                                               value="{{ old('new.sortorder', 0) }}"
+                                                               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                                               min="0">
+                                                    </td>
+
+                                                    <td class="px-3 py-2 text-sm text-gray-400 whitespace-nowrap">
+                                                        New row
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="pt-4 flex items-center justify-between">
+                                        <p class="text-sm text-gray-500">
+                                            Quick update key fields here, then open full edit for richer notes, relationships, and review content.
+                                        </p>
+
+                                        <div class="flex items-center gap-2">
+                                            <a href="{{ route('knowledge-categories.index', array_filter([
+                                                    'domainid' => $filters['domainid'] ?? request('domainid'),
+                                                    'categoryid' => $filters['categoryid'] ?? request('categoryid'),
+                                                    'search' => $filters['search'] ?? request('search'),
+                                                    'knowledgeitemtypeid' => $filters['knowledgeitemtypeid'] ?? request('knowledgeitemtypeid'),
+                                                    'itemstatus' => $filters['itemstatus'] ?? request('itemstatus'),
+                                                ], fn ($value) => $value !== null && $value !== '')) }}"
+                                               class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                                                Cancel
+                                            </a>
+
+                                            <button type="submit"
+                                                    class="inline-flex items-center px-5 py-2 bg-green-600 border border-transparent rounded-md text-sm font-semibold text-white hover:bg-green-700">
+                                                Save Changes
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            @else
+                                <div class="rounded-md border border-dashed border-gray-300 bg-white px-4 py-6 text-sm text-gray-500">
+                                    Select a category from the tree to edit knowledge items inline.
+                                </div>
+                            @endif
                         </div>
                     </section>
 
@@ -445,4 +843,10 @@
             </div>
         </div>
     </div>
+
+    @include('partials.admin.dirty-form-script', [
+        'formId' => 'knowledge-category-items-form',
+        'filterFormId' => 'knowledge-category-items-filter-form',
+        'dirtyMessage' => 'You have unsaved changes in the category items table. Continue and lose those changes?',
+    ])
 </x-app-layout>

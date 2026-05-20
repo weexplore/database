@@ -1,3 +1,7 @@
+
+
+
+
 {{-- resources/views/knowledge/items/partials/notes-panel.blade.php --}}
 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
     <div class="px-6 py-4 border-b border-gray-200">
@@ -83,6 +87,7 @@
                     <label for="note_notecontent" class="block text-sm font-medium text-gray-700 mb-1">
                         Note Content
                     </label>
+
                     <textarea name="notecontent"
                             id="note_notecontent"
                             rows="4"
@@ -162,176 +167,188 @@
 
     <div class="divide-y divide-gray-200">
         @forelse($knowledgeItem->notes->sortBy('sortorder') as $note)
-            <div class="p-4 space-y-3">
-                <div class="flex items-start justify-between gap-4">
-                    <div class="space-y-1">
-                        <div class="text-sm font-semibold text-gray-900">
-                            {{ $note->title ?: 'Untitled note' }}
-                        </div>
-                        <div class="text-xs text-gray-500">
-                            Type: {{ $note->notetype ?: '—' }}
-                            · Sort: {{ $note->sortorder ?? 0 }}
-                            · {{ $note->isprivate ? 'Private' : 'Shared' }}
-                        </div>
-                        <div class="text-sm text-gray-700 line-clamp-2">
-                            {{ $note->notecontent }}
-                        </div>
+    @if(isset($editingNoteId) && (int) $editingNoteId === $note->id)
+        <div class="p-4 bg-blue-50/40 space-y-4">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-900">Edit Note</h4>
+                    <p class="text-xs text-gray-500">
+                        Updating note: {{ $note->title ?: 'Untitled note' }}
+                    </p>
+                </div>
+
+                <a href="{{ route('knowledge.items.edit', [
+                        'knowledgeItem' => $knowledgeItem,
+                        'tab' => 'notes',
+                    ]) }}"
+                   class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs hover:bg-gray-300">
+                    Cancel
+                </a>
+            </div>
+
+            <form method="POST"
+                  action="{{ route('knowledge.items.notes.update', [$knowledgeItem, $note]) }}"
+                  class="space-y-4">
+                @csrf
+                @method('PUT')
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Note Type</label>
+                        <select name="notetype"
+                                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                required>
+                            <option value="">Select note type</option>
+                            @foreach($noteTypeOptions as $value => $label)
+                                <option value="{{ $value }}" @selected(old('notetype', $note->notetype) === $value)>
+                                    {{ $label }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
 
-                    <div class="flex flex-col items-end gap-2 text-xs text-gray-500">
-                        <div>ID: {{ $note->id }}</div>
-                        <div>Review: {{ $note->reviewdate?->format('d M Y') ?? '—' }}</div>
-
-                        <div class="flex items-center gap-2 mt-1">
-                            <a href="{{ route('knowledge.items.edit', [
-                                    'knowledgeItem' => $knowledgeItem,
-                                    'tab' => 'notes',
-                                    'editing_note_id' => $note->id,
-                                ]) }}"
-                               class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs hover:bg-gray-300">
-                                Edit
-                            </a>
-
-                            <form method="POST"
-                                  action="{{ route('knowledge.items.notes.destroy', [$knowledgeItem, $note]) }}"
-                                  onsubmit="return confirm('Delete this note?');">
-                                @csrf
-                                @method('DELETE')
-
-                                <button type="submit"
-                                        class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white rounded text-xs hover:bg-red-700">
-                                    Delete
-                                </button>
-                            </form>
-                        </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                        <input type="text"
+                               name="title"
+                               value="{{ old('title', $note->title) }}"
+                               class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                     </div>
                 </div>
 
-                @if(isset($editingNoteId) && (int) $editingNoteId === $note->id)
-                    <div class="mt-4 border-t border-gray-200 pt-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Note Content</label>
+                    <textarea name="notecontent"
+                              rows="4"
+                              class="js-auto-resize-textarea w-full rounded-md border-gray-300 shadow-sm text-sm"
+                              data-min-rows="4"
+                              required>{{ old('notecontent', $note->notecontent) }}</textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Stance</label>
+                        <input type="text"
+                               name="stance"
+                               value="{{ old('stance', $note->stance) }}"
+                               class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Conviction</label>
+                        <input type="number"
+                               name="convictionlevel"
+                               value="{{ old('convictionlevel', $note->convictionlevel) }}"
+                               min="1"
+                               max="5"
+                               class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Review Date</label>
+                        <input type="date"
+                               name="reviewdate"
+                               value="{{ old('reviewdate', optional($note->reviewdate)->format('Y-m-d')) }}"
+                               class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
+                        <input type="number"
+                               name="sortorder"
+                               value="{{ old('sortorder', $note->sortorder ?? 0) }}"
+                               min="0"
+                               class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between gap-4">
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                        <input type="hidden" name="isprivate" value="0">
+                        <input type="checkbox"
+                               name="isprivate"
+                               value="1"
+                               class="rounded border-gray-300 text-blue-600 shadow-sm"
+                               @checked(old('isprivate', $note->isprivate))>
+                        Private note
+                    </label>
+
+                    <div class="flex items-center gap-2">
+                        <a href="{{ route('knowledge.items.edit', [
+                                'knowledgeItem' => $knowledgeItem,
+                                'tab' => 'notes',
+                            ]) }}"
+                           class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs hover:bg-gray-300">
+                            Cancel
+                        </a>
+
+                        <button type="submit"
+                                class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
+                            Save Note
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    @else
+        <div class="p-4 space-y-3">
+            <div class="flex items-start justify-between gap-4">
+                <div class="space-y-1 min-w-0">
+                    <div class="text-sm font-semibold text-gray-900">
+                        {{ $note->title ?: 'Untitled note' }}
+                    </div>
+
+                    <div class="text-xs text-gray-500">
+                        Type: {{ $note->notetype ?: '—' }}
+                        · Sort: {{ $note->sortorder ?? 0 }}
+                        · {{ $note->isprivate ? 'Private' : 'Shared' }}
+                    </div>
+
+                    @php
+                        $raw = $note->notecontent ?? '';
+                        // Convert escaped \r\n or \n sequences to real newlines
+                        $normalised = str_replace(["\\r\\n", "\\n"], "\n", $raw);
+                    @endphp
+                    <div class="text-sm text-gray-700 whitespace-pre-line">
+                        {{ $note->notecontent }}
+                    </div>
+                </div>
+
+                <div class="flex flex-col items-end gap-2 text-xs text-gray-500 shrink-0">
+                    <div>ID: {{ $note->id }}</div>
+                    <div>Review: {{ $note->reviewdate?->format('d M Y') ?? '—' }}</div>
+
+                    <div class="flex items-center gap-2 mt-1">
+                        <a href="{{ route('knowledge.items.edit', [
+                                'knowledgeItem' => $knowledgeItem,
+                                'tab' => 'notes',
+                                'editing_note_id' => $note->id,
+                            ]) }}"
+                           class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs hover:bg-gray-300">
+                            Edit
+                        </a>
+
                         <form method="POST"
-                              action="{{ route('knowledge.items.notes.update', [$knowledgeItem, $note]) }}"
-                              class="space-y-4">
-                            @csrf
-                            @method('PUT')
-
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Note Type</label>
-                                    <select name="notetype"
-                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                            required>
-                                        <option value="">Select note type</option>
-                                        @foreach($noteTypeOptions as $value => $label)
-                                            <option value="{{ $value }}" @selected(old('notetype', $note->notetype) === $value)>
-                                                {{ $label }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <div class="md:col-span-2">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                                    <input type="text"
-                                           name="title"
-                                           value="{{ old('title', $note->title) }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Note Content</label>
-                                <textarea name="notecontent"
-                                        rows="4"
-                                        class="js-auto-resize-textarea w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                        data-min-rows="4"
-                                        required>{{ old('notecontent', $note->notecontent) }}</textarea>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Stance</label>
-                                    <input type="text"
-                                           name="stance"
-                                           value="{{ old('stance', $note->stance) }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Conviction</label>
-                                    <input type="number"
-                                           name="convictionlevel"
-                                           value="{{ old('convictionlevel', $note->convictionlevel) }}"
-                                           min="1"
-                                           max="5"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Review Date</label>
-                                    <input type="date"
-                                           name="reviewdate"
-                                           value="{{ optional($note->reviewdate)->format('Y-m-d') }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
-                                    <input type="number"
-                                           name="sortorder"
-                                           value="{{ old('sortorder', $note->sortorder ?? 0) }}"
-                                           min="0"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                </div>
-                            </div>
-
-                            <div class="flex items-center justify-between gap-4">
-                                <label class="inline-flex items-center gap-2 text-sm text-gray-700">
-                                    <input type="hidden" name="isprivate" value="0">
-                                    <input type="checkbox"
-                                           name="isprivate"
-                                           value="1"
-                                           class="rounded border-gray-300 text-blue-600 shadow-sm"
-                                           @checked($note->isprivate)>
-                                    Private note
-                                </label>
-
-                                <div class="flex items-center gap-2">
-                                    <a href="{{ route('knowledge.items.edit', [
-                                        'knowledgeItem' => $knowledgeItem,
-                                        'tab' => 'notes',
-                                    ]) }}"
-                                       class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs hover:bg-gray-300">
-                                        Cancel
-                                    </a>
-
-                                    <button type="submit"
-                                            class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
-                                        Save Note
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                        <form method="POST"
-                            action="{{ route('knowledge.items.notes.destroy', [$knowledgeItem, $note]) }}"
-                            class="inline">
+                              action="{{ route('knowledge.items.notes.destroy', [$knowledgeItem, $note]) }}"
+                              onsubmit="return confirm('Delete this note?');">
                             @csrf
                             @method('DELETE')
 
                             <button type="submit"
-                                    class="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs"
-                                    onclick="return confirm('Delete this note? This cannot be undone.');">
+                                    class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white rounded text-xs hover:bg-red-700">
                                 Delete
                             </button>
                         </form>
                     </div>
-                @endif
+                </div>
             </div>
-        @empty
-            <div class="p-6 text-sm text-gray-500">
-                No notes recorded for this knowledge item yet.
-            </div>
-        @endforelse
+        </div>
+    @endif
+@empty
+    <div class="p-6 text-sm text-gray-500">
+        No notes recorded for this knowledge item yet.
+    </div>
+@endforelse
     </div>
 </div>
 @if(($activeTab ?? null) === 'notes')

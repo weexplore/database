@@ -12,6 +12,9 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class KnowledgeCategoryController extends Controller
 {
@@ -38,8 +41,10 @@ class KnowledgeCategoryController extends Controller
     $allCategories = collect();
     $categoryTree = collect();
     $selectedCategory = null;
+    $editableCategories = collect();
     $items = collect();
-    $parentOptions = collect();
+    $globalParentOptions = collect();
+    $rowParentOptions = [];
 
     if ($filters['domainid']) {
         $allCategories = KnowledgeCategory::query()
@@ -56,14 +61,6 @@ class KnowledgeCategoryController extends Controller
 
         if ($selectedCategory) {
             $filters['categoryid'] = (int) $selectedCategory->id;
-
-            $excludedIds = $this->collectDescendantIds($allCategories, $selectedCategory->id);
-            $excludedIds[] = (int) $selectedCategory->id;
-
-            $parentOptions = $this->buildParentOptions(
-                $categoryTree,
-                $excludedIds
-            );
 
             $itemQuery = KnowledgeItem::query()
                 ->where('primarycategoryid', $selectedCategory->id)
@@ -91,8 +88,31 @@ class KnowledgeCategoryController extends Controller
             }
 
             $items = $itemQuery->get();
+
+            $editableCategories = $allCategories
+                ->where('parentcategoryid', $selectedCategory->id)
+                ->sortBy([
+                    ['sortorder', 'asc'],
+                    ['categoryname', 'asc'],
+                ])
+                ->values();
         } else {
-            $parentOptions = $this->buildParentOptions($categoryTree);
+            $editableCategories = $allCategories
+                ->whereNull('parentcategoryid')
+                ->sortBy([
+                    ['sortorder', 'asc'],
+                    ['categoryname', 'asc'],
+                ])
+                ->values();
+        }
+
+        $globalParentOptions = $this->buildParentOptions($categoryTree);
+
+        foreach ($editableCategories as $category) {
+            $excludedIds = $this->collectDescendantIds($allCategories, (int) $category->id);
+            $excludedIds[] = (int) $category->id;
+
+            $rowParentOptions[$category->id] = $this->buildParentOptions($categoryTree, $excludedIds);
         }
     }
 
@@ -119,6 +139,23 @@ class KnowledgeCategoryController extends Controller
         ->orderBy('sortorder')
         ->orderBy('typename')
         ->get();
+        $parentOptions = collect();
+
+    if (!empty($filters['domainid'])) {
+        $parentOptions = KnowledgeCategory::query()
+            ->where('domainid', $filters['domainid'])
+            ->orderBy('categoryname')
+            ->get()
+            ->map(function ($category) {
+                return [
+                    'id' => $category->id,
+                    'label' => $category->categoryname,
+                ];
+            })
+            ->values();
+    }
+
+        
 
     $itemStatuses = KnowledgeItem::query()
         ->whereNotNull('itemstatus')
@@ -133,10 +170,13 @@ class KnowledgeCategoryController extends Controller
         'domains' => $domains,
         'categoryTree' => $categoryTree,
         'selectedCategory' => $selectedCategory,
+        'editableCategories' => $editableCategories,
+        'parentOptions' => $parentOptions,
         'items' => $items,
         'itemTypes' => $itemTypes,
         'itemStatuses' => $itemStatuses,
-        'parentOptions' => $parentOptions,
+        'globalParentOptions' => $globalParentOptions,
+        'rowParentOptions' => $rowParentOptions,
         'categoryTypeOptions' => [
             'folder' => 'Folder',
             'theme' => 'Theme',
@@ -145,9 +185,167 @@ class KnowledgeCategoryController extends Controller
             'stream' => 'Stream',
         ],
         'expandedIds' => $expandedIds,
+        'itemStatusOptions' => [
+            'active' => 'Active',
+            'draft' => 'Draft',
+            'archived' => 'Archived',
+            'reference' => 'Reference',
+            'review' => 'Review',
+        ],
     ]);
 }
 
+public function bulkSave(Request $request): RedirectResponse
+{
+    $categoryTypeOptions = ['folder', 'theme', 'subtheme', 'topic', 'stream'];
+
+    $validated = $request->validate([
+        'existing' => ['nullable', 'array'],
+        'existing.*.categoryname' => ['required', 'string', 'max:200'],
+        'existing.*.parentcategoryid' => ['nullable', 'integer', Rule::exists('knowledgecategories', 'id')],
+        'existing.*.categorytype' => ['nullable', 'string', Rule::in($categoryTypeOptions)],
+        'existing.*.sortorder' => ['nullable', 'integer', 'min:0'],
+        'existing.*.nextreviewdate' => ['nullable', 'date'],
+        'existing.*.isactive' => ['nullable', 'boolean'],
+        'existing.*.isfeatured' => ['nullable', 'boolean'],
+
+        'new' => ['nullable', 'array'],
+        'new.categoryname' => ['nullable', 'string', 'max:200'],
+        'new.parentcategoryid' => ['nullable', 'integer', Rule::exists('knowledgecategories', 'id')],
+        'new.categorytype' => ['nullable', 'string', Rule::in($categoryTypeOptions)],
+        'new.sortorder' => ['nullable', 'integer', 'min:0'],
+        'new.nextreviewdate' => ['nullable', 'date'],
+        'new.isactive' => ['nullable', 'boolean'],
+        'new.isfeatured' => ['nullable', 'boolean'],
+
+        'domainid' => ['required', 'integer', Rule::exists('knowledgedomains', 'id')],
+        'categoryid' => ['nullable', 'integer'],
+        'search' => ['nullable', 'string'],
+        'knowledgeitemtypeid' => ['nullable', 'integer'],
+        'itemstatus' => ['nullable', 'string'],
+    ]);
+
+    $allCategories = KnowledgeCategory::query()
+        ->where('domainid', $validated['domainid'])
+        ->get();
+
+    DB::transaction(function () use ($validated, $allCategories) {
+        foreach ($validated['existing'] ?? [] as $id => $row) {
+            $category = $allCategories->firstWhere('id', (int) $id);
+
+            if (!$category) {
+                abort(404, 'Category not found.');
+            }
+
+            $parentId = !empty($row['parentcategoryid']) ? (int) $row['parentcategoryid'] : null;
+
+            if ($parentId === (int) $category->id) {
+                throw ValidationException::withMessages([
+                    "existing.$id.parentcategoryid" => 'A category cannot be its own parent.',
+                ]);
+            }
+
+            if ($parentId) {
+                $parent = $allCategories->firstWhere('id', $parentId);
+
+                if (!$parent || (int) $parent->domainid !== (int) $validated['domainid']) {
+                    throw ValidationException::withMessages([
+                        "existing.$id.parentcategoryid" => 'Parent category must be in the same domain.',
+                    ]);
+                }
+
+                $descendantIds = $this->collectDescendantIds($allCategories, (int) $category->id);
+
+                if (in_array($parentId, $descendantIds, true)) {
+                    throw ValidationException::withMessages([
+                        "existing.$id.parentcategoryid" => 'A category cannot be moved under one of its descendants.',
+                    ]);
+                }
+            }
+
+            $duplicateQuery = KnowledgeCategory::query()
+                ->where('domainid', $validated['domainid'])
+                ->where('categoryname', trim((string) $row['categoryname']))
+                ->where('id', '<>', $category->id);
+
+            if ($parentId) {
+                $duplicateQuery->where('parentcategoryid', $parentId);
+            } else {
+                $duplicateQuery->whereNull('parentcategoryid');
+            }
+
+            if ($duplicateQuery->exists()) {
+                throw ValidationException::withMessages([
+                    "existing.$id.categoryname" => 'Category name must be unique within the selected parent.',
+                ]);
+            }
+
+            $category->update([
+                'categoryname' => trim((string) $row['categoryname']),
+                'parentcategoryid' => $parentId,
+                'categorytype' => $row['categorytype'] ?? null,
+                'sortorder' => $row['sortorder'] ?? 0,
+                'nextreviewdate' => $row['nextreviewdate'] ?? null,
+                'isactive' => (bool) ($row['isactive'] ?? false),
+                'isfeatured' => (bool) ($row['isfeatured'] ?? false),
+            ]);
+        }
+
+        $new = $validated['new'] ?? [];
+        $hasNewRow = trim((string) ($new['categoryname'] ?? '')) !== '';
+
+        if ($hasNewRow) {
+            $parentId = !empty($new['parentcategoryid']) ? (int) $new['parentcategoryid'] : null;
+
+            if ($parentId) {
+                $parent = $allCategories->firstWhere('id', $parentId);
+
+                if (!$parent || (int) $parent->domainid !== (int) $validated['domainid']) {
+                    throw ValidationException::withMessages([
+                        'new.parentcategoryid' => 'Parent category must be in the same domain.',
+                    ]);
+                }
+            }
+
+            $duplicateQuery = KnowledgeCategory::query()
+                ->where('domainid', $validated['domainid'])
+                ->where('categoryname', trim((string) $new['categoryname']));
+
+            if ($parentId) {
+                $duplicateQuery->where('parentcategoryid', $parentId);
+            } else {
+                $duplicateQuery->whereNull('parentcategoryid');
+            }
+
+            if ($duplicateQuery->exists()) {
+                throw ValidationException::withMessages([
+                    'new.categoryname' => 'Category name must be unique within the selected parent.',
+                ]);
+            }
+
+            KnowledgeCategory::create([
+                'domainid' => $validated['domainid'],
+                'categoryname' => trim((string) $new['categoryname']),
+                'parentcategoryid' => $parentId,
+                'categorytype' => $new['categorytype'] ?? null,
+                'sortorder' => $new['sortorder'] ?? 0,
+                'nextreviewdate' => $new['nextreviewdate'] ?? null,
+                'isactive' => array_key_exists('isactive', $new) ? (bool) $new['isactive'] : true,
+                'isfeatured' => (bool) ($new['isfeatured'] ?? false),
+                'slug' => Str::slug(trim((string) $new['categoryname'])),
+            ]);
+        }
+    });
+
+    return redirect()->route('knowledge-categories.index', [
+        'domainid' => $request->input('domainid'),
+        'categoryid' => $request->input('categoryid'),
+        'search' => $request->input('search'),
+        'knowledgeitemtypeid' => $request->input('knowledgeitemtypeid'),
+        'itemstatus' => $request->input('itemstatus'),
+        'show_child_categories' => $request->boolean('show_child_categories') ? 1 : 0,
+    ])->with('success', 'Knowledge categories saved successfully.');
+}
     public function create(Request $request): View
     {
         $domains = KnowledgeDomain::query()
@@ -212,16 +410,17 @@ class KnowledgeCategoryController extends Controller
                 'max:200',
                 $categoryNameUnique,
             ],
-        'slug' => [
-            'nullable',
-            'string',
-            'max:220',
-            Rule::unique('knowledgecategories', 'slug')
-                ->where(fn ($q) => $q->where('domainid', $request->integer('domainid')))
-                ->ignore($knowledgeCategory->id ?? null, 'id'),
-        ],
+            'categorytype' => ['nullable', 'string', 'max:50'],
+            'slug' => [
+                'nullable',
+                'string',
+                'max:220',
+                Rule::unique('knowledgecategories', 'slug')
+                    ->where(fn ($q) => $q->where('domainid', $request->integer('domainid'))),
+            ],
             'description' => ['nullable', 'string'],
             'sortorder' => ['nullable', 'integer', 'min:0'],
+            'nextreviewdate' => ['nullable', 'date'],
             'isfeatured' => ['nullable', 'boolean'],
             'isactive' => ['nullable', 'boolean'],
         ]);
@@ -251,6 +450,7 @@ class KnowledgeCategoryController extends Controller
             'sortorder' => $validated['sortorder'] ?? 0,
             'isfeatured' => (bool) ($validated['isfeatured'] ?? false),
             'isactive' => (bool) ($validated['isactive'] ?? true),
+            'nextreviewdate' => $validated['nextreviewdate'] ?? null,
         ]);
 
         return redirect()->route('knowledge-categories.index', [

@@ -1,4 +1,5 @@
 {{-- resources/views/knowledge/items/edit.blade.php --}}
+
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between gap-4">
@@ -24,12 +25,12 @@
             </div>
 
             <div class="flex items-center gap-3">
-                <a href="{{ route('knowledge.items.index', [
+                <a href="{{ route('knowledge-categories.index', [
                         'domainid' => $domainId,
                         'categoryid' => $knowledgeItem->primarycategoryid,
                     ]) }}"
                 class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
-                    Back to Knowledge Items
+                    Back to Knowledge Categories
                 </a>
             </div>
         </div>

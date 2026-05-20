@@ -229,15 +229,15 @@ class KnowledgeItemController extends Controller
         }
     });
 
-    return redirect()->route('knowledge.items.index', [
-        'domainid' => $request->input('domainid'),
-        'categoryid' => $request->input('categoryid'),
-        'search' => $request->input('search'),
-        'itemtype' => $request->input('itemtype'),
-        'itemstatus' => $request->input('itemstatus'),
-        'active' => $request->input('active'),
-        'page' => $request->input('page'),
-    ])->with('success', 'Knowledge items saved successfully.');
+return redirect()->route('knowledge-categories.index', [
+    'domainid' => $request->input('domainid'),
+    'categoryid' => $request->input('categoryid'),
+    'search' => $request->input('search'),
+    'knowledgeitemtypeid' => $request->input('itemtype'),
+    'itemstatus' => $request->input('itemstatus'),
+    'active' => $request->input('active'),
+    'page' => $request->input('page'),
+])->with('success', 'Knowledge items saved successfully.');
 }
 
     public function edit(Request $request, KnowledgeItem $knowledgeItem): View

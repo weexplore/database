@@ -19,6 +19,18 @@
                           class="grid grid-cols-1 md:grid-cols-4 gap-4">
 
                         <div>
+                            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">
+                                Search
+                            </label>
+                            <input type="text"
+                                   name="search"
+                                   id="search"
+                                   value="{{ request('search') }}"
+                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                   placeholder="Trip name, slug, summary">
+                        </div>
+
+                        <div>
                             <label for="tripstatus" class="block text-sm font-medium text-gray-700 mb-1">
                                 Status
                             </label>
@@ -52,17 +64,7 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">
-                                Search
-                            </label>
-                            <input type="text"
-                                   name="search"
-                                   id="search"
-                                   value="{{ request('search') }}"
-                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                   placeholder="Trip name, slug, summary">
-                        </div>
+
 
                         <div class="flex items-end gap-2">
                             <button type="submit"
