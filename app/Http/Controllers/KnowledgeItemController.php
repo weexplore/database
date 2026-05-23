@@ -7,9 +7,11 @@ use App\Models\KnowledgeDomain;
 use App\Models\KnowledgeItem;
 use App\Models\KnowledgeItemType;
 use App\Models\KnowledgeNote;
+use App\Models\KnowledgePersonFact;
 use App\Models\KnowledgeSource;
 use App\Models\KnowledgeReviewLog;
 use App\Models\KnowledgeRelationship;
+use App\Models\KnowledgeRelationshipFact;
 use App\Models\KnowledgeTag;
 use App\Models\Exchange;
 use App\Models\InstrumentType;
@@ -264,6 +266,9 @@ return redirect()->route('knowledge-categories.index', [
         'instrument.priceObservations',
         'instrument.corporateActions',
         'instrument.transactions.portfolio',
+        'personFacts.place',
+        'outgoingRelationships.relationshipFacts.place',
+        'incomingRelationships.relationshipFacts.place',
     ]);
 
     $domainId = optional($knowledgeItem->primaryCategory)->domainid;
@@ -271,6 +276,7 @@ return redirect()->route('knowledge-categories.index', [
 
     $hasBibleTools = (bool) ($domain?->hasbibletools ?? false);
     $hasInvestmentTools = (bool) ($domain?->hasinvestmenttools ?? false);
+    $hasFamilyHistoryTools = (bool) ($domain?->hasfamilyhistorytools ?? false);
 
     $categories = KnowledgeCategory::query()
         ->where('domainid', $domainId)
@@ -311,6 +317,7 @@ return redirect()->route('knowledge-categories.index', [
         })
         ->values();
 
+    // Relationships for the Relationships tab
     $displayRelationships = collect(
         $knowledgeItem->outgoingRelationships->map(function ($relationship) {
             return [
@@ -340,6 +347,16 @@ return redirect()->route('knowledge-categories.index', [
         ['relatedSortName', 'asc'],
     ])->values();
 
+    // Combined relationships collection for timeline etc.
+    $allRelationships = $knowledgeItem->outgoingRelationships
+        ->merge($knowledgeItem->incomingRelationships)
+        ->sortBy([
+            ['sortorder', 'asc'],
+            ['id', 'asc'],
+        ])
+        ->values();
+
+    // Query-state flags
     $editingNoteId = $request->integer('editing_note_id');
     $showAddNote = $request->boolean('show_add_note');
 
@@ -353,6 +370,12 @@ return redirect()->route('knowledge-categories.index', [
     $editingRelationshipId = $request->integer('editing_relationship_id');
     $showAddRelationship = $request->boolean('show_add_relationship');
 
+    $showAddPersonFact = $request->boolean('show_add_person_fact');
+    $editingPersonFactId = $request->integer('editing_person_fact_id');
+    $showAddRelationshipFactFor = $request->integer('show_add_relationship_fact_for');
+    $editingRelationshipFactId = $request->integer('editing_relationship_fact_id');
+
+    // Tabs
     $allowedTabs = ['details', 'info', 'notes', 'sources', 'review-logs', 'relationships', 'attachments'];
 
     if (!empty($hasBibleTools)) {
@@ -361,6 +384,10 @@ return redirect()->route('knowledge-categories.index', [
 
     if (!empty($hasInvestmentTools)) {
         $allowedTabs[] = 'investments';
+    }
+
+    if (!empty($hasFamilyHistoryTools)) {
+        $allowedTabs[] = 'family-history';
     }
 
     $activeTab = $request->string('tab')->value() ?: 'details';
@@ -375,6 +402,13 @@ return redirect()->route('knowledge-categories.index', [
         ->orderBy('locality')
         ->get(['id', 'placename', 'locality', 'placetype']);
 
+    // Option arrays for facts
+    $personFactTypeOptions = KnowledgePersonFact::factTypeOptions();
+    $relationshipFactTypeOptions = KnowledgeRelationshipFact::factTypeOptions();
+    $dateQualifierOptions = KnowledgePersonFact::dateQualifierOptions();
+    $proofStatusOptions = KnowledgePersonFact::proofStatusOptions();
+
+    
     return view('knowledge.items.edit', [
         'pageTitle' => 'Edit Knowledge Item',
         'knowledgeItem' => $knowledgeItem,
@@ -426,6 +460,22 @@ return redirect()->route('knowledge-categories.index', [
             ->where('isactive', 1)
             ->orderBy('portfolioname')
             ->get(),
+        'hasFamilyHistoryTools' => $hasFamilyHistoryTools,
+        'showAddPersonFact' => $showAddPersonFact,
+        'editingPersonFactId' => $editingPersonFactId,
+        'editingPersonFact' => $editingPersonFactId
+            ? $knowledgeItem->personFacts->firstWhere('id', $editingPersonFactId)
+            : null,
+        'showAddRelationshipFactFor' => $showAddRelationshipFactFor,
+        'editingRelationshipFactId' => $editingRelationshipFactId,
+        'editingRelationshipFact' => $knowledgeItem->outgoingRelationships
+            ->merge($knowledgeItem->incomingRelationships)
+            ->flatMap->relationshipFacts
+            ->firstWhere('id', $editingRelationshipFactId),
+        'personFactTypeOptions' => $personFactTypeOptions,
+        'relationshipFactTypeOptions' => $relationshipFactTypeOptions,
+        'dateQualifierOptions' => $dateQualifierOptions,
+        'proofStatusOptions' => $proofStatusOptions,
     ]);
 }
 
@@ -524,25 +574,6 @@ return redirect()->route('knowledge-categories.index', [
             ->with('success', 'Knowledge item deleted.');
     }
 
-    public function priceObservations(): HasMany
-    {
-        return $this->hasMany(InstrumentPriceObservation::class, 'instrumentid')
-            ->orderByDesc('observedon')
-            ->orderByDesc('id');
-    }
-
-    public function corporateActions(): HasMany
-    {
-        return $this->hasMany(InstrumentCorporateAction::class, 'instrumentid')
-            ->orderByDesc('actiondate')
-            ->orderByDesc('id');
-    }
-    public function transactions(): HasMany
-{
-    return $this->hasMany(InstrumentTransaction::class, 'instrumentid')
-        ->orderByDesc('transactiondate')
-        ->orderByDesc('id');
-}
 public function reorder(Request $request, KnowledgeItem $knowledgeItem): RedirectResponse
 {
     $validated = $request->validate([

@@ -161,6 +161,12 @@ protected $casts = [
         return $this->hasOne(Instrument::class, 'knowledgeitemid');
     }
 
-
+    public function personFacts(): HasMany
+    {
+        return $this->hasMany(KnowledgePersonFact::class, 'knowledgeitemid')
+            ->orderBy('sortorder')
+            ->orderBy('facttype')
+            ->orderBy('datefrom');
+    }
 
 }

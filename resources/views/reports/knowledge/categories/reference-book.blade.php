@@ -104,7 +104,7 @@
                         <div>
                             <h2 class="text-2xl font-bold text-gray-900">
                                 {{ $category->domain?->domainname ?? 'Unassigned Domain' }} – {{ $category->categoryname }}
-                            </h3>
+                            </h2>
                             <p class="mt-1 text-xs text-gray-500">
                                 Category ID: {{ $category->id }}
                                 @if($category->parentCategory)
@@ -345,6 +345,155 @@
                                             </ul>
                                         </div>
                                     @endif
+
+
+ @if($knowledgeItem->personFacts->isNotEmpty())
+    <div class="rounded-lg border border-gray-200 p-4 space-y-3">
+        <h5 class="text-sm font-semibold text-gray-900">Person Facts</h5>
+
+        <div class="space-y-3">
+            @foreach($knowledgeItem->personFacts as $fact)
+                <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="text-sm font-medium text-gray-900">
+                            {{ $fact->factlabel ?: (\App\Models\KnowledgePersonFact::factTypeOptions()[$fact->facttype] ?? ucfirst($fact->facttype)) }}
+                        </div>
+
+                        @if($fact->ispreferred)
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs border border-emerald-200">
+                                Preferred
+                            </span>
+                        @endif
+
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs border border-gray-200">
+                            Sort: {{ $fact->sortorder ?? 0 }}
+                        </span>
+                    </div>
+
+                    <div class="mt-1 text-sm text-gray-700">
+                        @if($fact->datetext)
+                            {{ $fact->datetext }}
+                        @elseif($fact->datefrom)
+                            {{ $fact->datefrom->format('d M Y') }}
+                        @else
+                            No date recorded
+                        @endif
+
+                        @if($fact->datequalifier)
+                            · {{ \App\Models\KnowledgePersonFact::dateQualifierOptions()[$fact->datequalifier] ?? ucfirst($fact->datequalifier) }}
+                        @endif
+
+                        @if($fact->place)
+                            · {{ $fact->place->placename }}@if($fact->place->locality), {{ $fact->place->locality }}@endif
+                        @endif
+
+                        @if($fact->proofstatus)
+                            · {{ \App\Models\KnowledgePersonFact::proofStatusOptions()[$fact->proofstatus] ?? ucfirst($fact->proofstatus) }}
+                        @endif
+                    </div>
+
+                    @if($fact->valuetext)
+                        <div class="mt-1 text-sm text-gray-700 whitespace-pre-line">
+                            {{ $fact->valuetext }}
+                        </div>
+                    @endif
+
+                    @if($fact->notes)
+                        <div class="mt-2 text-sm text-gray-600 whitespace-pre-line">
+                            {{ $fact->notes }}
+                        </div>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+    </div>
+@endif 
+
+@if($knowledgeItem->reportRelationships->isNotEmpty())
+    <div class="rounded-lg border border-gray-200 p-4 space-y-4">
+        <h5 class="text-sm font-semibold text-gray-900">Relationship Facts</h5>
+
+        @foreach($knowledgeItem->reportRelationships as $entry)
+            @php
+                $relatedItem = $entry['relatedItem'] ?? null;
+                $relationshipFacts = $entry['relationshipFacts'] ?? collect();
+            @endphp
+
+            <div class="border-t border-gray-100 pt-4 first:border-t-0 first:pt-0 space-y-2">
+                <div class="text-sm font-medium text-gray-900">
+                    {{ $entry['displayTypeLabel'] ?? 'Related' }}
+                    @if($relatedItem)
+                        — {{ $relatedItem->primaryCategory?->categoryname ?? 'Uncategorised' }}: {{ $relatedItem->itemname }}
+                    @endif
+                </div>
+
+                <div class="flex flex-wrap gap-2 text-xs text-gray-500">
+                    <span>{{ $entry['direction'] === 'incoming' ? 'Incoming' : 'Outgoing' }}</span>
+                    <span>Sort: {{ $entry['sortorder'] ?? 0 }}</span>
+                    @if(!empty($entry['effectiveDate']))
+                        <span>Effective: {{ $entry['effectiveDate']->format('d M Y') }}</span>
+                    @endif
+                </div>
+
+                @if($relationshipFacts->isNotEmpty())
+                    <div class="space-y-2">
+                        @foreach($relationshipFacts as $fact)
+                            <div class="rounded-md bg-gray-50 border border-gray-200 px-3 py-2">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <div class="text-sm font-medium text-gray-800">
+                                        {{ \App\Models\KnowledgeRelationshipFact::factTypeOptions()[$fact->facttype] ?? ucfirst($fact->facttype) }}
+                                    </div>
+
+                                    @if($fact->ispreferred)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs border border-emerald-200">
+                                            Preferred
+                                        </span>
+                                    @endif
+
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs border border-gray-200">
+                                        Sort: {{ $fact->sortorder ?? 0 }}
+                                    </span>
+                                </div>
+
+                                <div class="mt-1 text-sm text-gray-700">
+                                    @if($fact->datetext)
+                                        {{ $fact->datetext }}
+                                    @elseif($fact->datefrom)
+                                        {{ $fact->datefrom->format('d M Y') }}
+                                    @else
+                                        No date recorded
+                                    @endif
+
+                                    @if($fact->datequalifier)
+                                        · {{ \App\Models\KnowledgePersonFact::dateQualifierOptions()[$fact->datequalifier] ?? ucfirst($fact->datequalifier) }}
+                                    @endif
+
+                                    @if($fact->place)
+                                        · {{ $fact->place->placename }}@if($fact->place->locality), {{ $fact->place->locality }}@endif
+                                    @endif
+
+                                    @if($fact->proofstatus)
+                                        · {{ \App\Models\KnowledgePersonFact::proofStatusOptions()[$fact->proofstatus] ?? ucfirst($fact->proofstatus) }}
+                                    @endif
+                                </div>
+
+                                @if($fact->notes)
+                                    <div class="mt-2 text-sm text-gray-600 whitespace-pre-line">
+                                        {{ $fact->notes }}
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="text-xs text-gray-500">
+                        No relationship facts recorded.
+                    </div>
+                @endif
+            </div>
+        @endforeach
+    </div>
+@endif
 
                                     <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
                                         @if($knowledgeItem->notes->isNotEmpty())

@@ -87,4 +87,12 @@ class KnowledgeRelationship extends Model
         return self::TYPE_OPTIONS[$inverse]
             ?? str($inverse)->replace('-', ' ')->title()->toString();
     }
+
+    public function relationshipFacts(): HasMany
+    {
+        return $this->hasMany(KnowledgeRelationshipFact::class, 'knowledgerelationshipid')
+            ->orderBy('sortorder')
+            ->orderBy('facttype')
+            ->orderBy('datefrom');
+    }
 }

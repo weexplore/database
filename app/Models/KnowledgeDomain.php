@@ -19,6 +19,9 @@ class KnowledgeDomain extends Model
         'description',
         'sortorder',
         'isactive',
+        'hasbibletools',
+        'hasinvestmenttools',
+        'hasfamilyhistorytools',
     ];
 
     protected $casts = [
@@ -26,6 +29,7 @@ class KnowledgeDomain extends Model
         'isactive' => 'boolean',
         'hasbibletools' => 'boolean',
         'hasinvestmenttools' => 'boolean',
+        'hasfamilyhistorytools' => 'boolean',
     ];
 
     const CREATED_AT = 'createdat';

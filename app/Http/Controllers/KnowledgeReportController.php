@@ -167,79 +167,100 @@ class KnowledgeReportController extends Controller
     }
 
     protected function baseCategoryReferenceQuery(bool $reviewOnly = false)
-    {
-        return KnowledgeCategory::query()
-            ->with([
-                'domain',
-                'parentCategory',
-                'knowledgeItems' => function ($query) use ($reviewOnly) {
-                    $query
-                        ->when($reviewOnly, fn ($q) => $q->whereNotNull('nextreviewdate'))
-                        ->orderBy('sortorder')
-                        ->orderBy('itemname');
-                },
-                'knowledgeItems.primaryCategory',
-                'knowledgeItems.parentItem',
-                'knowledgeItems.place',
-                'knowledgeItems.itemType',
-                'knowledgeItems.notes' => function ($query) {
-                    $query->orderBy('sortorder')
-                        ->orderByDesc('reviewdate')
-                        ->orderByDesc('id');
-                },
-                'knowledgeItems.sources' => function ($query) {
-                    $query->orderByDesc('retrievedon')
-                        ->orderByDesc('id');
-                },
-                'knowledgeItems.reviewLogs' => function ($query) {
-                    $query->orderByDesc('reviewdate')
-                        ->orderByDesc('id');
-                },
-                'knowledgeItems.outgoingRelationships' => function ($query) {
-                    $query->orderBy('sortorder')
-                        ->orderBy('id');
-                },
-                'knowledgeItems.outgoingRelationships.toItem.primaryCategory',
-                'knowledgeItems.incomingRelationships' => function ($query) {
-                    $query->orderBy('sortorder')
-                        ->orderBy('id');
-                },
-                'knowledgeItems.incomingRelationships.fromItem.primaryCategory',
-                'knowledgeItems.attachments' => function ($query) {
-                    $query->orderByDesc('isprimary')
-                        ->orderBy('originalfilename')
-                        ->orderBy('filename');
-                },
-                'knowledgeItems.bibleReferences' => function ($query) {
-                    $query->orderBy('bookid')
-                        ->orderBy('chapterfrom')
-                        ->orderBy('versefrom');
-                },
-                'knowledgeItems.bibleReferences.book',
-                'knowledgeItems.bibleReferences.version',
-                'knowledgeItems.instrument',
-                'knowledgeItems.instrument.instrumentType',
-                'knowledgeItems.instrument.exchange',
-                'knowledgeItems.instrument.aliases' => function ($query) {
-                    $query->orderBy('aliastype')
-                        ->orderBy('aliasvalue');
-                },
-                'knowledgeItems.instrument.priceObservations' => function ($query) {
-                    $query->orderByDesc('observedon')
-                        ->orderByDesc('id');
-                },
-                'knowledgeItems.instrument.corporateActions' => function ($query) {
-                    $query->orderByDesc('actiondate')
-                        ->orderByDesc('id');
-                },
-                'knowledgeItems.instrument.corporateActions.source',
-                'knowledgeItems.instrument.transactions' => function ($query) {
-                    $query->orderByDesc('transactiondate')
-                        ->orderByDesc('id');
-                },
-                'knowledgeItems.instrument.transactions.portfolio',
-            ]);
-    }
+{
+    return KnowledgeCategory::query()
+        ->with([
+            'domain',
+            'parentCategory',
+            'knowledgeItems' => function ($query) use ($reviewOnly) {
+                $query
+                    ->when($reviewOnly, fn ($q) => $q->whereNotNull('nextreviewdate'))
+                    ->orderBy('sortorder')
+                    ->orderBy('itemname');
+            },
+            'knowledgeItems.primaryCategory',
+            'knowledgeItems.parentItem',
+            'knowledgeItems.place',
+            'knowledgeItems.itemType',
+            'knowledgeItems.personFacts' => function ($query) {
+                $query->with('place')
+                    ->orderBy('sortorder')
+                    ->orderBy('datefrom')
+                    ->orderBy('id');
+            },
+            'knowledgeItems.personFacts.place',
+            'knowledgeItems.notes' => function ($query) {
+                $query->orderBy('sortorder')
+                    ->orderByDesc('reviewdate')
+                    ->orderByDesc('id');
+            },
+            'knowledgeItems.sources' => function ($query) {
+                $query->orderByDesc('retrievedon')
+                    ->orderByDesc('id');
+            },
+            'knowledgeItems.reviewLogs' => function ($query) {
+                $query->orderByDesc('reviewdate')
+                    ->orderByDesc('id');
+            },
+            'knowledgeItems.outgoingRelationships' => function ($query) {
+                $query->orderBy('sortorder')
+                    ->orderBy('id');
+            },
+            'knowledgeItems.outgoingRelationships.toItem.primaryCategory',
+            'knowledgeItems.outgoingRelationships.relationshipFacts' => function ($query) {
+                $query->with('place')
+                    ->orderBy('sortorder')
+                    ->orderBy('datefrom')
+                    ->orderBy('id');
+            },
+            'knowledgeItems.outgoingRelationships.relationshipFacts.place',
+            'knowledgeItems.incomingRelationships' => function ($query) {
+                $query->orderBy('sortorder')
+                    ->orderBy('id');
+            },
+            'knowledgeItems.incomingRelationships.fromItem.primaryCategory',
+            'knowledgeItems.incomingRelationships.relationshipFacts' => function ($query) {
+                $query->with('place')
+                    ->orderBy('sortorder')
+                    ->orderBy('datefrom')
+                    ->orderBy('id');
+            },
+            'knowledgeItems.incomingRelationships.relationshipFacts.place',
+            'knowledgeItems.attachments' => function ($query) {
+                $query->orderByDesc('isprimary')
+                    ->orderBy('originalfilename')
+                    ->orderBy('filename');
+            },
+            'knowledgeItems.bibleReferences' => function ($query) {
+                $query->orderBy('bookid')
+                    ->orderBy('chapterfrom')
+                    ->orderBy('versefrom');
+            },
+            'knowledgeItems.bibleReferences.book',
+            'knowledgeItems.bibleReferences.version',
+            'knowledgeItems.instrument',
+            'knowledgeItems.instrument.instrumentType',
+            'knowledgeItems.instrument.exchange',
+            'knowledgeItems.instrument.aliases' => function ($query) {
+                $query->orderBy('aliastype')
+                    ->orderBy('aliasvalue');
+            },
+            'knowledgeItems.instrument.priceObservations' => function ($query) {
+                $query->orderByDesc('observedon')
+                    ->orderByDesc('id');
+            },
+            'knowledgeItems.instrument.corporateActions' => function ($query) {
+                $query->orderByDesc('actiondate')
+                    ->orderByDesc('id');
+            },
+            'knowledgeItems.instrument.corporateActions.source',
+            'knowledgeItems.instrument.transactions' => function ($query) {
+                $query->orderByDesc('transactiondate')
+                    ->orderByDesc('id');
+            },
+            'knowledgeItems.instrument.transactions.portfolio',
+        ]);
+}
 
     protected function prepareCategoriesForReport($categories, bool $reviewOnly = false)
 {
@@ -292,7 +313,66 @@ class KnowledgeReportController extends Controller
                             ['relatedSortName', 'asc'],
                         ])
                         ->values();
+                    $reportRelationships = $item->outgoingRelationships
+                        ->toBase()
+                        ->map(function ($relationship) use ($item) {
+                            return [
+                                'relationship' => $relationship,
+                                'direction' => 'outgoing',
+                                'relatedItem' => $relationship->toItem,
+                                'displayTypeLabel' => $relationship->relationshipTypeLabel(),
+                                'sortorder' => $relationship->sortorder ?? 0,
+                                'relatedSortName' => mb_strtolower($relationship->toItem?->itemname ?? 'zzzz'),
+                                'effectiveDate' => $relationship->effective_date,
+                                'relationshipFacts' => $relationship->relationshipFacts
+                                    ->sortBy([
+                                        ['sortorder', 'asc'],
+                                        ['datefrom', 'asc'],
+                                        ['id', 'asc'],
+                                    ])
+                                    ->values(),
+                            ];
+                        })
+                        ->merge(
+                            $item->incomingRelationships
+                                ->toBase()
+                                ->map(function ($relationship) {
+                                    return [
+                                        'relationship' => $relationship,
+                                        'direction' => 'incoming',
+                                        'relatedItem' => $relationship->fromItem,
+                                        'displayTypeLabel' => $relationship->inverseRelationshipTypeLabel(),
+                                        'sortorder' => $relationship->sortorder ?? 0,
+                                        'relatedSortName' => mb_strtolower($relationship->fromItem?->itemname ?? 'zzzz'),
+                                        'effectiveDate' => $relationship->effective_date,
+                                        'relationshipFacts' => $relationship->relationshipFacts
+                                            ->sortBy([
+                                                ['sortorder', 'asc'],
+                                                ['datefrom', 'asc'],
+                                                ['id', 'asc'],
+                                            ])
+                                            ->values(),
+                                    ];
+                                })
+                        )
+                        ->sortBy([
+                            ['sortorder', 'asc'],
+                            ['relatedSortName', 'asc'],
+                        ])
+                        ->values();
 
+                    $item->setRelation('reportRelationships', $reportRelationships);
+
+                    $item->setRelation(
+                        'personFacts',
+                        $item->personFacts
+                            ->sortBy([
+                                ['sortorder', 'asc'],
+                                ['datefrom', 'asc'],
+                                ['id', 'asc'],
+                            ])
+                            ->values()
+                    );
                     $item->setRelation('displayRelationships', $displayRelationships);
 
                     return $item;

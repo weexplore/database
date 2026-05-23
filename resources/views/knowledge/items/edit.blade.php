@@ -55,6 +55,9 @@
                                 Knowledge Item
                             </div>
                             <h3 class="mt-1 text-lg font-semibold text-gray-900 break-words">
+                                {{ $knowledgeItem->primaryCategory->categoryname }}
+                            </h3>
+                            <h3 class="mt-1 text-lg font-semibold text-gray-900 break-words">
                                 {{ $knowledgeItem->itemname ?: 'Knowledge Item' }}
                             </h3>
                             <p class="mt-1 text-sm text-gray-500">
@@ -83,6 +86,10 @@
                     'attachments' => 'Attachments',
                 ];
 
+                if (!empty($hasFamilyHistoryTools)) {
+                    $tabs['family-history'] = 'Family History';
+                }
+
                 if (!empty($hasBibleTools)) {
                     $tabs['bible-references'] = 'Bible References';
                 }
@@ -91,7 +98,6 @@
                     $tabs['investments'] = 'Investments';
                 }
             @endphp
-
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="border-b border-gray-200 px-4 sm:px-6">
                     <nav class="flex flex-wrap gap-2 py-3" aria-label="Knowledge item sections">
@@ -170,6 +176,9 @@
                 @include('knowledge.items.partials.info-panel', [
                     'knowledgeItem' => $knowledgeItem,
                 ])
+            @endif
+            @if ($activeTab === 'family-history' && $hasFamilyHistoryTools)
+                @include('knowledge.items.partials.family-history')
             @endif
 
             @if(($activeTab ?? 'details') === 'notes')

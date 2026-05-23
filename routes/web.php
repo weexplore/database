@@ -44,6 +44,8 @@ use App\Http\Controllers\KnowledgeItemSourceController;
 use App\Http\Controllers\KnowledgeItemReviewLogController;
 use App\Http\Controllers\KnowledgeItemAttachmentController;
 use App\Http\Controllers\KnowledgeItemRelationshipController;
+use App\Http\Controllers\KnowledgePersonFactController;
+use App\Http\Controllers\KnowledgeRelationshipFactController;
 use App\Http\Controllers\KnowledgeAttachmentController;
 use App\Http\Controllers\InstrumentController;
 use App\Http\Controllers\InstrumentAliasController;
@@ -367,11 +369,32 @@ Route::prefix('knowledge')->name('knowledge.')->group(function () {
         Route::get('{knowledgeItem}/edit', [KnowledgeItemController::class, 'edit'])->name('edit');
         Route::put('{knowledgeItem}', [KnowledgeItemController::class, 'update'])->name('update');
         Route::delete('{knowledgeItem}', [KnowledgeItemController::class, 'destroy'])->name('destroy');
+        Route::post('{knowledgeItem}/person-facts', [KnowledgePersonFactController::class, 'store'])->name('person-facts.store');
+        Route::get('{knowledgeItem}/person-facts/{knowledgePersonFact}/edit', [KnowledgePersonFactController::class, 'edit'])
+            ->name('person-facts.edit');
+
+        Route::put('{knowledgeItem}/person-facts/{knowledgePersonFact}', [KnowledgePersonFactController::class, 'update'])
+            ->name('person-facts.update');
+
+        Route::delete('{knowledgeItem}/person-facts/{knowledgePersonFact}', [KnowledgePersonFactController::class, 'destroy'])
+            ->name('person-facts.destroy');
+
+        Route::post('{knowledgeItem}/relationships/{knowledgeRelationship}/facts', [KnowledgeRelationshipFactController::class, 'store'])
+            ->name('relationship-facts.store');
+
+        Route::get('{knowledgeItem}/relationships/{knowledgeRelationship}/facts/{knowledgeRelationshipFact}/edit', [KnowledgeRelationshipFactController::class, 'edit'])
+            ->name('relationship-facts.edit');
+
+        Route::put('{knowledgeItem}/relationships/{knowledgeRelationship}/facts/{knowledgeRelationshipFact}', [KnowledgeRelationshipFactController::class, 'update'])
+            ->name('relationship-facts.update');
+
+        Route::delete('{knowledgeItem}/relationships/{knowledgeRelationship}/facts/{knowledgeRelationshipFact}', [KnowledgeRelationshipFactController::class, 'destroy'])
+            ->name('relationship-facts.destroy');
 
 
-
-        Route::post('{knowledgeItem}/notes/reorder', [KnowledgeItemNoteController::class, 'reorder'])
-            ->name('notes.reorder');    
+        Route::post('{knowledgeItem}/notes/reorder', [KnowledgeItemNoteController::class, 'reorder'])->name('notes.reorder');   
+        Route::post('{knowledgeItem}/person-facts/reorder', [KnowledgePersonFactController::class, 'reorder'])->name('person-facts.reorder');
+        Route::post('{knowledgeItem}/relationships/{knowledgeRelationship}/facts/reorder', [KnowledgeRelationshipFactController::class, 'reorder'])->name('relationship-facts.reorder'); 
 
         Route::resource('{knowledgeItem}/notes', KnowledgeItemNoteController::class)
             ->except(['index', 'show', 'create'])
@@ -387,12 +410,6 @@ Route::prefix('knowledge')->name('knowledge.')->group(function () {
 
         Route::post('{knowledgeItem}/sources/fetch', [KnowledgeItemSourceController::class, 'fetchFromInternet'])
             ->name('sources.fetch');
-
-        Route::resource('{knowledgeItem}/sources', KnowledgeItemSourceController::class)
-            ->except(['index', 'show', 'create'])
-            ->parameters([
-                'sources' => 'knowledgeSource',
-            ]);
 
         Route::resource('{knowledgeItem}/review-logs', KnowledgeItemReviewLogController::class)
             ->except(['index', 'show', 'create'])
