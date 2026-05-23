@@ -9,6 +9,7 @@ use App\Models\Trip;
 use App\Models\TripLeg;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TripLegController extends Controller
 {
@@ -379,4 +380,58 @@ class TripLegController extends Controller
                 ->with('error', 'This trip leg could not be deleted.');
         }
     }
+
+    public function reorder(Request $request, Trip $trip)
+{
+    $validated = $request->validate([
+        'ordered_ids' => ['required', 'array', 'min:1'],
+        'ordered_ids.*' => ['integer'],
+    ]);
+
+    $orderedIds = collect($validated['ordered_ids'])
+        ->map(fn ($id) => (int) $id)
+        ->unique()
+        ->values();
+
+    $existingIds = TripLeg::query()
+        ->where('tripid', $trip->id)
+        ->whereIn('id', $orderedIds)
+        ->pluck('id')
+        ->map(fn ($id) => (int) $id)
+        ->values();
+
+    if ($existingIds->count() !== $orderedIds->count()) {
+        return response()->json([
+            'message' => 'One or more trip legs were invalid for this trip.',
+        ], 422);
+    }
+
+    DB::transaction(function () use ($trip, $orderedIds) {
+        $temporaryOffset = 100000;
+
+        foreach ($orderedIds as $index => $id) {
+            TripLeg::query()
+                ->where('tripid', $trip->id)
+                ->where('id', $id)
+                ->update([
+                    'legnumber' => $temporaryOffset + $index + 1,
+                    'sortorder' => $temporaryOffset + $index + 1,
+                ]);
+        }
+
+        foreach ($orderedIds as $index => $id) {
+            TripLeg::query()
+                ->where('tripid', $trip->id)
+                ->where('id', $id)
+                ->update([
+                    'legnumber' => $index + 1,
+                    'sortorder' => $index + 1,
+                ]);
+        }
+    });
+
+    return response()->json([
+        'message' => 'Trip leg order updated successfully.',
+    ]);
+}
 }

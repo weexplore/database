@@ -1,18 +1,18 @@
 @php
     $returnTo = $returnTo ?? route('trips.planner.index', $trip);
 
-    // Normalised array of selected destination item IDs for the checkbox list
     $selectedDestinationItemIdsForForm = collect(
         old('selected_destinationitemids', $existingSelectedDestinationItemIds ?? [])
     )->map(fn ($id) => (int) $id)->all();
+
+    $selectedPlaceId = (string) old('placeid', $tripPlanItem->placeid);
+    $selectedDestinationId = (string) old('destinationid', $tripPlanItem->destinationid);
 @endphp
 
 <input type="hidden" name="return_to" value="{{ $returnTo }}">
 
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-    {{-- Main column --}}
     <div class="xl:col-span-2 space-y-6">
-        {{-- Sequence + type + title + sort group --}}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
                 <label for="sequence_no" class="block text-sm font-medium text-gray-700">Sequence</label>
@@ -22,6 +22,9 @@
                        id="sequence_no"
                        value="{{ old('sequence_no', $tripPlanItem->sequence_no) }}"
                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                <p class="mt-1 text-xs text-gray-500">
+                    Leave blank to use the next available sequence number automatically.
+                </p>
             </div>
 
             <div>
@@ -57,37 +60,50 @@
             </div>
         </div>
 
-        {{-- Place / Destination / Destination Item --}}
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
                 <label for="placeid" class="block text-sm font-medium text-gray-700">Place</label>
-                <select name="placeid" id="placeid" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                <select name="placeid"
+                        id="placeid"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm js-place-select">
                     <option value="">None</option>
                     @foreach($places as $place)
                         <option value="{{ $place->id }}"
-                            @selected((string) old('placeid', $tripPlanItem->placeid) === (string) $place->id)>
+                            @selected($selectedPlaceId === (string) $place->id)>
                             {{ $place->placename }}
                         </option>
                     @endforeach
                 </select>
             </div>
 
-            <div>
+            <div class="md:col-span-2">
                 <label for="destinationid" class="block text-sm font-medium text-gray-700">Destination</label>
-                <select name="destinationid" id="destinationid" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                <select name="destinationid"
+                        id="destinationid"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm js-destination-select">
                     <option value="">None</option>
                     @foreach($destinations as $destination)
+                        @php
+                            $matchesSelectedPlace = blank($selectedPlaceId) || (string) $destination->placeid === $selectedPlaceId;
+                        @endphp
                         <option value="{{ $destination->id }}"
-                            data-place-id="{{ $destination->placeid }}"
-                            @selected((string) old('destinationid', $tripPlanItem->destinationid) === (string) $destination->id)>
+                                data-place-id="{{ $destination->placeid }}"
+                                @selected($selectedDestinationId === (string) $destination->id)
+                                @disabled(! $matchesSelectedPlace)
+                                @if(! $matchesSelectedPlace) hidden @endif>
                             {{ $destination->destinationname }}
+                            @if($destination->place)
+                                · {{ $destination->place->placename }}
+                            @endif
                         </option>
                     @endforeach
                 </select>
+                <p class="mt-1 text-xs text-gray-500">
+                    Destination options are limited to the selected place.
+                </p>
             </div>
         </div>
 
-        {{-- Dates / times --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div>
                 <label for="planneddate" class="block text-sm font-medium text-gray-700">Planned date</label>
@@ -126,7 +142,6 @@
             </div>
         </div>
 
-        {{-- Notes --}}
         <div>
             <label for="notes" class="block text-sm font-medium text-gray-700">Notes</label>
             <textarea name="notes"
@@ -135,7 +150,6 @@
                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">{{ old('notes', $tripPlanItem->notes) }}</textarea>
         </div>
 
-        {{-- Related destination items --}}
         <div class="mt-6">
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
                 <h3 class="text-sm font-semibold text-gray-900">
@@ -152,17 +166,23 @@
                         <span>Select all visible</span>
                     </label>
 
-                    <div class="max-h-64 overflow-y-auto border border-gray-200 rounded-md divide-y divide-gray-100"
+                    <div class="max-h-64 overflow-y-auto border border-gray-200 rounded-md divide-y divide-gray-100 bg-white"
                          id="related_destinationitem_list">
                         @foreach($destinationItems as $item)
                             @php
-                                $resolvedPlaceId = $item->placeid ?? $item->destination?->placeid;
-                                $resolvedDestinationId = $item->destinationid;
+                                $resolvedPlaceId = (string) ($item->placeid ?? $item->destination?->placeid ?? '');
+                                $resolvedDestinationId = (string) ($item->destinationid ?? '');
+                                $matchesPlace = blank($selectedPlaceId) || $resolvedPlaceId === $selectedPlaceId;
+                                $matchesDestination = blank($selectedDestinationId) || $resolvedDestinationId === $selectedDestinationId;
+                                $isVisibleInitially = $selectedDestinationId
+                                    ? $matchesDestination
+                                    : ($selectedPlaceId ? $matchesPlace : true);
                             @endphp
 
                             <label class="related-destination-item-row flex items-start gap-3 px-3 py-2 hover:bg-gray-50"
                                    data-place-id="{{ $resolvedPlaceId }}"
-                                   data-destination-id="{{ $resolvedDestinationId }}">
+                                   data-destination-id="{{ $resolvedDestinationId }}"
+                                   @if(! $isVisibleInitially) style="display:none;" @endif>
                                 <input type="checkbox"
                                        name="selected_destinationitemids[]"
                                        value="{{ $item->id }}"
@@ -193,9 +213,7 @@
         </div>
     </div>
 
-    {{-- Right-hand column --}}
     <div class="space-y-6">
-        {{-- Planning flags --}}
         <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
             <h3 class="text-sm font-semibold text-gray-900">Planning flags</h3>
 
@@ -232,7 +250,6 @@
             </div>
         </div>
 
-        {{-- Stay details --}}
         <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
             <h3 class="text-sm font-semibold text-gray-900">Stay details</h3>
 
@@ -259,7 +276,6 @@
             </div>
         </div>
 
-        {{-- Linked outputs --}}
         @if(isset($tripLegs) && isset($tripStays) && $tripLegs->count() + $tripStays->count() > 0)
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
                 <h3 class="text-sm font-semibold text-gray-900">Linked outputs</h3>
@@ -292,7 +308,6 @@
             </div>
         @endif
 
-        {{-- Actions --}}
         <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
             <h3 class="text-sm font-semibold text-gray-900">Actions</h3>
 
@@ -311,32 +326,53 @@
     </div>
 </div>
 
-{{-- Related destination items filter script --}}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const placeSelect = document.getElementById('placeid');
     const destinationSelect = document.getElementById('destinationid');
     const toggleAll = document.getElementById('related_toggle_all');
+    const destinationOptions = Array.from(destinationSelect ? destinationSelect.querySelectorAll('option[data-place-id]') : []);
     const rows = Array.from(document.querySelectorAll('.related-destination-item-row'));
 
-    if (!placeSelect || !destinationSelect || !rows.length) {
+    if (!placeSelect || !destinationSelect) {
         return;
     }
 
+    function filterDestinations() {
+        const selectedPlaceId = placeSelect.value || '';
+        const currentDestinationId = destinationSelect.value || '';
+        let hasVisibleSelectedDestination = false;
+
+        destinationOptions.forEach(option => {
+            const optionPlaceId = option.dataset.placeId || '';
+            const visible = !selectedPlaceId || optionPlaceId === selectedPlaceId;
+
+            option.hidden = !visible;
+            option.disabled = !visible;
+
+            if (visible && option.value === currentDestinationId) {
+                hasVisibleSelectedDestination = true;
+            }
+        });
+
+        if (currentDestinationId && !hasVisibleSelectedDestination) {
+            destinationSelect.value = '';
+        }
+    }
+
     function filterRows() {
-        const selectedPlaceId = placeSelect.value;
-        const selectedDestinationId = destinationSelect.value;
+        const selectedPlaceId = placeSelect.value || '';
+        const selectedDestinationId = destinationSelect.value || '';
 
         rows.forEach(row => {
             const rowPlaceId = row.dataset.placeId || '';
             const rowDestinationId = row.dataset.destinationId || '';
-
             let visible = true;
 
             if (selectedDestinationId) {
-                visible = String(rowDestinationId) === String(selectedDestinationId);
+                visible = rowDestinationId === selectedDestinationId;
             } else if (selectedPlaceId) {
-                visible = String(rowPlaceId) === String(selectedPlaceId);
+                visible = rowPlaceId === selectedPlaceId;
             }
 
             row.style.display = visible ? '' : 'none';
@@ -352,13 +388,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    if (placeSelect) {
-        placeSelect.addEventListener('change', filterRows);
+    function refreshDependentFields() {
+        filterDestinations();
+        filterRows();
     }
 
-    if (destinationSelect) {
-        destinationSelect.addEventListener('change', filterRows);
-    }
+    placeSelect.addEventListener('change', function () {
+        filterDestinations();
+        filterRows();
+    });
+
+    destinationSelect.addEventListener('change', function () {
+        filterRows();
+    });
 
     if (toggleAll) {
         toggleAll.addEventListener('change', function () {
@@ -373,6 +415,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    filterRows();
+    refreshDependentFields();
 });
 </script>

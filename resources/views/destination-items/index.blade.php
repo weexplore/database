@@ -126,37 +126,48 @@
                         <tbody class="divide-y divide-gray-200 bg-white">
                             @forelse($items as $item)
                                 <tr>
-                                    <td class="px-4 py-3">
-                                        <div class="font-medium text-gray-900">{{ $item->itemname }}</div>
-                                        <div class="text-xs text-gray-500">{{ \Illuminate\Support\Str::limit($item->shortdescription, 80) }}</div>
-                                    </td>
-                                    <td class="px-4 py-3">{{ $item->destination?->destinationname }}</td>
-                                    <td class="px-4 py-3">
-                                    {{ $item->itemTypes->pluck('typename')->join(', ') ?: '—' }}
-                                </td>
-                                    <td class="px-4 py-3">{{ $item->place?->placename }}</td>
-                                    <td class="px-4 py-3">{{ $item->bookingrequired ? 'Yes' : 'No' }}</td>
-                                    <td class="px-4 py-3">{{ $item->isactive ? 'Yes' : 'No' }}</td>
-                                    <td class="px-4 py-3">
-                                        @if(!is_null($item->latitude) && !is_null($item->longitude))
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
-                                                Yes
-                                            </span>
-                                        @else
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
-                                                No
-                                            </span>
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-3 text-center whitespace-nowrap">
-                                        <div class="inline-flex items-center gap-2">
-                                            <a href="{{ route('destination-items.edit', ['destinationItem' => $item, 'return_to' => $returnTo]) }}"
-                                            class="px-3 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200">
-                                                Edit
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
+    <td class="px-4 py-3">
+        <a href="{{ route('destination-items.edit', ['destinationItem' => $item, 'return_to' => $returnTo]) }}"
+           class="block rounded-md border border-gray-200 bg-gray-100 px-3 py-2 font-medium text-gray-900 hover:bg-gray-200">
+            {{ $item->itemname }}
+        </a>
+
+        <div class="mt-1 text-xs text-gray-500">
+            {{ \Illuminate\Support\Str::limit($item->shortdescription, 80) }}
+        </div>
+    </td>
+
+    <td class="px-4 py-3">{{ $item->destination?->destinationname }}</td>
+
+    <td class="px-4 py-3">
+        {{ $item->itemTypes->pluck('typename')->join(', ') ?: '—' }}
+    </td>
+
+    <td class="px-4 py-3">{{ $item->place?->placename }}</td>
+    <td class="px-4 py-3">{{ $item->bookingrequired ? 'Yes' : 'No' }}</td>
+    <td class="px-4 py-3">{{ $item->isactive ? 'Yes' : 'No' }}</td>
+
+    <td class="px-4 py-3">
+        @if(!is_null($item->latitude) && !is_null($item->longitude))
+            <span class="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
+                Yes
+            </span>
+        @else
+            <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
+                No
+            </span>
+        @endif
+    </td>
+
+    <td class="px-4 py-3 text-center whitespace-nowrap">
+        <div class="inline-flex items-center gap-2">
+            <a href="{{ route('destination-items.edit', ['destinationItem' => $item, 'return_to' => $returnTo]) }}"
+               class="px-3 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200">
+                Edit
+            </a>
+        </div>
+    </td>
+</tr>
                             @empty
                                 <tr>
                                     <td colspan="8" class="px-4 py-6 text-center text-gray-500">

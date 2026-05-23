@@ -14,6 +14,14 @@
                     {{ $displayRelationships->count() }} total
                 </span>
 
+                @if($displayRelationships->count() > 1 && !isset($editingRelationshipId) && !($showAddRelationship ?? false))
+                    <button type="button"
+                            id="save-knowledge-relationships-order-button"
+                            class="inline-flex items-center px-3 py-1.5 bg-slate-700 text-white rounded text-sm hover:bg-slate-800">
+                        Save Order
+                    </button>
+                @endif
+
                 @if(!($showAddRelationship ?? false))
                     <a href="{{ route('knowledge.items.edit', [
                             'knowledgeItem' => $knowledgeItem,
@@ -34,9 +42,9 @@
                 <h4 class="text-sm font-semibold text-gray-900">Add Relationship</h4>
 
                 <a href="{{ route('knowledge.items.edit', [
-                    'knowledgeItem' => $knowledgeItem,
-                    'tab' => 'relationships',
-                ]) }}"
+                        'knowledgeItem' => $knowledgeItem,
+                        'tab' => 'relationships',
+                    ]) }}"
                    class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-sm hover:bg-gray-300">
                     Cancel
                 </a>
@@ -128,7 +136,7 @@
         </div>
     @endif
 
-    <div class="divide-y divide-gray-200">
+    <div id="knowledge-relationships-list" class="divide-y divide-gray-200">
         @forelse($displayRelationships as $entry)
             @php
                 $relationship = $entry['relationship'];
@@ -138,60 +146,76 @@
                 $isEditingThis = isset($editingRelationshipId) && (int) $editingRelationshipId === (int) $relationship->id;
             @endphp
 
-            <div class="p-4 space-y-3">
-                <div class="flex items-start justify-between gap-4">
-                    <div class="space-y-1 min-w-0">
-                        <div class="text-sm font-semibold text-gray-900">
-                            @if($relatedItem)
-                                {{ $relatedItem->primaryCategory?->categoryname ?? 'Uncategorised' }}: {{ $relatedItem->itemname }}
-                            @else
-                                Missing related item
-                            @endif
-                        </div>
+            <div class="p-4 space-y-3 {{ !$isEditingThis ? 'knowledge-relationship-row' : '' }}"
+                 @if(!$isEditingThis) data-relationship-id="{{ $relationship->id }}" @endif>
+                @if(! $isEditingThis)
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex items-start gap-3 min-w-0 flex-1">
+                            <button type="button"
+                                    class="knowledge-relationship-drag-handle inline-flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 cursor-move shrink-0 mt-0.5"
+                                    title="Drag to reorder"
+                                    aria-label="Drag to reorder">
+                                <svg xmlns="http://www.w3.org/2000/svg"
+                                     class="w-5 h-5"
+                                     viewBox="0 0 20 20"
+                                     fill="currentColor"
+                                     aria-hidden="true">
+                                    <path d="M3 5h14a1 1 0 110 2H3a1 1 0 110-2Zm0 4h14a1 1 0 110 2H3a1 1 0 110-2Zm0 4h14a1 1 0 110 2H3a1 1 0 110-2Z" />
+                                </svg>
+                            </button>
 
-                        <div class="text-xs text-gray-500">
-                            Type: {{ $displayTypeLabel ?: '—' }}
-                            · Direction: {{ ucfirst($direction) }}
-                            · Effective: {{ $relationship->effective_date ? $relationship->effective_date->format('d M Y') : '—' }}
-                            · Sort: {{ $relationship->sortorder ?? 0 }}
-                        </div>
+                            <div class="space-y-1 min-w-0 flex-1">
+                                <div class="text-sm font-semibold text-gray-900">
+                                    @if($relatedItem)
+                                        {{ $relatedItem->primaryCategory?->categoryname ?? 'Uncategorised' }}: {{ $relatedItem->itemname }}
+                                    @else
+                                        Missing related item
+                                    @endif
+                                </div>
 
-                        @if($relationship->notes)
-                            <div class="text-sm text-gray-700 line-clamp-2">
-                                {{ $relationship->notes }}
+                                <div class="text-xs text-gray-500">
+                                    Type: {{ $displayTypeLabel ?: '—' }}
+                                    · Direction: {{ ucfirst($direction) }}
+                                    · Effective: {{ $relationship->effective_date ? $relationship->effective_date->format('d M Y') : '—' }}
+                                    · Sort: <span class="knowledge-relationship-sort-label">{{ $relationship->sortorder ?? 0 }}</span>
+                                </div>
+
+                                @if($relationship->notes)
+                                    <div class="text-sm text-gray-700 line-clamp-2">
+                                        {{ $relationship->notes }}
+                                    </div>
+                                @endif
                             </div>
-                        @endif
-                    </div>
+                        </div>
 
-                    <div class="flex flex-col items-end gap-2 text-xs text-gray-500 whitespace-nowrap">
-                        <div>ID: {{ $relationship->id }}</div>
+                        <div class="flex flex-col items-end gap-2 text-xs text-gray-500 whitespace-nowrap shrink-0">
+                            <div>ID: {{ $relationship->id }}</div>
 
-                        <div class="flex items-center gap-2 mt-1">
-                            <a href="{{ route('knowledge.items.edit', [
-                                    'knowledgeItem' => $knowledgeItem,
-                                    'tab' => 'relationships',
-                                    'editing_relationship_id' => $relationship->id,
-                                ]) }}"
-                               class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs hover:bg-gray-300">
-                                Edit
-                            </a>
+                            <div class="flex items-center gap-2 mt-1">
+                                <a href="{{ route('knowledge.items.edit', [
+                                        'knowledgeItem' => $knowledgeItem,
+                                        'tab' => 'relationships',
+                                        'editing_relationship_id' => $relationship->id,
+                                    ]) }}"
+                                   class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs hover:bg-gray-300">
+                                    Edit
+                                </a>
 
-                            <form method="POST"
-                                  action="{{ route('knowledge.items.relationships.destroy', [$knowledgeItem, $relationship]) }}"
-                                  onsubmit="return confirm('Delete this relationship?');">
-                                @csrf
-                                @method('DELETE')
+                                <form method="POST"
+                                      action="{{ route('knowledge.items.relationships.destroy', [$knowledgeItem, $relationship]) }}"
+                                      onsubmit="return confirm('Delete this relationship?');">
+                                    @csrf
+                                    @method('DELETE')
 
-                                <button type="submit"
-                                        class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white rounded text-xs hover:bg-red-700">
-                                    Delete
-                                </button>
-                            </form>
+                                    <button type="submit"
+                                            class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white rounded text-xs hover:bg-red-700">
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
-                </div>
-
-                @if($isEditingThis)
+                @else
                     <div class="mt-4 border-t border-gray-200 pt-4">
                         <div class="mb-3 text-xs text-gray-500">
                             Editing the stored relationship record. For incoming rows, the displayed label may be the inverse view.
@@ -277,9 +301,9 @@
 
                             <div class="flex items-center justify-end gap-2">
                                 <a href="{{ route('knowledge.items.edit', [
-                                    'knowledgeItem' => $knowledgeItem,
-                                    'tab' => 'relationships',
-                                ]) }}"
+                                        'knowledgeItem' => $knowledgeItem,
+                                        'tab' => 'relationships',
+                                    ]) }}"
                                    class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs hover:bg-gray-300">
                                     Cancel
                                 </a>
@@ -290,19 +314,6 @@
                                 </button>
                             </div>
                         </form>
-
-                        <form method="POST"
-                              action="{{ route('knowledge.items.relationships.destroy', [$knowledgeItem, $relationship]) }}"
-                              class="inline">
-                            @csrf
-                            @method('DELETE')
-
-                            <button type="submit"
-                                    class="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs"
-                                    onclick="return confirm('Delete this relationship? This cannot be undone.');">
-                                Delete
-                            </button>
-                        </form>
                     </div>
                 @endif
             </div>
@@ -312,4 +323,85 @@
             </div>
         @endforelse
     </div>
+
+    <form method="POST"
+          action="{{ route('knowledge.items.relationships.reorder', $knowledgeItem) }}"
+          id="knowledge-relationships-reorder-form"
+          class="hidden">
+        @csrf
+        <div id="knowledge-relationships-reorder-fields"></div>
+    </form>
 </div>
+
+@if(($activeTab ?? null) === 'relationships')
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const list = document.getElementById('knowledge-relationships-list');
+        const reorderFields = document.getElementById('knowledge-relationships-reorder-fields');
+        const saveOrderButton = document.getElementById('save-knowledge-relationships-order-button');
+
+        function syncRelationshipSortLabels() {
+            if (!list) {
+                return;
+            }
+
+            const rows = Array.from(list.querySelectorAll('.knowledge-relationship-row'));
+
+            rows.forEach((row, index) => {
+                const sortLabel = row.querySelector('.knowledge-relationship-sort-label');
+                if (sortLabel) {
+                    sortLabel.textContent = index + 1;
+                }
+            });
+        }
+
+        function buildRelationshipReorderFields() {
+            if (!list || !reorderFields) {
+                return;
+            }
+
+            const rows = Array.from(list.querySelectorAll('.knowledge-relationship-row'));
+            reorderFields.innerHTML = '';
+
+            rows.forEach((row, index) => {
+                const relationshipId = row.dataset.relationshipId;
+                if (!relationshipId) {
+                    return;
+                }
+
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'relationship_order[' + relationshipId + ']';
+                input.value = index + 1;
+                reorderFields.appendChild(input);
+            });
+        }
+
+        if (list && typeof Sortable !== 'undefined') {
+            Sortable.create(list, {
+                animation: 150,
+                handle: '.knowledge-relationship-drag-handle',
+                draggable: '.knowledge-relationship-row',
+                ghostClass: 'bg-blue-50',
+                chosenClass: 'bg-slate-50',
+                onEnd: function () {
+                    syncRelationshipSortLabels();
+                    buildRelationshipReorderFields();
+                }
+            });
+
+            syncRelationshipSortLabels();
+            buildRelationshipReorderFields();
+        }
+
+        if (saveOrderButton) {
+            saveOrderButton.addEventListener('click', function () {
+                buildRelationshipReorderFields();
+                document.getElementById('knowledge-relationships-reorder-form').submit();
+            });
+        }
+    });
+    </script>
+@endif

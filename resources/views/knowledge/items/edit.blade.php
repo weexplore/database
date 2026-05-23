@@ -1,6 +1,14 @@
 {{-- resources/views/knowledge/items/edit.blade.php --}}
 
 <x-app-layout>
+    @php
+        $domainId = $knowledgeItem->primaryCategory?->domainid ?? request('domainid');
+
+        $returnTo = request('return_to', route('knowledge-categories.index', [
+            'domainid' => $domainId,
+            'categoryid' => $knowledgeItem->primarycategoryid,
+        ]));
+    @endphp
     <x-slot name="header">
         <div class="flex items-center justify-between gap-4">
             <div>
@@ -25,12 +33,9 @@
             </div>
 
             <div class="flex items-center gap-3">
-                <a href="{{ route('knowledge-categories.index', [
-                        'domainid' => $domainId,
-                        'categoryid' => $knowledgeItem->primarycategoryid,
-                    ]) }}"
+                <a href="{{ $returnTo }}"
                 class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
-                    Back to Knowledge Categories
+                    Back
                 </a>
             </div>
         </div>
@@ -94,10 +99,11 @@
                             <a href="{{ route('knowledge.items.edit', array_filter([
                                     'knowledgeItem' => $knowledgeItem,
                                     'tab' => $tabKey,
+                                    'return_to' => $returnTo,
                                 ])) }}"
-                               class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium {{ ($activeTab ?? 'details') === $tabKey
-                                   ? 'bg-blue-600 text-white'
-                                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                            class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium {{ ($activeTab ?? 'details') === $tabKey
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
                                 {{ $tabLabel }}
                             </a>
                         @endforeach
@@ -112,6 +118,7 @@
                       class="space-y-6">
                     @csrf
                     @method('PUT')
+                    <input type="hidden" name="return_to" value="{{ $returnTo }}">
 
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="px-6 py-4 border-b border-gray-200">

@@ -64,4 +64,9 @@ class KnowledgeSource extends Model
     {
         return $this->hasMany(InstrumentCorporateAction::class, 'sourceid');
     }
+
+    public function knowledgeItem(): BelongsTo
+    {
+        return $this->belongsTo(KnowledgeItem::class, 'knowledgeitemid');
+    }
 }

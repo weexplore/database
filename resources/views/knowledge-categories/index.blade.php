@@ -104,6 +104,15 @@
                                             Category Tree Report
                                         </a>
                                     @endif
+                                    @if(!empty($filters['domainid']))
+                                        <a href="{{ route('knowledge.search', [
+                                                'domainid' => $filters['domainid'],
+                                                'return_to' => url()->full(),
+                                            ]) }}"
+                                        class="inline-flex w-full items-center justify-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+                                            Domain Search
+                                        </a>
+                                    @endif
                                 </div>
                             </form>
                         </div>
@@ -617,21 +626,36 @@
                                         <table class="w-full divide-y divide-gray-200">
                                             <thead class="bg-gray-50">
                                                 <tr>
+                                                    <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase w-12"></th>
                                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
                                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Next Review</th>
                                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Summary</th>
+                                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sort</th>
+                                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Next Review</th>
                                                     <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Featured</th>
                                                     <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Active</th>
-                                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sort</th>
                                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                                                 </tr>
                                             </thead>
 
                                             <tbody class="bg-white divide-y divide-gray-200">
                                                 @forelse($items as $item)
-                                                    <tr>
+                                                    <tr class="knowledge-item-row" data-item-id="{{ $item->id }}">
+                                                        <td class="px-3 py-2 text-center align-top">
+                                                            <button type="button"
+                                                                    class="knowledge-item-drag-handle inline-flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-move"
+                                                                    title="Drag to reorder"
+                                                                    aria-label="Drag to reorder">
+                                                                <svg xmlns="http://www.w3.org/2000/svg"
+                                                                    class="w-5 h-5"
+                                                                    viewBox="0 0 20 20"
+                                                                    fill="currentColor"
+                                                                    aria-hidden="true">
+                                                                    <path d="M3 5h14a1 1 0 110 2H3a1 1 0 110-2Zm0 4h14a1 1 0 110 2H3a1 1 0 110-2Zm0 4h14a1 1 0 110 2H3a1 1 0 110-2Z" />
+                                                                </svg>
+                                                            </button>
+                                                        </td>
                                                         <td class="px-3 py-2 min-w-[220px]">
                                                             <input type="text"
                                                                    name="existing[{{ $item->id }}][itemname]"
@@ -669,6 +693,21 @@
                                                             </select>
                                                         </td>
 
+                                                        <td class="px-3 py-2 min-w-[260px]">
+                                                            <textarea name="existing[{{ $item->id }}][summary]"
+                                                                      rows="2"
+                                                                      class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old("existing.{$item->id}.summary", $item->summary) }}</textarea>
+                                                        </td>
+
+                                                        
+                                                        <td class="px-3 py-2 w-[90px]">
+                                                            <input type="number"
+                                                                   name="existing[{{ $item->id }}][sortorder]"
+                                                                   value="{{ old("existing.{$item->id}.sortorder", $item->sortorder) }}"
+                                                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                                                   min="0">
+                                                        </td>
+
                                                         <td class="px-3 py-2 min-w-[150px]">
                                                             <input type="date"
                                                                    name="existing[{{ $item->id }}][nextreviewdate]"
@@ -676,11 +715,7 @@
                                                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                                         </td>
 
-                                                        <td class="px-3 py-2 min-w-[260px]">
-                                                            <textarea name="existing[{{ $item->id }}][summary]"
-                                                                      rows="2"
-                                                                      class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old("existing.{$item->id}.summary", $item->summary) }}</textarea>
-                                                        </td>
+
 
                                                         <td class="px-3 py-2 text-center">
                                                             <input type="hidden" name="existing[{{ $item->id }}][isfeatured]" value="0">
@@ -700,13 +735,6 @@
                                                                    @checked(old("existing.{$item->id}.isactive", $item->isactive))>
                                                         </td>
 
-                                                        <td class="px-3 py-2 w-[90px]">
-                                                            <input type="number"
-                                                                   name="existing[{{ $item->id }}][sortorder]"
-                                                                   value="{{ old("existing.{$item->id}.sortorder", $item->sortorder) }}"
-                                                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                                                   min="0">
-                                                        </td>
 
                                                         <td class="px-3 py-2 whitespace-nowrap">
                                                             <a href="{{ route('knowledge.items.edit', $item) }}"
@@ -758,6 +786,21 @@
                                                             @endforeach
                                                         </select>
                                                     </td>
+                                                    
+                                                    <td class="px-3 py-2">
+                                                        <textarea name="new[summary]"
+                                                                  rows="2"
+                                                                  class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                                                  placeholder="Short summary">{{ old('new.summary') }}</textarea>
+                                                    </td>
+
+                                                    <td class="px-3 py-2" [160px]>
+                                                        <input type="number"
+                                                               name="new[sortorder]"
+                                                               value="{{ old('new.sortorder', 0) }}"
+                                                               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                                               min="0">
+                                                    </td>
 
                                                     <td class="px-3 py-2">
                                                         <input type="date"
@@ -766,12 +809,6 @@
                                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                                     </td>
 
-                                                    <td class="px-3 py-2">
-                                                        <textarea name="new[summary]"
-                                                                  rows="2"
-                                                                  class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                                                  placeholder="Short summary">{{ old('new.summary') }}</textarea>
-                                                    </td>
 
                                                     <td class="px-3 py-2 text-center">
                                                         <input type="hidden" name="new[isfeatured]" value="0">
@@ -789,14 +826,6 @@
                                                                value="1"
                                                                class="rounded border-gray-300 text-blue-600 shadow-sm"
                                                                @checked(old('new.isactive', true))>
-                                                    </td>
-
-                                                    <td class="px-3 py-2" [160px]>
-                                                        <input type="number"
-                                                               name="new[sortorder]"
-                                                               value="{{ old('new.sortorder', 0) }}"
-                                                               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                                               min="0">
                                                     </td>
 
                                                     <td class="px-3 py-2 text-sm text-gray-400 whitespace-nowrap">
@@ -849,4 +878,48 @@
         'filterFormId' => 'knowledge-category-items-filter-form',
         'dirtyMessage' => 'You have unsaved changes in the category items table. Continue and lose those changes?',
     ])
+
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const itemsForm = document.getElementById('knowledge-category-items-form');
+    if (!itemsForm) {
+        return;
+    }
+
+    const tbody = itemsForm.querySelector('table tbody');
+    if (!tbody || typeof Sortable === 'undefined') {
+        return;
+    }
+
+    function syncKnowledgeItemSortOrder() {
+        const rows = Array.from(tbody.querySelectorAll('tr.knowledge-item-row'));
+
+        rows.forEach((row, index) => {
+            const itemId = row.dataset.itemId;
+            if (!itemId) {
+                return;
+            }
+
+            const sortInput = row.querySelector(`input[name="existing[${itemId}][sortorder]"]`);
+            if (sortInput) {
+                sortInput.value = index + 1;
+            }
+        });
+    }
+
+    Sortable.create(tbody, {
+        animation: 150,
+        handle: '.knowledge-item-drag-handle',
+        draggable: 'tr.knowledge-item-row',
+        ghostClass: 'bg-blue-50',
+        onEnd: function () {
+            syncKnowledgeItemSortOrder();
+        },
+    });
+
+    syncKnowledgeItemSortOrder();
+});
+</script>
 </x-app-layout>

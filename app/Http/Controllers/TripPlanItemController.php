@@ -50,54 +50,176 @@ class TripPlanItemController extends Controller
     }
 
     public function index(Request $request, Trip $trip)
-    {
-        $planItems = TripPlanItem::query()
-            ->with(['place', 'destination', 'destinationItem', 'tripLeg', 'tripStay'])
-            ->where('tripid', $trip->id)
-            ->orderByRaw('planneddate IS NULL, planneddate ASC')
-            ->orderBy('sequence_no')
-            ->orderBy('id')
-            ->get();
+{
+    $planItems = TripPlanItem::query()
+        ->with([
+            'place',
+            'destination.place',
+            'destinationItem.place',
+            'destinationItem.destination.place',
+            'tripLeg',
+            'tripStay',
+        ])
+        ->where('tripid', $trip->id)
+        ->orderByRaw('planneddate IS NULL, planneddate ASC')
+        ->orderBy('sequence_no')
+        ->orderBy('id')
+        ->get();
 
-        $places = Place::query()
-            ->orderBy('placename')
-            ->get();
+    $places = Place::query()
+        ->orderBy('placename')
+        ->get();
 
-        $destinations = Destination::query()
-            ->with('place')
-            ->orderBy('destinationname')
-            ->get();
+    $destinations = Destination::query()
+        ->with('place')
+        ->orderBy('destinationname')
+        ->get();
 
-        $destinationItems = DestinationItem::query()
-            ->with(['place', 'destination'])
-            ->where('isactive', 1)
-            ->orderBy('itemname')
-            ->get();
+    $destinationItems = DestinationItem::query()
+        ->with(['place', 'destination.place'])
+        ->where('isactive', 1)
+        ->orderBy('itemname')
+        ->get();
 
-        $showCreate = $request->boolean('show_create');
-        $planTypeOptions = $this->planTypeOptions();
-        $stayTypeOptions = $this->stayTypeOptions();
+    $showCreate = $request->boolean('show_create');
+    $planTypeOptions = $this->planTypeOptions();
+    $stayTypeOptions = $this->stayTypeOptions();
 
-        $selectedPlanType = $request->input('plantype');
-        $selectedPlaceId = $request->integer('place_id');
-        $selectedDestinationId = $request->integer('destination_id');
-        $selectedDestinationItemId = $request->integer('destinationitem_id');
+    $selectedPlanType = $request->input('plantype');
+    $selectedPlaceId = $request->integer('place_id');
+    $selectedDestinationId = $request->integer('destination_id');
+    $selectedDestinationItemId = $request->integer('destinationitem_id');
 
-        return view('trip-planner.index', compact(
-            'trip',
-            'planItems',
-            'places',
-            'destinations',
-            'destinationItems',
-            'showCreate',
-            'planTypeOptions',
-            'stayTypeOptions',
-            'selectedPlanType',
-            'selectedPlaceId',
-            'selectedDestinationId',
-            'selectedDestinationItemId'
-        ));
+    $mapItems = $planItems->map(function ($item) {
+        $resolvedPlace = $item->place
+            ?? $item->destinationItem?->place
+            ?? $item->destinationItem?->destination?->place
+            ?? $item->destination?->place;
+
+        $resolvedDestination = $item->destination
+            ?? $item->destinationItem?->destination;
+
+        $resolvedDestinationItem = $item->destinationItem;
+
+        $latitude = $resolvedDestinationItem->latitude
+            ?? $resolvedDestination?->latitude
+            ?? $resolvedPlace?->latitude;
+
+        $longitude = $resolvedDestinationItem->longitude
+            ?? $resolvedDestination?->longitude
+            ?? $resolvedPlace?->longitude;
+
+        return [
+            'id' => $item->id,
+            'sequence_no' => $item->sequence_no,
+            'title' => $item->display_title,
+            'plantype' => $item->plantype,
+            'planneddate' => optional($item->planneddate)->format('Y-m-d'),
+            'place_name' => $resolvedPlace?->placename,
+            'destination_name' => $resolvedDestination?->destinationname,
+            'destination_item_name' => $resolvedDestinationItem?->itemname,
+            'latitude' => $latitude !== null ? (float) $latitude : null,
+            'longitude' => $longitude !== null ? (float) $longitude : null,
+            'isrouteanchor' => (bool) $item->isrouteanchor,
+            'isovernight' => (bool) $item->isovernight,
+            'isstaytarget' => (bool) $item->isstaytarget,
+            'triplegid' => $item->triplegid,
+            'tripstayid' => $item->tripstayid,
+        ];
+    })->values();
+
+
+
+    $candidates = $this->buildGenerationCandidates($trip);
+
+    $candidateLegs = $candidates['candidateLegs']->map(function ($leg) {
+    $fromItem = $leg['from_item'];
+    $toItem = $leg['to_item'];
+
+    $fromCoordinates = $this->resolvePlanningItemCoordinates($fromItem);
+    $toCoordinates = $this->resolvePlanningItemCoordinates($toItem);
+
+    $straightLineKm = null;
+    $estimatedRoadKm = null;
+    $estimatedMinutes = null;
+    $estimatedTimeLabel = null;
+
+    if ($fromCoordinates['has_coordinates'] && $toCoordinates['has_coordinates']) {
+        $straightLineKm = $this->haversineDistanceKm(
+            $fromCoordinates['latitude'],
+            $fromCoordinates['longitude'],
+            $toCoordinates['latitude'],
+            $toCoordinates['longitude']
+        );
+
+        $estimatedRoadKm = $this->estimateRoadDistanceKm($straightLineKm);
+        $estimatedMinutes = $this->estimateCaravanDrivingMinutes($estimatedRoadKm);
+        $estimatedTimeLabel = $this->formatDrivingTime($estimatedMinutes);
     }
+
+    return [
+        'from_item_id' => $fromItem->id,
+        'to_item_id' => $toItem->id,
+        'from_label' => $fromItem->display_title,
+        'to_label' => $toItem->display_title,
+        'from_sequence' => $fromItem->sequence_no,
+        'to_sequence' => $toItem->sequence_no,
+        'start_date' => optional($fromItem->planneddate)->format('d M Y'),
+        'end_date' => optional($toItem->planneddate)->format('d M Y'),
+        'from_has_coordinates' => $fromCoordinates['has_coordinates'],
+        'to_has_coordinates' => $toCoordinates['has_coordinates'],
+        'straight_line_km' => $straightLineKm !== null ? round($straightLineKm, 1) : null,
+        'estimated_road_km' => $estimatedRoadKm !== null ? round($estimatedRoadKm, 1) : null,
+        'estimated_minutes' => $estimatedMinutes,
+        'estimated_time_label' => $estimatedTimeLabel,
+    ];
+})->values();
+
+        $candidateLegBoundaries = $candidates['candidateLegBoundaries'];
+        $estimatedDistanceKm = round(
+            $candidateLegs->sum(fn ($leg) => (float) ($leg['estimated_road_km'] ?? 0)),
+            1
+        );
+
+        $estimatedDriveMinutes = (int) $candidateLegs->sum(
+            fn ($leg) => (int) ($leg['estimated_minutes'] ?? 0)
+        );
+
+    $summary = [
+        'total_items' => $planItems->count(),
+        'mapped_items' => $mapItems->filter(fn ($item) => !is_null($item['latitude']) && !is_null($item['longitude']))->count(),
+        'missing_coordinates' => $mapItems->filter(fn ($item) => is_null($item['latitude']) || is_null($item['longitude']))->count(),
+        'route_anchors' => $planItems->where('isrouteanchor', true)->count(),
+        'overnights' => $planItems->where('isovernight', true)->count(),
+        'stay_targets' => $planItems->where('isstaytarget', true)->count(),
+        'generated_legs' => $planItems->whereNotNull('triplegid')->count(),
+        'generated_stays' => $planItems->whereNotNull('tripstayid')->count(),
+        'estimated_distance_km' => $estimatedDistanceKm,
+        'estimated_drive_minutes' => $estimatedDriveMinutes,
+        'estimated_drive_time_label' => $estimatedDriveMinutes > 0
+            ? $this->formatDrivingTime($estimatedDriveMinutes)
+            : '0 min',
+    ];
+
+    return view('trip-planner.index', compact(
+        'trip',
+        'planItems',
+        'places',
+        'destinations',
+        'destinationItems',
+        'showCreate',
+        'planTypeOptions',
+        'stayTypeOptions',
+        'selectedPlanType',
+        'selectedPlaceId',
+        'selectedDestinationId',
+        'selectedDestinationItemId',
+        'mapItems',
+        'summary',
+        'candidateLegs',
+        'candidateLegBoundaries'
+    ));
+}
 
     public function create(Request $request, Trip $trip)
     {
@@ -119,82 +241,99 @@ class TripPlanItemController extends Controller
 {
     $validated = $this->validateData($request, $trip);
 
-    // Additional field from the unified form: optional related destination items
-    $selectedDestinationItemIds = $request->input('selected_destinationitemids', []);
-    $selectedDestinationItemIds = is_array($selectedDestinationItemIds)
-        ? array_filter($selectedDestinationItemIds)
-        : [];
-
-    if (empty($validated['sequence_no'])) {
-        $validated['sequence_no'] = ((int) TripPlanItem::where('tripid', $trip->id)->max('sequence_no')) + 1;
-    }
+    $selectedDestinationItemIds = collect($request->input('selected_destinationitemids', []))
+        ->filter(fn ($id) => filled($id))
+        ->map(fn ($id) => (int) $id)
+        ->values();
 
     $validated['tripid'] = $trip->id;
 
-    DB::transaction(function () use ($trip, $validated, $selectedDestinationItemIds) {
-        // 1. Create the main planning item exactly as before
-        $mainItem = TripPlanItem::create($validated);
-
-        if (empty($selectedDestinationItemIds)) {
-            return;
-        }
-
-        // 2. Load the selected destination items, so we can derive place/destination
-        $destinationItems = DestinationItem::query()
-            ->with(['destination', 'place'])
-            ->whereIn('id', $selectedDestinationItemIds)
-            ->get();
-
-        if ($destinationItems->isEmpty()) {
-            return;
-        }
-
-        // Avoid double-creating the main destination item if it is also in the list
-        $destinationItems = $destinationItems->reject(function ($item) use ($validated) {
-            return isset($validated['destinationitemid'])
-                && (int) $validated['destinationitemid'] === (int) $item->id;
-        });
-
-        if ($destinationItems->isEmpty()) {
-            return;
-        }
-
-        // Start sequencing after the main row
-        $nextSequence = (int) TripPlanItem::query()
+    DB::transaction(function () use ($trip, &$validated, $selectedDestinationItemIds) {
+        $currentMaxSequence = (int) TripPlanItem::query()
             ->where('tripid', $trip->id)
             ->max('sequence_no');
 
-        $startDate = $validated['planneddate'] ?? null;
-        $endDate   = $validated['plannedenddate'] ?? null;
-        $sortGroup = $validated['sortgroup'] ?? null;
-        $notes     = $validated['notes'] ?? null;
+        $baseSequence = filled($validated['sequence_no'] ?? null)
+            ? (int) $validated['sequence_no']
+            : ($currentMaxSequence + 1);
 
-        foreach ($destinationItems as $destinationItem) {
+        $validated['sequence_no'] = $baseSequence;
+
+        $mainItem = TripPlanItem::create($validated);
+
+        if ($selectedDestinationItemIds->isEmpty()) {
+            return;
+        }
+
+        $destinationItems = DestinationItem::query()
+            ->with(['destination.place', 'place'])
+            ->whereIn('id', $selectedDestinationItemIds->all())
+            ->get()
+            ->keyBy('id');
+
+        if ($destinationItems->isEmpty()) {
+            return;
+        }
+
+        $orderedDestinationItems = $selectedDestinationItemIds
+            ->map(fn ($id) => $destinationItems->get($id))
+            ->filter();
+
+        if (filled($validated['destinationitemid'] ?? null)) {
+            $mainDestinationItemId = (int) $validated['destinationitemid'];
+
+            $orderedDestinationItems = $orderedDestinationItems->reject(
+                fn ($item) => (int) $item->id === $mainDestinationItemId
+            )->values();
+        }
+
+        if ($orderedDestinationItems->isEmpty()) {
+            return;
+        }
+
+        $nextSequence = $baseSequence;
+
+        $startDate = $validated['planneddate'] ?? null;
+        $endDate = $validated['plannedenddate'] ?? null;
+        $startTime = $validated['starttime'] ?? null;
+        $endTime = $validated['endtime'] ?? null;
+        $sortGroup = $validated['sortgroup'] ?? null;
+
+        foreach ($orderedDestinationItems as $destinationItem) {
             $nextSequence++;
 
-            $placeId = $destinationItem->placeid ?: $destinationItem->destination?->placeid;
+            $placeId = $destinationItem->placeid
+                ?: $destinationItem->destination?->placeid;
+
             $destinationId = $destinationItem->destinationid;
 
             TripPlanItem::create([
-                'tripid'            => $trip->id,
-                'sequence_no'       => $nextSequence,
-                'plantype'          => 'destination_item',
-                'title'             => $destinationItem->itemname,
-                'sortgroup'         => $sortGroup,
-                'placeid'           => $placeId,
-                'destinationid'     => $destinationId,
+                'tripid' => $trip->id,
+                'sequence_no' => $nextSequence,
+                'plantype' => 'destination_item',
+                'title' => $destinationItem->itemname,
+                'sortgroup' => $sortGroup,
+                'placeid' => $placeId,
+                'destinationid' => $destinationId,
                 'destinationitemid' => $destinationItem->id,
-                'planneddate'       => $startDate,
-                'plannedenddate'    => $endDate,
-                'notes'             => $notes,
-                'isrouteanchor'     => 0,
-                'isovernight'       => 0,
-                'isstaytarget'      => 0,
+                'planneddate' => $startDate,
+                'plannedenddate' => $endDate,
+                'starttime' => $startTime,
+                'endtime' => $endTime,
+                'notes' => null,
+                'isrouteanchor' => 0,
+                'isovernight' => 0,
+                'isstaytarget' => 0,
+                'staytype' => null,
+                'nightsplanned' => null,
+                'triplegid' => null,
+                'tripstayid' => null,
             ]);
         }
     });
 
-    return redirect()->route('trips.planner.index', $trip)
+    return redirect()
+        ->route('trips.planner.index', $trip)
         ->with('success', 'Planning item created with any selected destination items.');
 }
 
@@ -477,6 +616,9 @@ public function bulkUpdate(Request $request, Trip $trip)
         'items.*.sequence_no' => ['nullable', 'integer', 'min:1'],
         'items.*.planneddate' => ['nullable', 'date'],
         'items.*.plannedenddate' => ['nullable', 'date'],
+        'items.*.isrouteanchor' => ['nullable', 'boolean'],
+        'items.*.isovernight' => ['nullable', 'boolean'],
+        'items.*.isstaytarget' => ['nullable', 'boolean'],
     ]);
 
     $items = collect($validated['items']);
@@ -528,6 +670,9 @@ public function bulkUpdate(Request $request, Trip $trip)
                 'sequence_no' => $row['sequence_no'] ?? $item->sequence_no,
                 'planneddate' => $row['planneddate'] ?? null,
                 'plannedenddate' => $row['plannedenddate'] ?? null,
+                'isrouteanchor' => (bool) ($row['isrouteanchor'] ?? false),
+                'isovernight' => (bool) ($row['isovernight'] ?? false),
+                'isstaytarget' => (bool) ($row['isstaytarget'] ?? false),
             ]);
         }
     });
@@ -1067,4 +1212,157 @@ private function buildGenerationCandidates(Trip $trip): array
         'candidateLegBoundaries' => $candidateLegBoundaries,
     ];
 }
+protected function resolvePlanningItemCoordinates(TripPlanItem $item): array
+{
+    $resolvedPlace = $item->place
+        ?? $item->destinationItem?->place
+        ?? $item->destinationItem?->destination?->place
+        ?? $item->destination?->place;
+
+    $resolvedDestination = $item->destination
+        ?? $item->destinationItem?->destination;
+
+    $resolvedDestinationItem = $item->destinationItem;
+
+    $latitude = $resolvedDestinationItem->latitude
+        ?? $resolvedDestination?->latitude
+        ?? $resolvedPlace?->latitude;
+
+    $longitude = $resolvedDestinationItem->longitude
+        ?? $resolvedDestination?->longitude
+        ?? $resolvedPlace?->longitude;
+
+    return [
+        'latitude' => $latitude !== null ? (float) $latitude : null,
+        'longitude' => $longitude !== null ? (float) $longitude : null,
+        'has_coordinates' => $latitude !== null && $longitude !== null,
+    ];
+}
+
+protected function estimateRoadDistanceKm(float $straightLineKm): float
+{
+    if ($straightLineKm < 50) {
+        return $straightLineKm * 1.45;
+    }
+
+    if ($straightLineKm < 200) {
+        return $straightLineKm * 1.30;
+    }
+
+    return $straightLineKm * 1.18;
+}
+
+protected function estimateCaravanDrivingMinutes(float $roadDistanceKm): int
+{
+    $averageSpeedKph = 72.0;
+
+    if ($roadDistanceKm <= 0 || $averageSpeedKph <= 0) {
+        return 0;
+    }
+
+    return (int) round(($roadDistanceKm / $averageSpeedKph) * 60);
+}
+
+protected function formatDrivingTime(int $minutes): string
+{
+    if ($minutes < 60) {
+        return $minutes . ' min';
+    }
+
+    $hours = intdiv($minutes, 60);
+    $remainingMinutes = $minutes % 60;
+
+    if ($remainingMinutes === 0) {
+        return $hours . ' hr';
+    }
+
+    return $hours . ' hr ' . $remainingMinutes . ' min';
+}
+
+protected function haversineDistanceKm(
+    float $latitudeFrom,
+    float $longitudeFrom,
+    float $latitudeTo,
+    float $longitudeTo
+): float {
+    $earthRadiusKm = 6371.0;
+
+    $latFrom = deg2rad($latitudeFrom);
+    $lngFrom = deg2rad($longitudeFrom);
+    $latTo = deg2rad($latitudeTo);
+    $lngTo = deg2rad($longitudeTo);
+
+    $latDelta = $latTo - $latFrom;
+    $lngDelta = $lngTo - $lngFrom;
+
+    $angle = 2 * asin(sqrt(
+        pow(sin($latDelta / 2), 2) +
+        cos($latFrom) * cos($latTo) * pow(sin($lngDelta / 2), 2)
+    ));
+
+    return $angle * $earthRadiusKm;
+}
+
+protected function estimateDrivingMinutesFromDistance(float $distanceKm, float $averageSpeedKph = 75.0): int
+{
+    if ($distanceKm <= 0 || $averageSpeedKph <= 0) {
+        return 0;
+    }
+
+    return (int) round(($distanceKm / $averageSpeedKph) * 60);
+}
+
+public function reorder(Request $request, Trip $trip)
+{
+    $validated = $request->validate([
+        'ordered_ids' => ['required', 'array', 'min:1'],
+        'ordered_ids.*' => ['integer'],
+    ]);
+
+    $orderedIds = collect($validated['ordered_ids'])
+        ->map(fn ($id) => (int) $id)
+        ->unique()
+        ->values();
+
+    $existingIds = TripPlanItem::query()
+        ->where('tripid', $trip->id)
+        ->whereIn('id', $orderedIds)
+        ->pluck('id')
+        ->map(fn ($id) => (int) $id)
+        ->values();
+
+    if ($existingIds->count() !== $orderedIds->count()) {
+        return response()->json([
+            'message' => 'One or more planner items were invalid for this trip.',
+        ], 422);
+    }
+
+    DB::transaction(function () use ($trip, $orderedIds) {
+        $temporaryOffset = 100000;
+
+        foreach ($orderedIds as $index => $id) {
+            TripPlanItem::query()
+                ->where('tripid', $trip->id)
+                ->where('id', $id)
+                ->update([
+                    'sequence_no' => $temporaryOffset + $index + 1,
+                ]);
+        }
+
+        foreach ($orderedIds as $index => $id) {
+            TripPlanItem::query()
+                ->where('tripid', $trip->id)
+                ->where('id', $id)
+                ->update([
+                    'sequence_no' => $index + 1,
+                ]);
+        }
+    });
+
+    return response()->json([
+        'message' => 'Planner order updated.',
+    ]);
+}
+
+
 }

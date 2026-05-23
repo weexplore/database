@@ -491,9 +491,14 @@ return redirect()->route('knowledge-categories.index', [
             'isactive' => (bool) ($validated['isactive'] ?? false),
         ]);
 
-        return redirect()
-            ->route('knowledge.items.edit', $knowledgeItem)
-            ->with('success', 'Knowledge item saved.');
+        $returnTo = $request->input('return_to');
+
+        return redirect()->to(
+            $returnTo ?: route('knowledge-categories.index', [
+                'domainid' => $knowledgeItem->primaryCategory?->domainid,
+                'categoryid' => $knowledgeItem->primarycategoryid,
+            ])
+        )->with('success', 'Knowledge item updated.');
     }
 
     public function destroy(KnowledgeItem $knowledgeItem): RedirectResponse
@@ -537,5 +542,27 @@ return redirect()->route('knowledge-categories.index', [
     return $this->hasMany(InstrumentTransaction::class, 'instrumentid')
         ->orderByDesc('transactiondate')
         ->orderByDesc('id');
+}
+public function reorder(Request $request, KnowledgeItem $knowledgeItem): RedirectResponse
+{
+    $validated = $request->validate([
+        'notes' => ['required', 'array'],
+        'notes.*.sortorder' => ['required', 'integer', 'min:1'],
+    ]);
+
+    foreach ($validated['notes'] as $noteId => $row) {
+        $note = $knowledgeItem->notes()->whereKey($noteId)->first();
+
+        if ($note) {
+            $note->update([
+                'sortorder' => $row['sortorder'],
+            ]);
+        }
+    }
+
+    return redirect()->route('knowledge.items.edit', [
+        'knowledgeItem' => $knowledgeItem,
+        'tab' => 'notes',
+    ])->with('success', 'Note order saved.');
 }
 }

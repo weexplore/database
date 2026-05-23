@@ -13,90 +13,88 @@
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 border-b border-gray-200">
-                    <form method="GET"
-                          action="{{ route('destinations.index') }}"
-                          id="destinations-filter-form"
-                          class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <form method="GET"
+          action="{{ route('destinations.index') }}"
+          id="destinations-filter-form"
+          class="grid grid-cols-1 md:grid-cols-4 gap-4">
 
-                        <div>
-                            <label for="placeid" class="block text-sm font-medium text-gray-700 mb-1">
-                                Place
-                            </label>
-                            <select name="placeid"
-                                    id="placeid"
-                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                <option value="">All</option>
-                                @foreach($places as $place)
-                                    <option value="{{ $place->id }}"
-                                        @selected((string) request('placeid') === (string) $place->id)>
-                                        {{ $place->placename }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
+        <div>
+            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">
+                Search
+            </label>
+            <input type="text"
+                   name="search"
+                   id="search"
+                   value="{{ request('search') }}"
+                   class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                   placeholder="Name, best season, overview">
+        </div>
 
-                        <div>
-                            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">
-                                Search
-                            </label>
-                            <input type="text"
-                                   name="search"
-                                   id="search"
-                                   value="{{ request('search') }}"
-                                   class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                   placeholder="Name, best season, overview">
-                        </div>
+        <div>
+            <label for="placeid" class="block text-sm font-medium text-gray-700 mb-1">
+                Place
+            </label>
+            <select name="placeid"
+                    id="placeid"
+                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                <option value="">All</option>
+                @foreach($places as $place)
+                    <option value="{{ $place->id }}"
+                        @selected((string) request('placeid') === (string) $place->id)>
+                        {{ $place->placename }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
 
-                        <div>
-                            <label for="destinationtype" class="block text-sm font-medium text-gray-700 mb-1">
-                                Type
-                            </label>
-                            <select name="destinationtype"
-                                    id="destinationtype"
-                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                <option value="">All</option>
-                                @foreach($typeOptions as $type)
-                                    <option value="{{ $type }}"
-                                        @selected(request('destinationtype') === $type)>
-                                        {{ ucfirst($type) }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
+        <div>
+            <label for="destinationtype" class="block text-sm font-medium text-gray-700 mb-1">
+                Type
+            </label>
+            <select name="destinationtype"
+                    id="destinationtype"
+                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                <option value="">All</option>
+                @foreach($typeOptions as $type)
+                    <option value="{{ $type }}"
+                        @selected(request('destinationtype') === $type)>
+                        {{ ucfirst($type) }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
 
-                        <div>
-                            <label for="featured" class="block text-sm font-medium text-gray-700 mb-1">
-                                Featured
-                            </label>
-                            <select name="featured"
-                                    id="featured"
-                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                <option value="">All</option>
-                                <option value="1" @selected(request('featured') === '1')>Featured</option>
-                                <option value="0" @selected(request('featured') === '0')>Not Featured</option>
-                            </select>
-                        </div>
+        <div>
+            <label for="featured" class="block text-sm font-medium text-gray-700 mb-1">
+                Featured
+            </label>
+            <select name="featured"
+                    id="featured"
+                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                <option value="">All</option>
+                <option value="1" @selected(request('featured') === '1')>Featured</option>
+                <option value="0" @selected(request('featured') === '0')>Not Featured</option>
+            </select>
+        </div>
 
+        <div class="md:col-span-4 flex items-end gap-2">
+            <button type="submit"
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                Filter
+            </button>
 
+            <a href="{{ route('destinations.index') }}"
+               class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm"
+               id="destinations-reset-link">
+                Reset
+            </a>
 
-                        <div class="md:col-span-4 flex items-end gap-2">
-                            <button type="submit"
-                                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-                                Filter
-                            </button>
-
-                            <a href="{{ route('destinations.index') }}"
-                               class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm"
-                               id="destinations-reset-link">
-                                Reset
-                            </a>
-
-                            <span class="ml-auto text-xs text-gray-500">
-                                {{ $destinations->total() }} destinations
-                            </span>
-                        </div>
-                    </form>
-                </div>
+            <span class="ml-auto text-xs text-gray-500">
+                {{ $destinations->total() }} destinations
+            </span>
+        </div>
+    </form>
+</div>
 
                 <form method="POST"
                     action="{{ route('destinations.bulk-save') }}"
@@ -115,11 +113,12 @@
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                                        Place
-                                    </th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                                         Destination
                                     </th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Place
+                                    </th>
+
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                                         Type
                                     </th>
@@ -145,6 +144,24 @@
                                 @forelse($destinations as $destination)
                                     <tr>
                                         <td class="px-3 py-2">
+                                            <a
+                                                href="{{ route('destinations.edit', [
+                                                    'destination' => $destination,
+                                                    'return_to' => url()->full(),
+                                                ]) }}"
+                                                class="block w-56 rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+                                            >
+                                                {{ $destination->destinationname }}
+                                            </a>
+
+                                            <input
+                                                type="hidden"
+                                                name="existing[{{ $destination->id }}][destinationname]"
+                                                value="{{ old("existing.{$destination->id}.destinationname", $destination->destinationname) }}"
+                                            >
+                                        </td>
+
+                                        <td class="px-3 py-2">
                                             <select name="existing[{{ $destination->id }}][placeid]"
                                                     class="w-56 rounded-md border-gray-300 shadow-sm text-sm">
                                                 <option value="">None</option>
@@ -155,14 +172,6 @@
                                                     </option>
                                                 @endforeach
                                             </select>
-                                        </td>
-
-                                        <td class="px-3 py-2">
-                                            <input type="text"
-                                                   name="existing[{{ $destination->id }}][destinationname]"
-                                                   value="{{ old("existing.{$destination->id}.destinationname", $destination->destinationname) }}"
-                                                   class="w-56 rounded-md border-gray-300 shadow-sm text-sm"
-                                                   required>
                                         </td>
 
                                         <td class="px-3 py-2">
@@ -238,6 +247,15 @@
                                 @endforelse
 
                                 <tr class="bg-blue-50">
+
+
+                                    <td class="px-3 py-2">
+                                        <input type="text"
+                                               name="new[destinationname]"
+                                               value="{{ old('new.destinationname') }}"
+                                               class="w-56 rounded-md border-gray-300 shadow-sm text-sm"
+                                               placeholder="New destination name">
+                                    </td>
                                     <td class="px-3 py-2">
                                         <select name="new[placeid]"
                                                 class="w-56 rounded-md border-gray-300 shadow-sm text-sm">
@@ -249,14 +267,6 @@
                                                 </option>
                                             @endforeach
                                         </select>
-                                    </td>
-
-                                    <td class="px-3 py-2">
-                                        <input type="text"
-                                               name="new[destinationname]"
-                                               value="{{ old('new.destinationname') }}"
-                                               class="w-56 rounded-md border-gray-300 shadow-sm text-sm"
-                                               placeholder="New destination name">
                                     </td>
 
                                     <td class="px-3 py-2">

@@ -203,12 +203,16 @@
 
                                     <tr>
                                         <td class="px-4 py-3">
-                                            <input
-                                                type="text"
-                                                value="{{ $place->placename }}"
-                                                class="w-full min-w-[180px] rounded-md border-gray-200 bg-gray-100 text-gray-600 cursor-not-allowed"
-                                                disabled
+                                            <a
+                                                href="{{ route('places.edit', [
+                                                    'place' => $place,
+                                                    'return_to' => url()->full(),
+                                                ]) }}"
+                                                class="block w-full min-w-[180px] rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 hover:text-gray-900"
                                             >
+                                                {{ $place->placename }}
+                                            </a>
+
                                             <input
                                                 type="hidden"
                                                 name="existing[{{ $place->id }}][placename]"

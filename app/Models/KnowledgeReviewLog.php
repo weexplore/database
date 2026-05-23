@@ -52,4 +52,8 @@ class KnowledgeReviewLog extends Model
     {
         return $this->belongsTo(KnowledgeItem::class, 'knowledgeitemid');
     }
+    public function knowledgeItem(): BelongsTo
+    {
+        return $this->belongsTo(KnowledgeItem::class, 'knowledgeitemid');
+    }
 }

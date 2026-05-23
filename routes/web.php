@@ -35,6 +35,7 @@ use App\Http\Controllers\KnowledgeCategoryController;
 use App\Http\Controllers\KnowledgeDomainController;
 use App\Http\Controllers\KnowledgeItemController;
 use App\Http\Controllers\KnowledgeItemTypeController;
+use App\Http\Controllers\KnowledgeSearchController;
 use App\Http\Controllers\KnowledgeTagController;
 use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\AdminDashboardController;
@@ -232,11 +233,13 @@ Route::prefix('trips')->name('trips.')->group(function () {
             Route::post('resequence', [TripPlanItemController::class, 'resequence'])->name('resequence');
             Route::post('bulk-update', [TripPlanItemController::class, 'bulkUpdate'])->name('bulk-update');
             Route::post('renumber', [TripPlanItemController::class, 'renumber'])->name('renumber');
+            Route::post('reorder', [TripPlanItemController::class, 'reorder'])->name('reorder');
             Route::post('bulk-add-destination-items', [TripPlanItemController::class, 'bulkAddDestinationItems'])
                 ->name('bulk-add-destination-items');
             Route::get('{tripPlanItem}/edit', [TripPlanItemController::class, 'edit'])->name('edit');
             Route::put('{tripPlanItem}', [TripPlanItemController::class, 'update'])->name('update');
             Route::delete('{tripPlanItem}', [TripPlanItemController::class, 'destroy'])->name('destroy');
+            
         });
 
         /*
@@ -247,6 +250,8 @@ Route::prefix('trips')->name('trips.')->group(function () {
         Route::resource('legs', TripLegController::class)
             ->names('legs')
             ->parameters(['legs' => 'tripLeg']);
+        Route::post('legs/reorder', [TripLegController::class, 'reorder'])
+            ->name('legs.reorder');
 
         Route::resource('stays', TripStayController::class)
             ->names('stays')
@@ -354,12 +359,19 @@ Route::prefix('portfolios')->name('portfolios.')->group(function () {
 | Knowledge item workflow and nested item sub-resources.
 */
 Route::prefix('knowledge')->name('knowledge.')->group(function () {
+    Route::get('/search', [KnowledgeSearchController::class, 'index'])
+            ->name('search');
     Route::prefix('items')->name('items.')->group(function () {
         Route::get('/', [KnowledgeItemController::class, 'index'])->name('index');
         Route::post('bulk-save', [KnowledgeItemController::class, 'bulkSave'])->name('bulk-save');
         Route::get('{knowledgeItem}/edit', [KnowledgeItemController::class, 'edit'])->name('edit');
         Route::put('{knowledgeItem}', [KnowledgeItemController::class, 'update'])->name('update');
         Route::delete('{knowledgeItem}', [KnowledgeItemController::class, 'destroy'])->name('destroy');
+
+
+
+        Route::post('{knowledgeItem}/notes/reorder', [KnowledgeItemNoteController::class, 'reorder'])
+            ->name('notes.reorder');    
 
         Route::resource('{knowledgeItem}/notes', KnowledgeItemNoteController::class)
             ->except(['index', 'show', 'create'])
@@ -387,6 +399,9 @@ Route::prefix('knowledge')->name('knowledge.')->group(function () {
             ->parameters([
                 'review-logs' => 'knowledgeReviewLog',
             ]);
+
+        Route::post('{knowledgeItem}/relationships/reorder', [KnowledgeItemRelationshipController::class, 'reorder'])
+            ->name('relationships.reorder');
 
         Route::resource('{knowledgeItem}/relationships', KnowledgeItemRelationshipController::class)
             ->except(['index', 'show', 'create'])
@@ -459,6 +474,7 @@ Route::prefix('knowledge-items/{knowledgeItem}/attachments')->name('knowledge.at
     Route::get('{knowledgeAttachment}/edit', [KnowledgeAttachmentController::class, 'edit'])->name('edit');
     Route::put('{knowledgeAttachment}', [KnowledgeAttachmentController::class, 'update'])->name('update');
     Route::delete('{knowledgeAttachment}', [KnowledgeAttachmentController::class, 'destroy'])->name('destroy');
+    
 });
 
 Route::prefix('bible-references')->name('knowledge.items.bible-references.')->group(function () {
