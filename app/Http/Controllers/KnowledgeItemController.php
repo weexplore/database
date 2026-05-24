@@ -318,26 +318,27 @@ return redirect()->route('knowledge-categories.index', [
         ->values();
 
     // Relationships for the Relationships tab
+        // Relationships for the Relationships tab
     $displayRelationships = collect(
-        $knowledgeItem->outgoingRelationships->map(function ($relationship) {
+        $knowledgeItem->outgoingRelationships->map(function ($relationship) use ($knowledgeItem) {
             return [
                 'relationship' => $relationship,
                 'direction' => 'outgoing',
                 'relatedItem' => $relationship->toItem,
                 'displayTypeLabel' => $relationship->relationshipTypeLabel(),
-                'sortorder' => $relationship->sortorder ?? 0,
+                'sortorder' => $relationship->sortOrderFor($knowledgeItem),
                 'relatedSortName' => mb_strtolower($relationship->toItem?->itemname ?? 'zzzz'),
             ];
         })->all()
     )->merge(
         collect(
-            $knowledgeItem->incomingRelationships->map(function ($relationship) {
+            $knowledgeItem->incomingRelationships->map(function ($relationship) use ($knowledgeItem) {
                 return [
                     'relationship' => $relationship,
                     'direction' => 'incoming',
                     'relatedItem' => $relationship->fromItem,
                     'displayTypeLabel' => $relationship->inverseRelationshipTypeLabel(),
-                    'sortorder' => $relationship->sortorder ?? 0,
+                    'sortorder' => $relationship->sortOrderFor($knowledgeItem),
                     'relatedSortName' => mb_strtolower($relationship->fromItem?->itemname ?? 'zzzz'),
                 ];
             })->all()
@@ -350,11 +351,16 @@ return redirect()->route('knowledge-categories.index', [
     // Combined relationships collection for timeline etc.
     $allRelationships = $knowledgeItem->outgoingRelationships
         ->merge($knowledgeItem->incomingRelationships)
+        ->map(function ($relationship) use ($knowledgeItem) {
+            $relationship->display_sortorder = $relationship->sortOrderFor($knowledgeItem);
+            return $relationship;
+        })
         ->sortBy([
-            ['sortorder', 'asc'],
+            ['display_sortorder', 'asc'],
             ['id', 'asc'],
         ])
         ->values();
+
 
     // Query-state flags
     $editingNoteId = $request->integer('editing_note_id');

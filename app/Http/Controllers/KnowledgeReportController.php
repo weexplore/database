@@ -202,10 +202,7 @@ class KnowledgeReportController extends Controller
                 $query->orderByDesc('reviewdate')
                     ->orderByDesc('id');
             },
-            'knowledgeItems.outgoingRelationships' => function ($query) {
-                $query->orderBy('sortorder')
-                    ->orderBy('id');
-            },
+            'knowledgeItems.outgoingRelationships',
             'knowledgeItems.outgoingRelationships.toItem.primaryCategory',
             'knowledgeItems.outgoingRelationships.relationshipFacts' => function ($query) {
                 $query->with('place')
@@ -214,10 +211,7 @@ class KnowledgeReportController extends Controller
                     ->orderBy('id');
             },
             'knowledgeItems.outgoingRelationships.relationshipFacts.place',
-            'knowledgeItems.incomingRelationships' => function ($query) {
-                $query->orderBy('sortorder')
-                    ->orderBy('id');
-            },
+            'knowledgeItems.incomingRelationships',
             'knowledgeItems.incomingRelationships.fromItem.primaryCategory',
             'knowledgeItems.incomingRelationships.relationshipFacts' => function ($query) {
                 $query->with('place')
@@ -282,13 +276,13 @@ class KnowledgeReportController extends Controller
                 ->map(function ($item) {
                     $displayRelationships = $item->outgoingRelationships
                         ->toBase()
-                        ->map(function ($relationship) {
+                        ->map(function ($relationship) use ($item) {
                             return [
                                 'relationship' => $relationship,
                                 'direction' => 'outgoing',
                                 'relatedItem' => $relationship->toItem,
                                 'displayTypeLabel' => $relationship->relationshipTypeLabel(),
-                                'sortorder' => $relationship->sortorder ?? 0,
+                                'sortorder' => $relationship->sortOrderFor($item) ?? 0,
                                 'relatedSortName' => mb_strtolower($relationship->toItem?->itemname ?? 'zzzz'),
                                 'effectiveDate' => $relationship->effective_date,
                             ];
@@ -296,13 +290,13 @@ class KnowledgeReportController extends Controller
                         ->merge(
                             $item->incomingRelationships
                                 ->toBase()
-                                ->map(function ($relationship) {
+                                ->map(function ($relationship) use ($item) {
                                     return [
                                         'relationship' => $relationship,
                                         'direction' => 'incoming',
                                         'relatedItem' => $relationship->fromItem,
                                         'displayTypeLabel' => $relationship->inverseRelationshipTypeLabel(),
-                                        'sortorder' => $relationship->sortorder ?? 0,
+                                        'sortorder' => $relationship->sortOrderFor($item) ?? 0,
                                         'relatedSortName' => mb_strtolower($relationship->fromItem?->itemname ?? 'zzzz'),
                                         'effectiveDate' => $relationship->effective_date,
                                     ];
@@ -313,6 +307,7 @@ class KnowledgeReportController extends Controller
                             ['relatedSortName', 'asc'],
                         ])
                         ->values();
+
                     $reportRelationships = $item->outgoingRelationships
                         ->toBase()
                         ->map(function ($relationship) use ($item) {
@@ -321,7 +316,7 @@ class KnowledgeReportController extends Controller
                                 'direction' => 'outgoing',
                                 'relatedItem' => $relationship->toItem,
                                 'displayTypeLabel' => $relationship->relationshipTypeLabel(),
-                                'sortorder' => $relationship->sortorder ?? 0,
+                                'sortorder' => $relationship->sortOrderFor($item) ?? 0,
                                 'relatedSortName' => mb_strtolower($relationship->toItem?->itemname ?? 'zzzz'),
                                 'effectiveDate' => $relationship->effective_date,
                                 'relationshipFacts' => $relationship->relationshipFacts
@@ -336,13 +331,13 @@ class KnowledgeReportController extends Controller
                         ->merge(
                             $item->incomingRelationships
                                 ->toBase()
-                                ->map(function ($relationship) {
+                                ->map(function ($relationship) use ($item) {
                                     return [
                                         'relationship' => $relationship,
                                         'direction' => 'incoming',
                                         'relatedItem' => $relationship->fromItem,
                                         'displayTypeLabel' => $relationship->inverseRelationshipTypeLabel(),
-                                        'sortorder' => $relationship->sortorder ?? 0,
+                                        'sortorder' => $relationship->sortOrderFor($item) ?? 0,
                                         'relatedSortName' => mb_strtolower($relationship->fromItem?->itemname ?? 'zzzz'),
                                         'effectiveDate' => $relationship->effective_date,
                                         'relationshipFacts' => $relationship->relationshipFacts
@@ -373,6 +368,7 @@ class KnowledgeReportController extends Controller
                             ])
                             ->values()
                     );
+
                     $item->setRelation('displayRelationships', $displayRelationships);
 
                     return $item;

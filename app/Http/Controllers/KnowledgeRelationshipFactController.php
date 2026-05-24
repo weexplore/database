@@ -168,22 +168,25 @@ class KnowledgeRelationshipFactController extends Controller
     }
 
     public function reorder(Request $request, KnowledgeItem $knowledgeItem, KnowledgeRelationship $knowledgeRelationship): RedirectResponse
-    {
-        $validated = $request->validate([
-            'ordered_ids' => ['required', 'array'],
-            'ordered_ids.*' => ['integer'],
-        ]);
+{
+    $validated = $request->validate([
+        'facts' => ['required', 'array'],
+        'facts.*.sortorder' => ['required', 'integer', 'min:1'],
+    ]);
 
-        foreach ($validated['ordered_ids'] as $index => $id) {
-            KnowledgeRelationshipFact::query()
-                ->where('knowledgerelationshipid', $knowledgeRelationship->id)
-                ->where('id', $id)
-                ->update(['sortorder' => $index + 1]);
+    foreach ($validated['facts'] as $factId => $row) {
+        $fact = $knowledgeRelationship->relationshipFacts()->whereKey($factId)->first();
+
+        if ($fact) {
+            $fact->update([
+                'sortorder' => $row['sortorder'],
+            ]);
         }
-
-        return redirect()->route('knowledge.items.edit', [
-            'knowledgeItem' => $knowledgeItem,
-            'tab' => 'family-history',
-        ])->with('success', 'Relationship facts reordered.');
     }
+
+    return redirect()->route('knowledge.items.edit', [
+        'knowledgeItem' => $knowledgeItem,
+        'tab' => 'family-history',
+    ])->with('success', 'Relationship fact order updated successfully.');
+}
 }

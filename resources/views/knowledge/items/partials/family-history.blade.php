@@ -181,7 +181,7 @@
                                         @if ($fact->proofstatus)
                                             · {{ $proofStatusOptions[$fact->proofstatus] ?? ucfirst($fact->proofstatus) }}
                                         @endif
-                                        · Sort {{ $fact->sortorder ?? 0 }}
+                                        · Sort <span class="person-fact-sort-label">{{ $loop->iteration }}</span>
                                     </div>
 
                                     @if ($fact->notes)
@@ -197,16 +197,16 @@
                                         'tab' => 'family-history',
                                         'return_to' => request('return_to'),
                                     ]) }}"
-                                   class="inline-flex items-center rounded-md bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100">
+                                class="inline-flex items-center rounded-md bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100">
                                     Edit
                                 </a>
 
                                 <form method="POST"
-                                      action="{{ route('knowledge.items.person-facts.destroy', [
-                                          'knowledgeItem' => $knowledgeItem,
-                                          'knowledgePersonFact' => $fact,
-                                      ]) }}"
-                                      onsubmit="return confirm('Delete this person fact?');">
+                                    action="{{ route('knowledge.items.person-facts.destroy', [
+                                        'knowledgeItem' => $knowledgeItem,
+                                        'knowledgePersonFact' => $fact,
+                                    ]) }}"
+                                    onsubmit="return confirm('Delete this person fact?');">
                                     @csrf
                                     @method('DELETE')
 
@@ -220,11 +220,11 @@
 
                         @if ((int) $editingPersonFactId === (int) $fact->id && !empty($editingPersonFact))
                             <form method="POST"
-                                  action="{{ route('knowledge.items.person-facts.update', [
-                                      'knowledgeItem' => $knowledgeItem,
-                                      'knowledgePersonFact' => $fact,
-                                  ]) }}"
-                                  class="mt-4 border-t border-slate-200 pt-4 space-y-4">
+                                action="{{ route('knowledge.items.person-facts.update', [
+                                    'knowledgeItem' => $knowledgeItem,
+                                    'knowledgePersonFact' => $fact,
+                                ]) }}"
+                                class="mt-4 border-t border-slate-200 pt-4 space-y-4">
                                 @csrf
                                 @method('PUT')
 
@@ -241,9 +241,9 @@
                                     <div>
                                         <label class="block text-sm font-medium text-slate-700">Date Text</label>
                                         <input type="text"
-                                               name="datetext"
-                                               value="{{ old('datetext', $editingPersonFact->datetext) }}"
-                                               class="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                            name="datetext"
+                                            value="{{ old('datetext', $editingPersonFact->datetext) }}"
+                                            class="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                     </div>
 
                                     <div>
@@ -271,26 +271,26 @@
                                     <div>
                                         <label class="block text-sm font-medium text-slate-700">Sort Order</label>
                                         <input type="number"
-                                               name="sortorder"
-                                               value="{{ old('sortorder', $editingPersonFact->sortorder ?? 0) }}"
-                                               min="0"
-                                               class="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                            name="sortorder"
+                                            value="{{ old('sortorder', $editingPersonFact->sortorder ?? 0) }}"
+                                            min="0"
+                                            class="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                     </div>
 
                                     <div>
                                         <label class="block text-sm font-medium text-slate-700">Date From</label>
                                         <input type="date"
-                                               name="datefrom"
-                                               value="{{ old('datefrom', optional($editingPersonFact->datefrom)->format('Y-m-d')) }}"
-                                               class="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                            name="datefrom"
+                                            value="{{ old('datefrom', optional($editingPersonFact->datefrom)->format('Y-m-d')) }}"
+                                            class="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                     </div>
 
                                     <div>
                                         <label class="block text-sm font-medium text-slate-700">Date To</label>
                                         <input type="date"
-                                               name="dateto"
-                                               value="{{ old('dateto', optional($editingPersonFact->dateto)->format('Y-m-d')) }}"
-                                               class="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                            name="dateto"
+                                            value="{{ old('dateto', optional($editingPersonFact->dateto)->format('Y-m-d')) }}"
+                                            class="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                     </div>
 
                                     <div>
@@ -306,10 +306,10 @@
                                     <div class="flex items-end">
                                         <label class="inline-flex items-center gap-2 text-sm text-slate-700">
                                             <input type="checkbox"
-                                                   name="ispreferred"
-                                                   value="1"
-                                                   {{ old('ispreferred', $editingPersonFact->ispreferred) ? 'checked' : '' }}
-                                                   class="rounded border-slate-300 text-blue-600 shadow-sm focus:ring-blue-500">
+                                                name="ispreferred"
+                                                value="1"
+                                                {{ old('ispreferred', $editingPersonFact->ispreferred) ? 'checked' : '' }}
+                                                class="rounded border-slate-300 text-blue-600 shadow-sm focus:ring-blue-500">
                                             Preferred fact
                                         </label>
                                     </div>
@@ -318,7 +318,7 @@
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700">Notes</label>
                                     <textarea name="notes" rows="3"
-                                              class="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">{{ old('notes', $editingPersonFact->notes) }}</textarea>
+                                            class="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">{{ old('notes', $editingPersonFact->notes) }}</textarea>
                                 </div>
 
                                 <div class="flex items-center justify-between gap-3">
@@ -327,7 +327,7 @@
                                             'tab' => 'family-history',
                                             'return_to' => request('return_to'),
                                         ]) }}"
-                                       class="inline-flex items-center rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200">
+                                    class="inline-flex items-center rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200">
                                         Cancel
                                     </a>
 
@@ -347,14 +347,15 @@
             </div>
 
             @if ($knowledgeItem->personFacts->isNotEmpty())
-                <div class="border-t border-slate-200 px-6 py-4">
-                    <button type="submit"
-                            class="inline-flex items-center rounded-md bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200">
-                        Save Person Fact Order
-                    </button>
-                </div>
+                <form method="POST"
+                    action="{{ route('knowledge.items.person-facts.reorder', ['knowledgeItem' => $knowledgeItem]) }}"
+                    id="person-facts-reorder-form"
+                    class="border-t border-slate-200 px-6 py-4">
+                    @csrf
+                    <div id="person-facts-reorder-inputs"></div>
+                </form>
             @endif
-        </form>
+        </div>
     </div>
 
     <div class="bg-white shadow-sm sm:rounded-lg">
@@ -368,7 +369,13 @@
         @php
             $allRelationships = $knowledgeItem->outgoingRelationships
                 ->merge($knowledgeItem->incomingRelationships)
-                ->sortBy('sortorder')
+                ->sortBy(function ($relationship) use ($knowledgeItem) {
+                    return sprintf(
+                        '%010d-%010d',
+                        (int) ($relationship->sortOrderFor($knowledgeItem) ?? 0),
+                        (int) $relationship->id
+                    );
+                })
                 ->values();
         @endphp
 
@@ -381,6 +388,7 @@
                         ? $relationship->relationshipTypeLabel()
                         : $relationship->inverseRelationshipTypeLabel();
                     $baseRelationshipTypeLabel = $relationshipTypeOptions[$relationship->relationshiptype] ?? ucfirst($relationship->relationshiptype);
+                    $displaySortOrder = $relationship->sortOrderFor($knowledgeItem) ?? 0;
                 @endphp
 
                 <div class="px-6 py-4">
@@ -406,9 +414,9 @@
                                     </span>
                                 @endif
 
-                                <span class="rounded-full bg-slate-100 px-2 py-1">
-                                    Sort: {{ $relationship->sortorder ?? 0 }}
-                                </span>
+<span class="rounded-full bg-slate-100 px-2 py-1">
+    Sort: {{ $displaySortOrder }}
+</span>
                             </div>
 
                             @if ($relationship->notes)
@@ -557,7 +565,7 @@
                           ]) }}"
                           class="mt-3">
                         @csrf
-                        <input type="hidden" name="ordered_ids" class="relationship-facts-ordered-ids">
+                        <div class="relationship-facts-reorder-inputs"></div>
 
                         <div class="relationship-facts-list space-y-3" data-relationship-id="{{ $relationship->id }}">
                             @forelse ($relationship->relationshipFacts->sortBy([
@@ -768,15 +776,6 @@
                                 </div>
                             @endforelse
                         </div>
-
-                        @if ($relationship->relationshipFacts->isNotEmpty())
-                            <div class="mt-3">
-                                <button type="submit"
-                                        class="inline-flex items-center rounded-md bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200">
-                                    Save Relationship Fact Order
-                                </button>
-                            </div>
-                        @endif
                     </form>
                 </div>
             @empty
@@ -791,38 +790,42 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    function enableDragSort(containerSelector, hiddenInputSelector) {
-        const container = document.querySelector(containerSelector);
-        const hiddenInput = document.querySelector(hiddenInputSelector);
+    const personFactsContainer = document.getElementById('person-facts-list');
+    const personFactsInputsContainer = document.getElementById('person-facts-reorder-inputs');
+    const personFactsForm = document.getElementById('person-facts-reorder-form');
 
-        if (!container || !hiddenInput) {
-            return;
-        }
-
+    if (personFactsContainer && personFactsInputsContainer && personFactsForm) {
         let dragged = null;
 
-        function refreshOrder() {
-            const ids = Array.from(container.querySelectorAll('[data-id]')).map(el => el.dataset.id);
-            hiddenInput.value = JSON.stringify(ids);
+        function refreshPersonFactOrder() {
+            const rows = Array.from(personFactsContainer.querySelectorAll('.person-fact-row'));
+
+            personFactsInputsContainer.innerHTML = rows.map((row, index) => {
+                const label = row.querySelector('.person-fact-sort-label');
+                if (label) {
+                    label.textContent = index + 1;
+                }
+
+                return `<input type="hidden" name="facts[${row.dataset.id}][sortorder]" value="${index + 1}">`;
+            }).join('');
         }
 
-        container.querySelectorAll('[data-id]').forEach((item) => {
-            item.addEventListener('dragstart', () => {
+        personFactsContainer.querySelectorAll('.person-fact-row').forEach((item) => {
+            item.addEventListener('dragstart', function () {
                 dragged = item;
                 item.classList.add('opacity-50');
             });
 
-            item.addEventListener('dragend', () => {
+            item.addEventListener('dragend', function () {
                 item.classList.remove('opacity-50');
                 dragged = null;
-                refreshOrder();
             });
 
-            item.addEventListener('dragover', (e) => {
+            item.addEventListener('dragover', function (e) {
                 e.preventDefault();
             });
 
-            item.addEventListener('drop', (e) => {
+            item.addEventListener('drop', function (e) {
                 e.preventDefault();
 
                 if (!dragged || dragged === item) {
@@ -839,30 +842,38 @@ document.addEventListener('DOMContentLoaded', function () {
                     item.parentNode.insertBefore(dragged, item.nextSibling);
                 }
 
-                refreshOrder();
+                refreshPersonFactOrder();
+                personFactsForm.submit();
             });
         });
 
-        refreshOrder();
+        refreshPersonFactOrder();
     }
 
-    enableDragSort('#person-facts-list', '#person-facts-ordered-ids');
-
     document.querySelectorAll('.relationship-facts-list').forEach((container) => {
-        const hiddenInput = container.closest('form').querySelector('.relationship-facts-ordered-ids');
+        const form = container.closest('form');
+        const inputsContainer = form ? form.querySelector('.relationship-facts-reorder-inputs') : null;
 
-        if (!hiddenInput) {
+        if (!form || !inputsContainer) {
             return;
         }
 
         let dragged = null;
 
         function refreshOrder() {
-            const ids = Array.from(container.querySelectorAll('[data-id]')).map(el => el.dataset.id);
-            hiddenInput.value = JSON.stringify(ids);
+            const rows = Array.from(container.querySelectorAll('.relationship-fact-row'));
+
+            inputsContainer.innerHTML = rows.map((row, index) => {
+                const label = row.querySelector('.relationship-fact-sort-label');
+                if (label) {
+                    label.textContent = index + 1;
+                }
+
+                return `<input type="hidden" name="facts[${row.dataset.id}][sortorder]" value="${index + 1}">`;
+            }).join('');
         }
 
-        container.querySelectorAll('[data-id]').forEach((item) => {
+        container.querySelectorAll('.relationship-fact-row').forEach((item) => {
             item.addEventListener('dragstart', () => {
                 dragged = item;
                 item.classList.add('opacity-50');
@@ -871,7 +882,6 @@ document.addEventListener('DOMContentLoaded', function () {
             item.addEventListener('dragend', () => {
                 item.classList.remove('opacity-50');
                 dragged = null;
-                refreshOrder();
             });
 
             item.addEventListener('dragover', (e) => {
@@ -896,6 +906,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 refreshOrder();
+                form.submit();
             });
         });
 

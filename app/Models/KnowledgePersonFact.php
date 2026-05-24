@@ -40,6 +40,7 @@ class KnowledgePersonFact extends Model
     public const FACT_TYPE_OPTIONS = [
     'birth' => 'Birth',
     'death' => 'Death',
+    'sex' => 'Sex',
     'burial' => 'Burial',
     'christening' => 'Christening',
     'baptism' => 'Baptism',

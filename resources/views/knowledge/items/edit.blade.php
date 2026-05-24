@@ -33,6 +33,17 @@
             </div>
 
             <div class="flex items-center gap-3">
+                @if (!empty($hasFamilyHistoryTools ?? null))
+                    <a href="{{ route('reports.knowledge.family-tree', [
+                            'knowledge_item_id' => $knowledgeItem->id,
+                            'return_to' => url()->full(),
+                        ]) }}"
+                    target="_blank"
+                    rel="noopener"
+                    class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                        Family Tree Report
+                    </a>
+                @endif
                 <a href="{{ $returnTo }}"
                 class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
                     Back

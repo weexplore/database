@@ -19,14 +19,16 @@ class KnowledgeRelationship extends Model
         'relationshiptype',
         'effective_date',
         'notes',
-        'sortorder',
+        'outboundsortorder',
+        'inboundsortorder',
     ];
 
     protected $casts = [
         'fromitemid' => 'integer',
         'toitemid' => 'integer',
         'effective_date' => 'date',
-        'sortorder' => 'integer',
+        'outboundsortorder' => 'integer',
+        'inboundsortorder' => 'integer',
     ];
 
     const CREATED_AT = 'createdat';
@@ -51,6 +53,7 @@ class KnowledgeRelationship extends Model
         'child-of' => 'parent-of',
         'married' => 'married',
     ];
+
     public static function typeOptions(): array
     {
         return self::TYPE_OPTIONS;
@@ -60,6 +63,7 @@ class KnowledgeRelationship extends Model
     {
         return array_keys(self::TYPE_OPTIONS);
     }
+
     public function fromItem(): BelongsTo
     {
         return $this->belongsTo(KnowledgeItem::class, 'fromitemid');
@@ -94,5 +98,56 @@ class KnowledgeRelationship extends Model
             ->orderBy('sortorder')
             ->orderBy('facttype')
             ->orderBy('datefrom');
+    }
+
+    public function isOutgoingFor(KnowledgeItem|int $knowledgeItem): bool
+    {
+        $knowledgeItemId = $knowledgeItem instanceof KnowledgeItem
+            ? (int) $knowledgeItem->id
+            : (int) $knowledgeItem;
+
+        return (int) $this->fromitemid === $knowledgeItemId;
+    }
+
+    public function isIncomingFor(KnowledgeItem|int $knowledgeItem): bool
+    {
+        $knowledgeItemId = $knowledgeItem instanceof KnowledgeItem
+            ? (int) $knowledgeItem->id
+            : (int) $knowledgeItem;
+
+        return (int) $this->toitemid === $knowledgeItemId;
+    }
+
+    public function sortOrderFor(KnowledgeItem|int $knowledgeItem): int
+    {
+        $knowledgeItemId = $knowledgeItem instanceof KnowledgeItem
+            ? (int) $knowledgeItem->id
+            : (int) $knowledgeItem;
+
+        if ((int) $this->fromitemid === $knowledgeItemId) {
+            return (int) ($this->outboundsortorder ?? 0);
+        }
+
+        if ((int) $this->toitemid === $knowledgeItemId) {
+            return (int) ($this->inboundsortorder ?? 0);
+        }
+
+        return 0;
+    }
+
+    public function setSortOrderFor(KnowledgeItem|int $knowledgeItem, int $sortOrder): void
+    {
+        $knowledgeItemId = $knowledgeItem instanceof KnowledgeItem
+            ? (int) $knowledgeItem->id
+            : (int) $knowledgeItem;
+
+        if ((int) $this->fromitemid === $knowledgeItemId) {
+            $this->outboundsortorder = $sortOrder;
+            return;
+        }
+
+        if ((int) $this->toitemid === $knowledgeItemId) {
+            $this->inboundsortorder = $sortOrder;
+        }
     }
 }

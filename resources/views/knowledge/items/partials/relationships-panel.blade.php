@@ -143,6 +143,7 @@
                 $relatedItem = $entry['relatedItem'];
                 $displayTypeLabel = $entry['displayTypeLabel'];
                 $direction = $entry['direction'];
+                $displaySortOrder = (int) ($entry['sortorder'] ?? 0);
                 $isEditingThis = isset($editingRelationshipId) && (int) $editingRelationshipId === (int) $relationship->id;
             @endphp
 
@@ -177,7 +178,7 @@
                                     Type: {{ $displayTypeLabel ?: '—' }}
                                     · Direction: {{ ucfirst($direction) }}
                                     · Effective: {{ $relationship->effective_date ? $relationship->effective_date->format('d M Y') : '—' }}
-                                    · Sort: <span class="knowledge-relationship-sort-label">{{ $relationship->sortorder ?? 0 }}</span>
+                                    · Sort: <span class="knowledge-relationship-sort-label">{{ $displaySortOrder }}</span>
                                 </div>
 
                                 @if($relationship->notes)
@@ -290,10 +291,12 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Sort Order ({{ ucfirst($direction) }} view)
+                                    </label>
                                     <input type="number"
                                            name="sortorder"
-                                           value="{{ old('sortorder', $relationship->sortorder ?? 0) }}"
+                                           value="{{ old('sortorder', $displaySortOrder) }}"
                                            min="0"
                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 </div>
@@ -389,6 +392,11 @@
                 onEnd: function () {
                     syncRelationshipSortLabels();
                     buildRelationshipReorderFields();
+
+                    const reorderForm = document.getElementById('knowledge-relationships-reorder-form');
+                    if (reorderForm) {
+                        reorderForm.submit();
+                    }
                 }
             });
 

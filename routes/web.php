@@ -25,6 +25,7 @@ use App\Http\Controllers\TripReviewController;
 use App\Http\Controllers\TripReportController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\TripPlanItemController;
+use App\Http\Controllers\KnowledgeFamilyTreeReportController;
 
 use App\Http\Controllers\BibleBookController;
 use App\Http\Controllers\BibleReferenceController;
@@ -199,6 +200,8 @@ Route::prefix('reports')->name('reports.')->group(function () {
         ->name('knowledge.domains.reference-book');
     Route::get('knowledge/categories/tree-reference-book', [KnowledgeReportController::class, 'categoryTreeReferenceBook'])
         ->name('knowledge.categories.tree-reference-book');
+    Route::get('knowledge/family-tree', [KnowledgeFamilyTreeReportController::class, 'show'])
+        ->name('knowledge.family-tree');
 });
 
 /*
@@ -416,6 +419,8 @@ Route::prefix('knowledge')->name('knowledge.')->group(function () {
             ->parameters([
                 'review-logs' => 'knowledgeReviewLog',
             ]);
+
+        Route::post('{knowledgeItem}/relationships/reorder', [KnowledgeItemRelationshipController::class, 'reorder'])->name('relationships.reorder');
 
         Route::post('{knowledgeItem}/relationships/reorder', [KnowledgeItemRelationshipController::class, 'reorder'])
             ->name('relationships.reorder');

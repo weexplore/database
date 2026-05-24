@@ -197,6 +197,45 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+        function syncLegPointSequenceNumbers() {
+        if (!legPointRows) return;
+
+        legPointRows.querySelectorAll('.leg-point-row').forEach((row, index) => {
+            const sequenceInput = row.querySelector('input[name*="[sequence_no]"]');
+            const titleLabel = row.querySelector('.text-sm.font-medium.text-gray-700');
+
+            if (sequenceInput) {
+                sequenceInput.value = index + 1;
+            }
+
+            if (titleLabel) {
+                titleLabel.textContent = `Leg Point ${index + 1}`;
+            }
+        });
+    }
+
+function reindexAndSyncLegPointRows() {
+    reindexLegPointRows();
+    syncLegPointSequenceNumbers();
+}
+
+    if (legPointRows && typeof Sortable !== 'undefined') {
+        Sortable.create(legPointRows, {
+            animation: 150,
+            handle: '.leg-point-drag-handle',
+            draggable: '.leg-point-row',
+            ghostClass: 'bg-blue-50',
+            chosenClass: 'bg-slate-50',
+            onEnd: function () {
+                reindexAndSyncLegPointRows();
+                isDirty = true;
+                document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
+            }
+        });
+
+        reindexAndSyncLegPointRows();
+    }
+
     function removeEmptyLegPointMessage() {
         if (!legPointRows) return;
 
@@ -208,36 +247,38 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (addLegPointRowButton && legPointRows) {
         addLegPointRowButton.addEventListener('click', function () {
-            const index = legPointRows.querySelectorAll('.leg-point-row').length;
-            const template = document.getElementById('leg-point-row-template');
+        const index = legPointRows.querySelectorAll('.leg-point-row').length;
+        const template = document.getElementById('leg-point-row-template');
 
-            if (!template) return;
+        if (!template) return;
 
-            const html = template.innerHTML
-                .replaceAll('__INDEX__', index)
-                .replaceAll('__SEQ__', index + 1);
+        const html = template.innerHTML
+            .replaceAll('__INDEX__', index)
+            .replaceAll('__SEQ__', index + 1);
 
-            const tempWrapper = document.createElement('div');
-            tempWrapper.innerHTML = html.trim();
+        const tempWrapper = document.createElement('div');
+        tempWrapper.innerHTML = html.trim();
 
-            const row = tempWrapper.firstElementChild;
-            removeEmptyLegPointMessage();
-            legPointRows.appendChild(row);
+        const row = tempWrapper.firstElementChild;
+        removeEmptyLegPointMessage();
+        legPointRows.appendChild(row);
 
-            document.dispatchEvent(new CustomEvent('trip-leg:leg-point-row-added', {
-                detail: { row }
-            }));
+        reindexAndSyncLegPointRows();
 
-            isDirty = true;
-            document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
-        });
+        document.dispatchEvent(new CustomEvent('trip-leg:leg-point-row-added', {
+            detail: { row }
+        }));
+
+        isDirty = true;
+        document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
+    });
 
         legPointRows.addEventListener('click', function (event) {
             const button = event.target.closest('.remove-leg-point-row');
             if (!button) return;
 
             button.closest('.leg-point-row').remove();
-            reindexLegPointRows();
+            reindexAndSyncLegPointRows();
             isDirty = true;
             document.dispatchEvent(new CustomEvent('trip-leg:selection-updated'));
         });

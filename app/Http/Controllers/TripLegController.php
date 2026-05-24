@@ -266,44 +266,45 @@ class TripLegController extends Controller
     }
 
     public function update(Request $request, Trip $trip, TripLeg $tripLeg)
-    {
-        abort_unless((int) $tripLeg->tripid === (int) $trip->id, 404);
+{
+    abort_unless((int) $tripLeg->tripid === (int) $trip->id, 404);
 
-        $validated = $request->validate([
-            'legnumber' => ['required', 'integer', 'min:1'],
-            'startdate' => ['nullable', 'date'],
-            'enddate' => ['nullable', 'date', 'after_or_equal:startdate'],
-            'nightsplanned' => ['nullable', 'integer', 'min:0'],
-            'fromplaceid' => ['nullable', 'integer', 'exists:places,id'],
-            'fromdestinationid' => ['nullable', 'integer', 'exists:destinations,id'],
-            'fromdestinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
-            'toplaceid' => ['nullable', 'integer', 'exists:places,id'],
-            'todestinationid' => ['nullable', 'integer', 'exists:destinations,id'],
-            'todestinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
-            'title' => ['nullable', 'string', 'max:200'],
-            'description' => ['nullable', 'string'],
-            'distancekm' => ['nullable', 'numeric', 'min:0'],
-            'elevationgainm' => ['nullable', 'numeric', 'min:0'],
-            'elevationlossm' => ['nullable', 'numeric', 'min:0'],
-            'drivingnotes' => ['nullable', 'string'],
-            'planningnotes' => ['nullable', 'string'],
-            'actualnotes' => ['nullable', 'string'],
-            'sortorder' => ['nullable', 'integer', 'min:0'],
-            'vehicles' => ['nullable', 'array'],
-            'vehicles.*.vehicleid' => ['nullable', 'integer', 'exists:vehicles,id'],
-            'vehicles.*.vehiclerole' => ['nullable', 'string', 'max:50'],
-            'vehicles.*.sortorder' => ['nullable', 'integer', 'min:0'],
-            'leg_points' => ['nullable', 'array'],
-            'leg_points.*.id' => ['nullable', 'integer'],
-            'leg_points.*.sequence_no' => ['nullable', 'integer', 'min:1'],
-            'leg_points.*.pointtype' => ['nullable', 'string', 'max:50'],
-            'leg_points.*.title' => ['nullable', 'string', 'max:255'],
-            'leg_points.*.placeid' => ['nullable', 'integer', 'exists:places,id'],
-            'leg_points.*.destinationid' => ['nullable', 'integer', 'exists:destinations,id'],
-            'leg_points.*.destinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
-            'leg_points.*.notes' => ['nullable', 'string'],
-        ]);
+    $validated = $request->validate([
+        'legnumber' => ['required', 'integer', 'min:1'],
+        'startdate' => ['nullable', 'date'],
+        'enddate' => ['nullable', 'date', 'after_or_equal:startdate'],
+        'nightsplanned' => ['nullable', 'integer', 'min:0'],
+        'fromplaceid' => ['nullable', 'integer', 'exists:places,id'],
+        'fromdestinationid' => ['nullable', 'integer', 'exists:destinations,id'],
+        'fromdestinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
+        'toplaceid' => ['nullable', 'integer', 'exists:places,id'],
+        'todestinationid' => ['nullable', 'integer', 'exists:destinations,id'],
+        'todestinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
+        'title' => ['nullable', 'string', 'max:200'],
+        'description' => ['nullable', 'string'],
+        'distancekm' => ['nullable', 'numeric', 'min:0'],
+        'elevationgainm' => ['nullable', 'numeric', 'min:0'],
+        'elevationlossm' => ['nullable', 'numeric', 'min:0'],
+        'drivingnotes' => ['nullable', 'string'],
+        'planningnotes' => ['nullable', 'string'],
+        'actualnotes' => ['nullable', 'string'],
+        'sortorder' => ['nullable', 'integer', 'min:0'],
+        'vehicles' => ['nullable', 'array'],
+        'vehicles.*.vehicleid' => ['nullable', 'integer', 'exists:vehicles,id'],
+        'vehicles.*.vehiclerole' => ['nullable', 'string', 'max:50'],
+        'vehicles.*.sortorder' => ['nullable', 'integer', 'min:0'],
+        'leg_points' => ['nullable', 'array'],
+        'leg_points.*.id' => ['nullable', 'integer'],
+        'leg_points.*.sequence_no' => ['nullable', 'integer', 'min:1'],
+        'leg_points.*.pointtype' => ['nullable', 'string', 'max:50'],
+        'leg_points.*.title' => ['nullable', 'string', 'max:255'],
+        'leg_points.*.placeid' => ['nullable', 'integer', 'exists:places,id'],
+        'leg_points.*.destinationid' => ['nullable', 'integer', 'exists:destinations,id'],
+        'leg_points.*.destinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
+        'leg_points.*.notes' => ['nullable', 'string'],
+    ]);
 
+    DB::transaction(function () use ($validated, $tripLeg) {
         $tripLeg->update(collect($validated)->except('vehicles', 'leg_points')->toArray());
 
         $vehicleSync = [];
@@ -330,39 +331,71 @@ class TripLegController extends Controller
                     || !empty($row['title'])
                     || !empty($row['notes']);
             })
-            ->values();
+            ->values()
+            ->map(function ($row, $index) {
+                return [
+                    'id' => $row['id'] ?? null,
+                    'sequence_no' => $index + 1,
+                    'pointtype' => $row['pointtype'] ?? 'route_anchor',
+                    'title' => $row['title'] ?? null,
+                    'placeid' => $row['placeid'] ?: null,
+                    'destinationid' => $row['destinationid'] ?: null,
+                    'destinationitemid' => $row['destinationitemid'] ?: null,
+                    'notes' => $row['notes'] ?? null,
+                ];
+            });
 
-        $existingIds = $tripLeg->legPoints()->pluck('id')->all();
-        $submittedIds = $legPointRows->pluck('id')->filter()->map(fn ($id) => (int) $id)->all();
+        $existingIds = $tripLeg->legPoints()->pluck('id')->map(fn ($id) => (int) $id)->all();
 
-        $idsToDelete = array_diff($existingIds, $submittedIds);
+        $submittedExistingIds = $legPointRows
+            ->pluck('id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->all();
 
-        if (!empty($idsToDelete)) {
-            $tripLeg->legPoints()->whereIn('id', $idsToDelete)->delete();
+        $idsToDelete = array_values(array_diff($existingIds, $submittedExistingIds));
+
+        if (!empty($submittedExistingIds)) {
+            $tempBase = 1000;
+
+            foreach ($submittedExistingIds as $offset => $id) {
+                $tripLeg->legPoints()
+                    ->where('id', $id)
+                    ->update([
+                        'sequence_no' => $tempBase + $offset,
+                    ]);
+            }
         }
 
-        foreach ($legPointRows as $index => $row) {
+        foreach ($legPointRows as $row) {
             $payload = [
-                'sequence_no' => $row['sequence_no'] ?? ($index + 1),
-                'pointtype' => $row['pointtype'] ?? 'route_anchor',
-                'title' => $row['title'] ?? null,
-                'placeid' => $row['placeid'] ?: null,
-                'destinationid' => $row['destinationid'] ?: null,
-                'destinationitemid' => $row['destinationitemid'] ?: null,
-                'notes' => $row['notes'] ?? null,
+                'sequence_no' => $row['sequence_no'],
+                'pointtype' => $row['pointtype'],
+                'title' => $row['title'],
+                'placeid' => $row['placeid'],
+                'destinationid' => $row['destinationid'],
+                'destinationitemid' => $row['destinationitemid'],
+                'notes' => $row['notes'],
             ];
 
             if (!empty($row['id'])) {
-                $tripLeg->legPoints()->where('id', $row['id'])->update($payload);
+                $tripLeg->legPoints()
+                    ->where('id', $row['id'])
+                    ->update($payload);
             } else {
                 $tripLeg->legPoints()->create($payload);
             }
         }
 
-        return redirect()
-            ->route('trips.legs.index', $trip)
-            ->with('success', 'Trip leg updated successfully.');
-    }
+        if (!empty($idsToDelete)) {
+            $tripLeg->legPoints()->whereIn('id', $idsToDelete)->delete();
+        }
+    });
+
+    return redirect()
+        ->route('trips.legs.index', $trip)
+        ->with('success', 'Trip leg updated successfully.');
+}
 
     public function destroy(Trip $trip, TripLeg $tripLeg)
     {

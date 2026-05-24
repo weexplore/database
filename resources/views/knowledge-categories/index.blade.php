@@ -752,86 +752,88 @@
                                                 @endforelse
 
                                                 <tr class="bg-blue-50">
-                                                    <td class="px-3 py-2">
-                                                        <input type="text"
-                                                               name="new[itemname]"
-                                                               value="{{ old('new.itemname') }}"
-                                                               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                                               placeholder="New knowledge item">
-                                                    </td>
-
-                                                    <td class="px-3 py-2 min-w-[150px]">
-                                                        <select name="new[itemtype]"
-                                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                                            <option value="">Select type</option>
-                                                            @foreach($itemTypes as $itemType)
-                                                                <option value="{{ $itemType->id }}"
-                                                                    @selected((string) old('new.itemtype') === (string) $itemType->id)>
-                                                                    {{ $itemType->typename }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                        <input type="hidden" name="new[primarycategoryid]" value="{{ $selectedCategory->id }}">
-                                                    </td>
-
-                                                    <td class="px-3 py-2 min-w-[160px]">
-                                                        <select name="new[itemstatus]"
-                                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                                            <option value="">Select status</option>
-                                                            @foreach($itemStatusOptions as $value => $label)
-                                                                <option value="{{ $value }}"
-                                                                    @selected(old('new.itemstatus', 'active') === $value)>
-                                                                    {{ $label }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                    </td>
-                                                    
-                                                    <td class="px-3 py-2">
-                                                        <textarea name="new[summary]"
-                                                                  rows="2"
-                                                                  class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                                                  placeholder="Short summary">{{ old('new.summary') }}</textarea>
-                                                    </td>
-
-                                                    <td class="px-3 py-2" [160px]>
-                                                        <input type="number"
-                                                               name="new[sortorder]"
-                                                               value="{{ old('new.sortorder', 0) }}"
-                                                               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                                               min="0">
-                                                    </td>
-
-                                                    <td class="px-3 py-2">
-                                                        <input type="date"
-                                                               name="new[nextreviewdate]"
-                                                               value="{{ old('new.nextreviewdate') }}"
-                                                               class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                                    </td>
-
-
-                                                    <td class="px-3 py-2 text-center">
-                                                        <input type="hidden" name="new[isfeatured]" value="0">
-                                                        <input type="checkbox"
-                                                               name="new[isfeatured]"
-                                                               value="1"
-                                                               class="rounded border-gray-300 text-blue-600 shadow-sm"
-                                                               @checked(old('new.isfeatured', false))>
-                                                    </td>
-
-                                                    <td class="px-3 py-2 text-center">
-                                                        <input type="hidden" name="new[isactive]" value="0">
-                                                        <input type="checkbox"
-                                                               name="new[isactive]"
-                                                               value="1"
-                                                               class="rounded border-gray-300 text-blue-600 shadow-sm"
-                                                               @checked(old('new.isactive', true))>
-                                                    </td>
-
-                                                    <td class="px-3 py-2 text-sm text-gray-400 whitespace-nowrap">
-                                                        New row
-                                                    </td>
-                                                </tr>
+    <td class="px-3 py-2 text-center align-top text-gray-400">
+        <span class="inline-flex w-5 h-5"></span>
+    </td>
+    <td class="px-3 py-2">
+        <input
+            type="text"
+            name="new[itemname]"
+            value="{{ old('new.itemname') }}"
+            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+            placeholder="New knowledge item"
+        >
+    </td>
+    <td class="px-3 py-2 min-w-[150px]">
+        <select name="new[itemtype]" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+            <option value="">Select type</option>
+            @foreach ($itemTypes as $itemType)
+                <option value="{{ $itemType->id }}" @selected((string) old('new.itemtype') === (string) $itemType->id)>
+                    {{ $itemType->typename }}
+                </option>
+            @endforeach
+        </select>
+        <input type="hidden" name="new[primarycategoryid]" value="{{ $selectedCategory->id }}">
+    </td>
+    <td class="px-3 py-2 min-w-[160px]">
+        <select name="new[itemstatus]" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+            <option value="">Select status</option>
+            @foreach ($itemStatusOptions as $value => $label)
+                <option value="{{ $value }}" @selected(old('new.itemstatus', 'active') === $value)>
+                    {{ $label }}
+                </option>
+            @endforeach
+        </select>
+    </td>
+    <td class="px-3 py-2">
+        <textarea
+            name="new[summary]"
+            rows="2"
+            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+            placeholder="Short summary"
+        >{{ old('new.summary') }}</textarea>
+    </td>
+    <td class="px-3 py-2 w-[160px]">
+        <input
+            type="number"
+            name="new[sortorder]"
+            value="{{ old('new.sortorder', 0) }}"
+            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+            min="0"
+        >
+    </td>
+    <td class="px-3 py-2">
+        <input
+            type="date"
+            name="new[nextreviewdate]"
+            value="{{ old('new.nextreviewdate') }}"
+            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+        >
+    </td>
+    <td class="px-3 py-2 text-center">
+        <input type="hidden" name="new[isfeatured]" value="0">
+        <input
+            type="checkbox"
+            name="new[isfeatured]"
+            value="1"
+            class="rounded border-gray-300 text-blue-600 shadow-sm"
+            @checked(old('new.isfeatured', false))
+        >
+    </td>
+    <td class="px-3 py-2 text-center">
+        <input type="hidden" name="new[isactive]" value="0">
+        <input
+            type="checkbox"
+            name="new[isactive]"
+            value="1"
+            class="rounded border-gray-300 text-blue-600 shadow-sm"
+            @checked(old('new.isactive', true))
+        >
+    </td>
+    <td class="px-3 py-2 text-sm text-gray-400 whitespace-nowrap">
+        New row
+    </td>
+</tr>
                                             </tbody>
                                         </table>
                                     </div>
@@ -882,44 +884,44 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const itemsForm = document.getElementById('knowledge-category-items-form');
-    if (!itemsForm) {
-        return;
-    }
+    document.addEventListener('DOMContentLoaded', function () {
+        const itemsForm = document.getElementById('knowledge-category-items-form');
+        if (!itemsForm) return;
 
-    const tbody = itemsForm.querySelector('table tbody');
-    if (!tbody || typeof Sortable === 'undefined') {
-        return;
-    }
+        const tbody = itemsForm.querySelector('table tbody');
+        if (!tbody || typeof Sortable === 'undefined') return;
 
-    function syncKnowledgeItemSortOrder() {
-        const rows = Array.from(tbody.querySelectorAll('tr.knowledge-item-row'));
+        let isSubmittingReorder = false;
 
-        rows.forEach((row, index) => {
-            const itemId = row.dataset.itemId;
-            if (!itemId) {
-                return;
-            }
+        function syncKnowledgeItemSortOrder() {
+            const rows = Array.from(tbody.querySelectorAll('tr.knowledge-item-row'));
 
-            const sortInput = row.querySelector(`input[name="existing[${itemId}][sortorder]"]`);
-            if (sortInput) {
-                sortInput.value = index + 1;
+            rows.forEach((row, index) => {
+                const itemId = row.dataset.itemId;
+                if (!itemId) return;
+
+                const sortInput = row.querySelector(`input[name="existing[${itemId}][sortorder]"]`);
+                if (sortInput) {
+                    sortInput.value = index + 1;
+                }
+            });
+        }
+
+        Sortable.create(tbody, {
+            animation: 150,
+            handle: '.knowledge-item-drag-handle',
+            draggable: 'tr.knowledge-item-row',
+            ghostClass: 'bg-blue-50',
+            onEnd: function () {
+                if (isSubmittingReorder) return;
+
+                syncKnowledgeItemSortOrder();
+                isSubmittingReorder = true;
+                itemsForm.submit();
             }
         });
-    }
 
-    Sortable.create(tbody, {
-        animation: 150,
-        handle: '.knowledge-item-drag-handle',
-        draggable: 'tr.knowledge-item-row',
-        ghostClass: 'bg-blue-50',
-        onEnd: function () {
-            syncKnowledgeItemSortOrder();
-        },
+        syncKnowledgeItemSortOrder();
     });
-
-    syncKnowledgeItemSortOrder();
-});
 </script>
 </x-app-layout>

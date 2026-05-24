@@ -24,14 +24,6 @@
                     {{ $knowledgeItem->notes->count() }} total
                 </span>
 
-                @if($knowledgeItem->notes->count() > 1 && !isset($editingNoteId) && !($showAddNote ?? false))
-                    <button type="button"
-                            id="save-knowledge-notes-order-button"
-                            class="inline-flex items-center px-3 py-1.5 bg-slate-700 text-white rounded text-sm hover:bg-slate-800">
-                        Save Order
-                    </button>
-                @endif
-
                 @if(!($showAddNote ?? false))
                     <a href="{{ route('knowledge.items.edit', [
                             'knowledgeItem' => $knowledgeItem,
@@ -409,7 +401,7 @@
         const textareas = Array.from(document.querySelectorAll('.js-auto-resize-textarea'));
         const list = document.getElementById('knowledge-notes-list');
         const reorderFields = document.getElementById('knowledge-notes-reorder-fields');
-        const saveOrderButton = document.getElementById('save-knowledge-notes-order-button');
+        const reorderForm = document.getElementById('knowledge-notes-reorder-form');
         const noteContentBlocks = Array.from(document.querySelectorAll('.knowledge-note-content'));
 
         function getMinHeight(textarea) {
@@ -537,7 +529,9 @@
             textareas.forEach(autoResize);
         });
 
-        if (list && typeof Sortable !== 'undefined') {
+        if (list && reorderFields && reorderForm && typeof Sortable !== 'undefined') {
+            let isSubmitting = false;
+
             Sortable.create(list, {
                 animation: 150,
                 handle: '.knowledge-note-drag-handle',
@@ -545,20 +539,19 @@
                 ghostClass: 'bg-blue-50',
                 chosenClass: 'bg-slate-50',
                 onEnd: function () {
+                    if (isSubmitting) {
+                        return;
+                    }
+
                     syncNoteSortOrderLabels();
                     buildReorderFields();
+                    isSubmitting = true;
+                    reorderForm.submit();
                 }
             });
 
             syncNoteSortOrderLabels();
             buildReorderFields();
-        }
-
-        if (saveOrderButton) {
-            saveOrderButton.addEventListener('click', function () {
-                buildReorderFields();
-                document.getElementById('knowledge-notes-reorder-form').submit();
-            });
         }
     });
     </script>

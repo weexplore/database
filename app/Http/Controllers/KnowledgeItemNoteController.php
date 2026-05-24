@@ -7,6 +7,8 @@ use App\Models\KnowledgeNote;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
+
 
 class KnowledgeItemNoteController extends Controller
 {
@@ -86,4 +88,44 @@ class KnowledgeItemNoteController extends Controller
         ])
         ->with('success', 'Note deleted successfully.');
         }
+
+        
+public function reorder(Request $request, KnowledgeItem $knowledgeItem)
+{
+        $validated = $request->validate([
+            'note_order' => ['required', 'array'],
+            'note_order.*' => ['required', 'integer', 'min:1'],
+        ]);
+
+    $noteOrder = $validated['note_order'];
+
+    $noteIds = $knowledgeItem->notes()
+        ->whereIn('id', array_keys($noteOrder))
+        ->pluck('id')
+        ->map(fn ($id) => (int) $id)
+        ->all();
+
+    DB::transaction(function () use ($knowledgeItem, $noteOrder, $noteIds) {
+        foreach ($noteOrder as $noteId => $sortOrder) {
+            $noteId = (int) $noteId;
+
+            if (!in_array($noteId, $noteIds, true)) {
+                continue;
+            }
+
+            $knowledgeItem->notes()
+                ->where('id', $noteId)
+                ->update([
+                    'sortorder' => (int) $sortOrder,
+                ]);
+        }
+    });
+
+    return redirect()
+        ->route('knowledge.items.edit', [
+            'knowledgeItem' => $knowledgeItem,
+            'tab' => 'notes',
+        ])
+        ->with('success', 'Note order updated.');
+}
 }

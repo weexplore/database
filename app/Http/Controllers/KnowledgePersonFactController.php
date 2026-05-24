@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-namespace App\Http\Controllers;
-
 use App\Models\KnowledgeItem;
 use App\Models\KnowledgePersonFact;
 use App\Models\Place;
@@ -153,22 +151,25 @@ class KnowledgePersonFactController extends Controller
     }
 
     public function reorder(Request $request, KnowledgeItem $knowledgeItem): RedirectResponse
-    {
-        $validated = $request->validate([
-            'ordered_ids' => ['required', 'array'],
-            'ordered_ids.*' => ['integer'],
-        ]);
+{
+    $validated = $request->validate([
+        'facts' => ['required', 'array'],
+        'facts.*.sortorder' => ['required', 'integer', 'min:1'],
+    ]);
 
-        foreach ($validated['ordered_ids'] as $index => $id) {
-            KnowledgePersonFact::query()
-                ->where('knowledgeitemid', $knowledgeItem->id)
-                ->where('id', $id)
-                ->update(['sortorder' => $index + 1]);
+    foreach ($validated['facts'] as $factId => $row) {
+        $fact = $knowledgeItem->personFacts()->whereKey($factId)->first();
+
+        if ($fact) {
+            $fact->update([
+                'sortorder' => $row['sortorder'],
+            ]);
         }
-
-        return redirect()->route('knowledge.items.edit', [
-            'knowledgeItem' => $knowledgeItem,
-            'tab' => 'family-history',
-        ])->with('success', 'Person facts reordered.');
     }
+
+    return redirect()->route('knowledge.items.edit', [
+        'knowledgeItem' => $knowledgeItem,
+        'tab' => 'family-history',
+    ])->with('success', 'Person fact order updated successfully.');
+}
 }
