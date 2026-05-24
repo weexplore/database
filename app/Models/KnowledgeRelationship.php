@@ -119,21 +119,21 @@ class KnowledgeRelationship extends Model
     }
 
     public function sortOrderFor(KnowledgeItem|int $knowledgeItem): int
-    {
-        $knowledgeItemId = $knowledgeItem instanceof KnowledgeItem
-            ? (int) $knowledgeItem->id
-            : (int) $knowledgeItem;
+{
+    $knowledgeItemId = $knowledgeItem instanceof KnowledgeItem
+        ? (int) $knowledgeItem->id
+        : (int) $knowledgeItem;
 
-        if ((int) $this->fromitemid === $knowledgeItemId) {
-            return (int) ($this->outboundsortorder ?? 0);
-        }
-
-        if ((int) $this->toitemid === $knowledgeItemId) {
-            return (int) ($this->inboundsortorder ?? 0);
-        }
-
-        return 0;
+    if ((int) $this->fromitemid === $knowledgeItemId) {
+        return (int) ($this->outboundsortorder ?? 0);
     }
+
+    if ((int) $this->toitemid === $knowledgeItemId) {
+        return (int) ($this->inboundsortorder ?? 0);
+    }
+
+    return 0;
+}
 
     public function setSortOrderFor(KnowledgeItem|int $knowledgeItem, int $sortOrder): void
     {

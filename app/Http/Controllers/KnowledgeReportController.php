@@ -274,104 +274,7 @@ class KnowledgeReportController extends Controller
                 ])
                 ->values()
                 ->map(function ($item) {
-                    $displayRelationships = $item->outgoingRelationships
-                        ->toBase()
-                        ->map(function ($relationship) use ($item) {
-                            return [
-                                'relationship' => $relationship,
-                                'direction' => 'outgoing',
-                                'relatedItem' => $relationship->toItem,
-                                'displayTypeLabel' => $relationship->relationshipTypeLabel(),
-                                'sortorder' => $relationship->sortOrderFor($item) ?? 0,
-                                'relatedSortName' => mb_strtolower($relationship->toItem?->itemname ?? 'zzzz'),
-                                'effectiveDate' => $relationship->effective_date,
-                            ];
-                        })
-                        ->merge(
-                            $item->incomingRelationships
-                                ->toBase()
-                                ->map(function ($relationship) use ($item) {
-                                    return [
-                                        'relationship' => $relationship,
-                                        'direction' => 'incoming',
-                                        'relatedItem' => $relationship->fromItem,
-                                        'displayTypeLabel' => $relationship->inverseRelationshipTypeLabel(),
-                                        'sortorder' => $relationship->sortOrderFor($item) ?? 0,
-                                        'relatedSortName' => mb_strtolower($relationship->fromItem?->itemname ?? 'zzzz'),
-                                        'effectiveDate' => $relationship->effective_date,
-                                    ];
-                                })
-                        )
-                        ->sortBy([
-                            ['sortorder', 'asc'],
-                            ['relatedSortName', 'asc'],
-                        ])
-                        ->values();
-
-                    $reportRelationships = $item->outgoingRelationships
-                        ->toBase()
-                        ->map(function ($relationship) use ($item) {
-                            return [
-                                'relationship' => $relationship,
-                                'direction' => 'outgoing',
-                                'relatedItem' => $relationship->toItem,
-                                'displayTypeLabel' => $relationship->relationshipTypeLabel(),
-                                'sortorder' => $relationship->sortOrderFor($item) ?? 0,
-                                'relatedSortName' => mb_strtolower($relationship->toItem?->itemname ?? 'zzzz'),
-                                'effectiveDate' => $relationship->effective_date,
-                                'relationshipFacts' => $relationship->relationshipFacts
-                                    ->sortBy([
-                                        ['sortorder', 'asc'],
-                                        ['datefrom', 'asc'],
-                                        ['id', 'asc'],
-                                    ])
-                                    ->values(),
-                            ];
-                        })
-                        ->merge(
-                            $item->incomingRelationships
-                                ->toBase()
-                                ->map(function ($relationship) use ($item) {
-                                    return [
-                                        'relationship' => $relationship,
-                                        'direction' => 'incoming',
-                                        'relatedItem' => $relationship->fromItem,
-                                        'displayTypeLabel' => $relationship->inverseRelationshipTypeLabel(),
-                                        'sortorder' => $relationship->sortOrderFor($item) ?? 0,
-                                        'relatedSortName' => mb_strtolower($relationship->fromItem?->itemname ?? 'zzzz'),
-                                        'effectiveDate' => $relationship->effective_date,
-                                        'relationshipFacts' => $relationship->relationshipFacts
-                                            ->sortBy([
-                                                ['sortorder', 'asc'],
-                                                ['datefrom', 'asc'],
-                                                ['id', 'asc'],
-                                            ])
-                                            ->values(),
-                                    ];
-                                })
-                        )
-                        ->sortBy([
-                            ['sortorder', 'asc'],
-                            ['relatedSortName', 'asc'],
-                        ])
-                        ->values();
-
-                    $item->setRelation('reportRelationships', $reportRelationships);
-
-                    $item->setRelation(
-                        'personFacts',
-                        $item->personFacts
-                            ->sortBy([
-                                ['sortorder', 'asc'],
-                                ['datefrom', 'asc'],
-                                ['id', 'asc'],
-                            ])
-                            ->values()
-                    );
-
-                    $item->setRelation('displayRelationships', $displayRelationships);
-
-                    return $item;
+                    return $this->prepareKnowledgeItemForReport($item);
                 });
 
             $category->setRelation('knowledgeItems', $items);
@@ -430,4 +333,204 @@ protected function collectDomainTreeIdsInDisplayOrder(int $domainId): array
         ->all();
 }
 
+public function knowledgeItemReferenceBook(Request $request, int $knowledgeItemId)
+{
+    $reviewOnly = $request->boolean('review_only');
+
+    $item = \App\Models\KnowledgeItem::query()
+        ->with([
+            'primaryCategory.domain',
+            'primaryCategory.parentCategory',
+            'parentItem',
+            'place',
+            'itemType',
+            'personFacts' => function ($query) {
+                $query->with('place')
+                    ->orderBy('sortorder')
+                    ->orderBy('datefrom')
+                    ->orderBy('id');
+            },
+            'personFacts.place',
+            'notes' => function ($query) {
+                $query->orderBy('sortorder')
+                    ->orderByDesc('reviewdate')
+                    ->orderByDesc('id');
+            },
+            'sources' => function ($query) {
+                $query->orderByDesc('retrievedon')
+                    ->orderByDesc('id');
+            },
+            'reviewLogs' => function ($query) {
+                $query->orderByDesc('reviewdate')
+                    ->orderByDesc('id');
+            },
+            'outgoingRelationships',
+            'outgoingRelationships.toItem.primaryCategory',
+            'outgoingRelationships.relationshipFacts' => function ($query) {
+                $query->with('place')
+                    ->orderBy('sortorder')
+                    ->orderBy('datefrom')
+                    ->orderBy('id');
+            },
+            'outgoingRelationships.relationshipFacts.place',
+            'incomingRelationships',
+            'incomingRelationships.fromItem.primaryCategory',
+            'incomingRelationships.relationshipFacts' => function ($query) {
+                $query->with('place')
+                    ->orderBy('sortorder')
+                    ->orderBy('datefrom')
+                    ->orderBy('id');
+            },
+            'incomingRelationships.relationshipFacts.place',
+            'attachments' => function ($query) {
+                $query->orderByDesc('isprimary')
+                    ->orderBy('originalfilename')
+                    ->orderBy('filename');
+            },
+            'bibleReferences' => function ($query) {
+                $query->orderBy('bookid')
+                    ->orderBy('chapterfrom')
+                    ->orderBy('versefrom');
+            },
+            'bibleReferences.book',
+            'bibleReferences.version',
+            'instrument',
+            'instrument.instrumentType',
+            'instrument.exchange',
+            'instrument.aliases' => function ($query) {
+                $query->orderBy('aliastype')
+                    ->orderBy('aliasvalue');
+            },
+            'instrument.priceObservations' => function ($query) {
+                $query->orderByDesc('observedon')
+                    ->orderByDesc('id');
+            },
+            'instrument.corporateActions' => function ($query) {
+                $query->orderByDesc('actiondate')
+                    ->orderByDesc('id');
+            },
+            'instrument.corporateActions.source',
+            'instrument.transactions' => function ($query) {
+                $query->orderByDesc('transactiondate')
+                    ->orderByDesc('id');
+            },
+            'instrument.transactions.portfolio',
+        ])
+        ->findOrFail($knowledgeItemId);
+
+    if ($reviewOnly && empty($item->nextreviewdate)) {
+        abort(404, 'This knowledge item does not have a review date.');
+    }
+
+    $item = $this->prepareKnowledgeItemForReport($item);
+
+    return view('reports.knowledge.items.reference-book', [
+        'knowledgeItem' => $item,
+        'reviewOnly' => $reviewOnly,
+        'returnTo' => $request->input('return_to', url()->previous()),
+        'reportTitle' => 'Knowledge Item Report – ' . $item->itemname,
+        'reportSubtitle' => 'Compiled reference report for a single knowledge item',
+    ]);
+}
+
+protected function prepareKnowledgeItemForReport($item)
+{
+    $displayRelationships = $item->outgoingRelationships
+        ->toBase()
+        ->map(function ($relationship) use ($item) {
+            return [
+                'relationship' => $relationship,
+                'direction' => 'outgoing',
+                'relatedItem' => $relationship->toItem,
+                'displayTypeLabel' => $relationship->relationshipTypeLabel(),
+                'sortorder' => $relationship->sortOrderFor($item) ?? 0,
+                'relatedSortName' => mb_strtolower($relationship->toItem?->itemname ?? 'zzzz'),
+                'effectiveDate' => $relationship->effective_date,
+            ];
+        })
+        ->merge(
+            $item->incomingRelationships
+                ->toBase()
+                ->map(function ($relationship) use ($item) {
+                    return [
+                        'relationship' => $relationship,
+                        'direction' => 'incoming',
+                        'relatedItem' => $relationship->fromItem,
+                        'displayTypeLabel' => $relationship->inverseRelationshipTypeLabel(),
+                        'sortorder' => $relationship->sortOrderFor($item) ?? 0,
+                        'relatedSortName' => mb_strtolower($relationship->fromItem?->itemname ?? 'zzzz'),
+                        'effectiveDate' => $relationship->effective_date,
+                    ];
+                })
+        )
+        ->sortBy([
+            ['sortorder', 'asc'],
+            ['relatedSortName', 'asc'],
+        ])
+        ->values();
+
+    $reportRelationships = $item->outgoingRelationships
+        ->toBase()
+        ->map(function ($relationship) use ($item) {
+            return [
+                'relationship' => $relationship,
+                'direction' => 'outgoing',
+                'relatedItem' => $relationship->toItem,
+                'displayTypeLabel' => $relationship->relationshipTypeLabel(),
+                'sortorder' => $relationship->sortOrderFor($item) ?? 0,
+                'relatedSortName' => mb_strtolower($relationship->toItem?->itemname ?? 'zzzz'),
+                'effectiveDate' => $relationship->effective_date,
+                'relationshipFacts' => $relationship->relationshipFacts
+                    ->sortBy([
+                        ['sortorder', 'asc'],
+                        ['datefrom', 'asc'],
+                        ['id', 'asc'],
+                    ])
+                    ->values(),
+            ];
+        })
+        ->merge(
+            $item->incomingRelationships
+                ->toBase()
+                ->map(function ($relationship) use ($item) {
+                    return [
+                        'relationship' => $relationship,
+                        'direction' => 'incoming',
+                        'relatedItem' => $relationship->fromItem,
+                        'displayTypeLabel' => $relationship->inverseRelationshipTypeLabel(),
+                        'sortorder' => $relationship->sortOrderFor($item) ?? 0,
+                        'relatedSortName' => mb_strtolower($relationship->fromItem?->itemname ?? 'zzzz'),
+                        'effectiveDate' => $relationship->effective_date,
+                        'relationshipFacts' => $relationship->relationshipFacts
+                            ->sortBy([
+                                ['sortorder', 'asc'],
+                                ['datefrom', 'asc'],
+                                ['id', 'asc'],
+                            ])
+                            ->values(),
+                    ];
+                })
+        )
+        ->sortBy([
+            ['sortorder', 'asc'],
+            ['relatedSortName', 'asc'],
+        ])
+        ->values();
+
+    $item->setRelation(
+        'personFacts',
+        $item->personFacts
+            ->sortBy([
+                ['sortorder', 'asc'],
+                ['datefrom', 'asc'],
+                ['id', 'asc'],
+            ])
+            ->values()
+    );
+
+    $item->setRelation('displayRelationships', $displayRelationships);
+    $item->setRelation('reportRelationships', $reportRelationships);
+
+    return $item;
+}
 }

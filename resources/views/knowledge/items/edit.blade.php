@@ -44,6 +44,15 @@
                         Family Tree Report
                     </a>
                 @endif
+                <a href="{{ route('reports.knowledge.items.reference-book', [
+                        'knowledgeItem' => $knowledgeItem,
+                        'return_to' => request('returnto', url()->full()),
+                    ]) }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+                    Item Report
+                </a>
                 <a href="{{ $returnTo }}"
                 class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
                     Back

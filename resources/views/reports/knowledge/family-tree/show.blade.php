@@ -33,10 +33,11 @@
             </button>
 
             @if(!empty($returnTo))
-                <a href="{{ $returnTo }}"
-                   class="button-link inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded text-sm">
-                    Back
-                </a>
+                <button type="button"
+                        onclick="window.close(); setTimeout(() => history.back(), 150);"
+                        class="inline-flex items-center rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-300">
+                    Close
+                </button>
             @endif
         </div>
     </div>
@@ -54,7 +55,7 @@
                 @if($focusParents->get(0))
                     <div class="tree-card">
                         <div class="tree-label">Parent</div>
-                        <div class="tree-name">{{ $focusParents[0]->tree_name }}</div>
+                        <div class="tree-name">{{ $focusParents[0]->itemname }}</div>
                         @if($formatFact($focusParents[0]->tree_birth))
                             <div class="tree-meta" style="margin-top: .5rem;">B: {{ $formatFact($focusParents[0]->tree_birth) }}</div>
                         @endif
@@ -69,7 +70,7 @@
                 @if($focusParents->get(1))
                     <div class="tree-card">
                         <div class="tree-label">Parent</div>
-                        <div class="tree-name">{{ $focusParents[1]->tree_name }}</div>
+                        <div class="tree-name">{{ $focusParents[1]->itemname }}</div>
                         @if($formatFact($focusParents[1]->tree_birth))
                             <div class="tree-meta" style="margin-top: .5rem;">B: {{ $formatFact($focusParents[1]->tree_birth) }}</div>
                         @endif
@@ -87,7 +88,7 @@
             <div class="span-6">
                 <div class="tree-card">
                     <div class="tree-label">Focus Person</div>
-                    <div class="tree-name">{{ $focusPerson->tree_name }}</div>
+                    <div class="tree-name">{{ $focusPerson->itemname }}</div>
                     @if($formatFact($focusPerson->tree_birth ?? null))
                         <div class="tree-meta" style="margin-top: .5rem;">B: {{ $formatFact($focusPerson->tree_birth) }}</div>
                     @endif
@@ -122,7 +123,7 @@
                                 @foreach($spouseParents as $spouseParent)
                                     <div class="tree-card">
                                         <div class="tree-label">Spouse Parent</div>
-                                        <div class="tree-name">{{ $spouseParent->tree_name }}</div>
+                                        <div class="tree-name">{{ $spouseParent->itemname }}</div>
                                         @if($formatFact($spouseParent->tree_birth ?? null))
                                             <div class="tree-meta" style="margin-top: .5rem;">B: {{ $formatFact($spouseParent->tree_birth) }}</div>
                                         @endif
@@ -153,7 +154,7 @@
                     <div class="span-5">
                         <div class="tree-card">
                             <div class="tree-label">Spouse</div>
-                            <div class="tree-name">{{ $group['spouse']->tree_name }}</div>
+                            <div class="tree-name">{{ $group['spouse']->itemname }}</div>
                             @if($formatFact($group['spouse']->tree_birth ?? null))
                                 <div class="tree-meta" style="margin-top: .5rem;">B: {{ $formatFact($group['spouse']->tree_birth) }}</div>
                             @endif
@@ -181,7 +182,7 @@
                             <div class="tree-card">
                                 <div>
                                     <div class="tree-label">Child</div>
-                                    <div class="tree-name">{{ $child->tree_name }}</div>
+                                    <div class="tree-name">{{ $child->itemname }}</div>
                                     @if($formatFact($child->tree_birth ?? null))
                                         <div class="tree-meta" style="margin-top: .5rem;">B: {{ $formatFact($child->tree_birth) }}</div>
                                     @endif
@@ -193,7 +194,7 @@
                                 @if($childSpouse)
                                     <div style="border-top: 1px solid #e5e7eb; padding-top: .75rem; margin-top: .75rem;">
                                         <div class="tree-label">Spouse</div>
-                                        <div class="tree-name">{{ $childSpouse->tree_name }}</div>
+                                        <div class="tree-name">{{ $childSpouse->itemname }}</div>
                                         @if($formatFact($childSpouse->tree_birth ?? null))
                                             <div class="tree-meta" style="margin-top: .5rem;">B: {{ $formatFact($childSpouse->tree_birth) }}</div>
                                         @endif

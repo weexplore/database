@@ -412,15 +412,53 @@ class KnowledgeFamilyTreeReportController extends Controller
 
 protected function findChildrenForCouple($focusPerson, $spouse): Collection
 {
-    $focusChildren = $this->findChildrenForParent($focusPerson);
-    $spouseChildren = $this->findChildrenForParent($spouse);
+    $focusChildRelationships = $this->sortRelationshipsForPerson(
+        $focusPerson->outgoingRelationships
+            ->merge($focusPerson->incomingRelationships)
+            ->filter(function ($relationship) {
+                return in_array(
+                    $this->normaliseRelationshipType($relationship->relationshiptype),
+                    ['parent-of', 'child-of'],
+                    true
+                );
+            }),
+        $focusPerson
+    );
 
-    $sharedChildIds = $focusChildren->pluck('id')
-        ->intersect($spouseChildren->pluck('id'))
-        ->values();
+    $focusSortMap = $focusChildRelationships
+        ->mapWithKeys(function ($relationship) use ($focusPerson) {
+            $child = (int) $relationship->fromitemid === (int) $focusPerson->id
+                ? $relationship->toItem
+                : $relationship->fromItem;
 
-    return $focusChildren
-        ->filter(fn ($child) => $sharedChildIds->contains($child->id))
+            if (! $child) {
+                return [];
+            }
+
+            return [
+                (int) $child->id => $relationship->sortOrderFor($focusPerson) ?? 999999,
+            ];
+        });
+
+    $spouseChildIds = $this->findChildrenForParent($spouse)
+        ->pluck('id')
+        ->map(fn ($id) => (int) $id);
+
+    return $focusChildRelationships
+        ->map(function ($relationship) use ($focusPerson) {
+            return (int) $relationship->fromitemid === (int) $focusPerson->id
+                ? $relationship->toItem
+                : $relationship->fromItem;
+        })
+        ->filter()
+        ->reject(fn ($child) => (int) $child->id === (int) $focusPerson->id)
+        ->filter(fn ($child) => $spouseChildIds->contains((int) $child->id))
+        ->unique('id')
+        ->sortBy([
+            [fn ($child) => $focusSortMap[(int) $child->id] ?? 999999, 'asc'],
+            [fn ($child) => mb_strtolower($child->itemname ?? ''), 'asc'],
+            ['id', 'asc'],
+        ])
         ->values()
         ->map(function ($child) {
             $child = $this->decoratePerson($child);

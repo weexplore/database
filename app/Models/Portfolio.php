@@ -19,7 +19,6 @@ class Portfolio extends Model
         'ownernotes',
         'isactive',
     ];
-
     protected $casts = [
         'isactive' => 'boolean',
     ];

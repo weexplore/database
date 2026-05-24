@@ -202,6 +202,7 @@ Route::prefix('reports')->name('reports.')->group(function () {
         ->name('knowledge.categories.tree-reference-book');
     Route::get('knowledge/family-tree', [KnowledgeFamilyTreeReportController::class, 'show'])
         ->name('knowledge.family-tree');
+    Route::get('knowledge/items/{knowledgeItem}/reference-book',[KnowledgeReportController::class, 'knowledgeItemReferenceBook'])->name('knowledge.items.reference-book');
 });
 
 /*
@@ -397,6 +398,9 @@ Route::prefix('knowledge')->name('knowledge.')->group(function () {
 
         Route::post('{knowledgeItem}/notes/reorder', [KnowledgeItemNoteController::class, 'reorder'])->name('notes.reorder');   
         Route::post('{knowledgeItem}/person-facts/reorder', [KnowledgePersonFactController::class, 'reorder'])->name('person-facts.reorder');
+        Route::post('{knowledgeItem}/person-facts/reorder/debug', function () {
+            return 'debug-route-hit';
+        })->name('person-facts.reorder-debug');
         Route::post('{knowledgeItem}/relationships/{knowledgeRelationship}/facts/reorder', [KnowledgeRelationshipFactController::class, 'reorder'])->name('relationship-facts.reorder'); 
 
         Route::resource('{knowledgeItem}/notes', KnowledgeItemNoteController::class)

@@ -168,7 +168,7 @@
                             <div class="space-y-1 min-w-0 flex-1">
                                 <div class="text-sm font-semibold text-gray-900">
                                     @if($relatedItem)
-                                        {{ $relatedItem->primaryCategory?->categoryname ?? 'Uncategorised' }}: {{ $relatedItem->itemname }}
+                                        {{ $relatedItem->itemname }}
                                     @else
                                         Missing related item
                                     @endif
@@ -240,7 +240,7 @@
                                             @foreach($relationshipItems as $item)
                                                 <option value="{{ $item->id }}"
                                                     @selected((string) old('fromitemid', $relationship->fromitemid) === (string) $item->id)>
-                                                    {{ $item->primaryCategory?->categoryname ?? 'Uncategorised' }}: {{ $item->itemname }}
+                                                    {{ $item->itemname }}
                                                 </option>
                                             @endforeach
                                         </select>

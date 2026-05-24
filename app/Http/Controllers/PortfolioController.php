@@ -64,14 +64,14 @@ class PortfolioController extends Controller
             'existing.*.portfoliotype' => ['required', Rule::in($portfolioTypes)],
             'existing.*.basecurrencycode' => ['required', 'string', 'size:3'],
             'existing.*.ownernotes' => ['nullable', 'string'],
-            'existing.*.isactive' => ['nullable', 'boolean'],
+            'existing.*.isactive' => ['nullable', 'in:0,1'],
 
             'new' => ['nullable', 'array'],
             'new.portfolioname' => ['nullable', 'string', 'max:150'],
             'new.portfoliotype' => ['nullable', Rule::in($portfolioTypes)],
             'new.basecurrencycode' => ['nullable', 'string', 'size:3'],
             'new.ownernotes' => ['nullable', 'string'],
-            'new.isactive' => ['nullable', 'boolean'],
+            'new.isactive' => ['nullable', 'in:0,1'],
 
             'search' => ['nullable', 'string'],
             'type' => ['nullable', Rule::in($portfolioTypes)],
@@ -131,7 +131,7 @@ class PortfolioController extends Controller
             $newCurrency = strtoupper(trim((string) ($new['basecurrencycode'] ?? '')));
             $newNotes = trim((string) ($new['ownernotes'] ?? ''));
 
-            $hasNewRow = $newName !== '' || $newType !== '' || $newCurrency !== '';
+            $hasNewRow = $newName !== '' || $newType !== '' || $newNotes !== '';
 
             if ($hasNewRow) {
                 if ($newName === '') {

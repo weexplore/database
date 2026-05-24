@@ -557,28 +557,30 @@ return redirect()->route('knowledge-categories.index', [
         )->with('success', 'Knowledge item updated.');
     }
 
-    public function destroy(KnowledgeItem $knowledgeItem): RedirectResponse
-    {
-        $knowledgeItem->load(['primaryCategory', 'childItems']);
+    public function destroy(Request $request, KnowledgeItem $knowledgeItem): RedirectResponse
+{
+    $knowledgeItem->load(['primaryCategory', 'childItems']);
 
-        if ($knowledgeItem->childItems()->exists()) {
-            return redirect()
-                ->route('knowledge.items.edit', $knowledgeItem)
-                ->with('error', 'This knowledge item cannot be deleted because it has child items.');
-        }
+    $returnTo = $request->input('return_to');
 
-        $domainId = optional($knowledgeItem->primaryCategory)->domainid;
-        $categoryId = $knowledgeItem->primarycategoryid;
-
-        $knowledgeItem->delete();
-
-        return redirect()
-            ->route('knowledge.items.index', [
-                'domainid' => $domainId,
-                'categoryid' => $categoryId,
-            ])
-            ->with('success', 'Knowledge item deleted.');
+    if ($knowledgeItem->childItems()->exists()) {
+        return redirect()->to(
+            $returnTo ?: route('knowledge.items.edit', $knowledgeItem)
+        )->with('error', 'This knowledge item cannot be deleted because it has child items.');
     }
+
+    $domainId = $knowledgeItem->primaryCategory?->domainid;
+    $categoryId = $knowledgeItem->primarycategoryid;
+
+    $knowledgeItem->delete();
+
+    return redirect()->to(
+        $returnTo ?: route('knowledge-categories.index', [
+            'domainid' => $domainId,
+            'categoryid' => $categoryId,
+        ])
+    )->with('success', 'Knowledge item deleted.');
+}
 
 public function reorder(Request $request, KnowledgeItem $knowledgeItem): RedirectResponse
 {
