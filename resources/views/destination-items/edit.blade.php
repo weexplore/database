@@ -560,6 +560,126 @@
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
         crossorigin=""></script>
 
+@include('partials.forms.markdown-field-scripts')
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const placeSelect = document.getElementById('placeid');
+    const destinationSelect = document.getElementById('destinationid');
+    const toggleButton = document.getElementById('toggle-item-types-panel');
+    const panel = document.getElementById('item-types-panel');
+    const summary = document.getElementById('selected-item-types-summary');
+
+    const destinationOptions = destinationSelect
+        ? Array.from(destinationSelect.querySelectorAll('option'))
+            .filter(option => option.value !== '')
+            .map(option => ({
+                value: option.value,
+                label: option.textContent.trim(),
+                placeId: option.dataset.placeId ? String(option.dataset.placeId) : '',
+            }))
+        : [];
+
+    function rebuildDestinationOptions() {
+        if (!placeSelect || !destinationSelect) {
+            return;
+        }
+
+        const selectedPlaceId = placeSelect.value ? String(placeSelect.value) : '';
+        const previousDestinationId = destinationSelect.value || destinationSelect.dataset.selectedDestinationId || '';
+
+        destinationSelect.innerHTML = '';
+
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = selectedPlaceId ? 'Select destination' : 'Select place first';
+        destinationSelect.appendChild(placeholder);
+
+        const matchingDestinations = destinationOptions.filter(option => {
+            if (!selectedPlaceId) {
+                return false;
+            }
+            return option.placeId === selectedPlaceId;
+        });
+
+        matchingDestinations.forEach(option => {
+            const el = document.createElement('option');
+            el.value = option.value;
+            el.textContent = option.label;
+
+            if (String(option.value) === String(previousDestinationId)) {
+                el.selected = true;
+            }
+
+            destinationSelect.appendChild(el);
+        });
+
+        const selectedStillExists = matchingDestinations.some(option => String(option.value) === String(previousDestinationId));
+
+        if (!selectedStillExists) {
+            destinationSelect.value = '';
+        }
+
+        destinationSelect.dataset.selectedDestinationId = destinationSelect.value || '';
+        destinationSelect.disabled = !selectedPlaceId;
+    }
+
+    if (placeSelect && destinationSelect) {
+        placeSelect.addEventListener('change', rebuildDestinationOptions);
+        rebuildDestinationOptions();
+    }
+
+    if (!toggleButton || !panel || !summary) {
+        return;
+    }
+
+    const checkboxes = Array.from(
+        document.querySelectorAll('.destination-item-type-checkbox')
+    );
+
+    function updateSummary() {
+        const selectedLabels = checkboxes
+            .filter(checkbox => checkbox.checked)
+            .map(checkbox => checkbox.closest('label')?.querySelector('span')?.textContent?.trim())
+            .filter(Boolean);
+
+        summary.innerHTML = '';
+
+        if (selectedLabels.length === 0) {
+            summary.classList.add('hidden');
+            return;
+        }
+
+        summary.classList.remove('hidden');
+
+        selectedLabels.forEach(label => {
+            const chip = document.createElement('span');
+            chip.className = 'inline-flex items-center px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium border border-blue-200';
+            chip.textContent = label;
+            summary.appendChild(chip);
+        });
+    }
+
+    function updateToggleLabel() {
+        toggleButton.textContent = panel.classList.contains('hidden')
+            ? 'Add or change types'
+            : 'Hide types';
+    }
+
+    toggleButton.addEventListener('click', function () {
+        panel.classList.toggle('hidden');
+        updateToggleLabel();
+    });
+
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateSummary);
+    });
+
+    updateSummary();
+    updateToggleLabel();
+});
+</script>
+
 <script>
 window.addEventListener('load', function () {
     const latInput = document.getElementById('latitude');

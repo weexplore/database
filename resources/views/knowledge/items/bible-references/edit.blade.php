@@ -6,6 +6,7 @@
         </h2>
     </x-slot>
 
+    
     @php
         $returnTo = $returnTo ?? route('knowledge.items.edit', [
             'knowledgeItem' => $knowledgeItem,
@@ -14,6 +15,7 @@
 
         $hasCachedPassage = filled($bibleReference->cachedpassagetext);
     @endphp
+
 
     <div class="py-6">
         <div class="w-full max-w-none mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 space-y-6">
@@ -81,10 +83,17 @@
                                 </div>
                             </div>
 
-                            <div>
-                                <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                                <textarea id="notes" name="notes" rows="4" class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('notes', $bibleReference->notes) }}</textarea>
-                            </div>
+                            <x-forms.markdown-field
+                                name="notes"
+                                id="bible_reference_notes"
+                                :value="old('notes', $bibleReference->notes)"
+                                label="Notes"
+                                rows="4"
+                                min-rows="4"
+                                placeholder="Context, commentary, cross-reference notes, or why this passage matters"
+                                help="Markdown supported, including headings, lists, links, emphasis, and tables."
+                                preview-title="Notes Preview"
+                            />
 
                             <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
                                 <a href="{{ $returnTo }}" class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
@@ -195,4 +204,7 @@
             </div>
         </div>
     </div>
+    @include('partials.markdown.markdown-styles')
+    @include('partials.forms.markdown-field-scripts')
+
 </x-app-layout>

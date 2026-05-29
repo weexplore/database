@@ -128,6 +128,9 @@ class KnowledgeFamilyTreeReportController extends Controller
         $spouseParents = $spouse ? $this->findParents($spouse) : collect();
         $children = $this->findChildrenWithSpouses($focusPerson, $spouse);
         $spouseChildGroups = $this->findSpouseChildGroups($focusPerson);
+        $unmatchedChildren = $this->findUnmatchedChildren($focusPerson, $spouseChildGroups);
+
+        
 
         return view('reports.knowledge.family-tree.show', [
             'focusPerson' => $focusPerson,
@@ -136,6 +139,7 @@ class KnowledgeFamilyTreeReportController extends Controller
             'focusParents' => $focusParents,
             'spouseParents' => $spouseParents,
             'spouseChildGroups' => $spouseChildGroups,
+            'unmatchedChildren' => $unmatchedChildren,
             'returnTo' => $request->input('return_to', url()->previous()),
             'reportTitle' => 'Family Tree – ' . $focusPerson->tree_name,
         ]);
@@ -243,11 +247,7 @@ class KnowledgeFamilyTreeReportController extends Controller
                                 : (int) $relationship->fromitemid;
 
                             return $relatedId === (int) $child->id
-                                && in_array(
-                                    $this->normaliseRelationshipType($relationship->relationshiptype),
-                                    ['parent-of', 'child-of'],
-                                    true
-                                );
+                                && $this->isChildRelationshipForParent($relationship, $focusPerson);
                         });
 
                     $focusSort = $focusRelationship?->sortOrderFor($focusPerson);
@@ -265,11 +265,7 @@ class KnowledgeFamilyTreeReportController extends Controller
                                     : (int) $relationship->fromitemid;
 
                                 return $relatedId === (int) $child->id
-                                    && in_array(
-                                        $this->normaliseRelationshipType($relationship->relationshiptype),
-                                        ['parent-of', 'child-of'],
-                                        true
-                                    );
+                                    && $this->isChildRelationshipForParent($relationship, $spouse);
                             });
 
                         $spouseSort = $spouseRelationship?->sortOrderFor($spouse);
@@ -368,24 +364,27 @@ class KnowledgeFamilyTreeReportController extends Controller
     {
         return strtolower(trim((string) $type));
     }
-    protected function spouseRelationships($person): Collection
-    {
-        return $this->sortRelationshipsForPerson(
-            $person->outgoingRelationships
-                ->merge($person->incomingRelationships)
-                ->filter(fn ($relationship) => $this->normaliseRelationshipType($relationship->relationshiptype) === 'married'),
-            $person
-        );
-    }
+protected function spouseRelationships($person): Collection
+{
+    return $person->outgoingRelationships
+        ->merge($person->incomingRelationships)
+        ->filter(fn ($relationship) => $this->normaliseRelationshipType($relationship->relationshiptype) === 'married')
+        ->sort(function ($a, $b) use ($person) {
+            $sortA = $a->sortOrderFor($person) ?? 999999;
+            $sortB = $b->sortOrderFor($person) ?? 999999;
+
+            if ($sortA !== $sortB) {
+                return $sortA <=> $sortB;
+            }
+
+            return ((int) $a->id) <=> ((int) $b->id);
+        })
+        ->values();
+}
 
     protected function findSpouseChildGroups($focusPerson): Collection
 {
-    $spouseRelationships = $this->sortRelationshipsForPerson(
-        $focusPerson->outgoingRelationships
-            ->merge($focusPerson->incomingRelationships)
-            ->filter(fn ($relationship) => $this->normaliseRelationshipType($relationship->relationshiptype) === 'married'),
-        $focusPerson
-    );
+    $spouseRelationships = $this->spouseRelationships($focusPerson);
 
     return $spouseRelationships
         ->map(function ($spouseRelationship) use ($focusPerson) {
@@ -404,61 +403,24 @@ class KnowledgeFamilyTreeReportController extends Controller
                 'spouseRelationship' => $spouseRelationship,
                 'spouseParents' => $this->findParents($spouse),
                 'children' => $this->findChildrenForCouple($focusPerson, $spouse),
+                'spouse_sort' => $spouseRelationship->sortOrderFor($focusPerson) ?? 999999,
             ];
         })
         ->filter()
+        ->sortBy('spouse_sort')
         ->values();
 }
 
-protected function findChildrenForCouple($focusPerson, $spouse): Collection
+protected function findUnmatchedChildren($focusPerson, Collection $spouseChildGroups): Collection
 {
-    $focusChildRelationships = $this->sortRelationshipsForPerson(
-        $focusPerson->outgoingRelationships
-            ->merge($focusPerson->incomingRelationships)
-            ->filter(function ($relationship) {
-                return in_array(
-                    $this->normaliseRelationshipType($relationship->relationshiptype),
-                    ['parent-of', 'child-of'],
-                    true
-                );
-            }),
-        $focusPerson
-    );
+    $groupedChildIds = $spouseChildGroups
+        ->flatMap(fn ($group) => collect($group['children'])->pluck('person.id'))
+        ->map(fn ($id) => (int) $id)
+        ->unique()
+        ->values();
 
-    $focusSortMap = $focusChildRelationships
-        ->mapWithKeys(function ($relationship) use ($focusPerson) {
-            $child = (int) $relationship->fromitemid === (int) $focusPerson->id
-                ? $relationship->toItem
-                : $relationship->fromItem;
-
-            if (! $child) {
-                return [];
-            }
-
-            return [
-                (int) $child->id => $relationship->sortOrderFor($focusPerson) ?? 999999,
-            ];
-        });
-
-    $spouseChildIds = $this->findChildrenForParent($spouse)
-        ->pluck('id')
-        ->map(fn ($id) => (int) $id);
-
-    return $focusChildRelationships
-        ->map(function ($relationship) use ($focusPerson) {
-            return (int) $relationship->fromitemid === (int) $focusPerson->id
-                ? $relationship->toItem
-                : $relationship->fromItem;
-        })
-        ->filter()
-        ->reject(fn ($child) => (int) $child->id === (int) $focusPerson->id)
-        ->filter(fn ($child) => $spouseChildIds->contains((int) $child->id))
-        ->unique('id')
-        ->sortBy([
-            [fn ($child) => $focusSortMap[(int) $child->id] ?? 999999, 'asc'],
-            [fn ($child) => mb_strtolower($child->itemname ?? ''), 'asc'],
-            ['id', 'asc'],
-        ])
+    return $this->findChildrenForParent($focusPerson)
+        ->reject(fn ($child) => $groupedChildIds->contains((int) $child->id))
         ->values()
         ->map(function ($child) {
             $child = $this->decoratePerson($child);
@@ -490,49 +452,135 @@ protected function findChildrenForCouple($focusPerson, $spouse): Collection
         });
 }
 
+protected function findChildrenForCouple($focusPerson, $spouse): Collection
+{
+    $spouseChildIds = $this->findChildrenForParent($spouse)
+        ->pluck('id')
+        ->map(fn ($id) => (int) $id)
+        ->all();
+
+    $focusChildRelationships = $this->sortRelationshipsForPerson(
+        $focusPerson->outgoingRelationships
+            ->merge($focusPerson->incomingRelationships)
+            ->filter(fn ($relationship) => $this->isChildRelationshipForParent($relationship, $focusPerson)),
+        $focusPerson
+    )
+    ->filter(function ($relationship) use ($focusPerson, $spouseChildIds) {
+        $childId = (int) $relationship->fromitemid === (int) $focusPerson->id
+            ? (int) $relationship->toitemid
+            : (int) $relationship->fromitemid;
+
+        return in_array($childId, $spouseChildIds, true);
+    })
+    ->groupBy(function ($relationship) use ($focusPerson) {
+        return (int) $relationship->fromitemid === (int) $focusPerson->id
+            ? (int) $relationship->toitemid
+            : (int) $relationship->fromitemid;
+    })
+    ->map(fn ($group) => $group->first())
+    ->sort(function ($a, $b) use ($focusPerson) {
+        $sortA = $a->sortOrderFor($focusPerson) ?? 999999;
+        $sortB = $b->sortOrderFor($focusPerson) ?? 999999;
+
+        if ($sortA !== $sortB) {
+            return $sortA <=> $sortB;
+        }
+
+        return ((int) $a->id) <=> ((int) $b->id);
+    })
+    ->values();
+    
+
+    return $focusChildRelationships
+        ->map(function ($relationship) use ($focusPerson) {
+            $child = (int) $relationship->fromitemid === (int) $focusPerson->id
+                ? $relationship->toItem
+                : $relationship->fromItem;
+
+            return $child ? $this->decoratePerson($child) : null;
+        })
+        ->filter()
+        ->reject(fn ($child) => (int) $child->id === (int) $focusPerson->id)
+        ->values()
+        ->map(function ($child) {
+            $childSpouseRelationship = $this->sortRelationshipsForPerson(
+                $child->outgoingRelationships
+                    ->merge($child->incomingRelationships)
+                    ->filter(fn ($relationship) => $this->normaliseRelationshipType($relationship->relationshiptype) === 'married'),
+                $child
+            )->first();
+
+            $childSpouse = null;
+
+            if ($childSpouseRelationship) {
+                $childSpouse = (int) $childSpouseRelationship->fromitemid === (int) $child->id
+                    ? $childSpouseRelationship->toItem
+                    : $childSpouseRelationship->fromItem;
+
+                if ($childSpouse) {
+                    $childSpouse = $this->decoratePerson($childSpouse);
+                }
+            }
+
+            return [
+                'person' => $child,
+                'spouse' => $childSpouse,
+                'spouseRelationship' => $childSpouseRelationship,
+            ];
+        });
+}
+
     protected function findChildrenForParent($parent): Collection
-    {
-        return $parent->outgoingRelationships
+{
+    $childRelationships = $this->sortRelationshipsForPerson(
+        $parent->outgoingRelationships
             ->merge($parent->incomingRelationships)
-            ->filter(function ($relationship) use ($parent) {
-                return in_array(
-                    $this->normaliseRelationshipType($relationship->relationshiptype),
-                    ['parent-of', 'child-of'],
-                    true
-                );
-            })
-            ->map(function ($relationship) use ($parent) {
-                return (int) $relationship->fromitemid === (int) $parent->id
-                    ? $relationship->toItem
-                    : $relationship->fromItem;
-            })
-            ->filter()
-            ->unique('id')
-            ->sortBy([
-                [
-                    function ($child) use ($parent) {
-                        $relationship = $parent->outgoingRelationships
-                            ->merge($parent->incomingRelationships)
-                            ->first(function ($relationship) use ($child, $parent) {
-                                $relatedId = (int) $relationship->fromitemid === (int) $parent->id
-                                    ? (int) $relationship->toitemid
-                                    : (int) $relationship->fromitemid;
+            ->filter(fn ($relationship) => $this->isChildRelationshipForParent($relationship, $parent)),
+        $parent
+    );
 
-                                return $relatedId === (int) $child->id
-                                    && in_array(
-                                        $this->normaliseRelationshipType($relationship->relationshiptype),
-                                        ['parent-of', 'child-of'],
-                                        true
-                                    );
-                            });
+    $childSortMap = $childRelationships
+        ->mapWithKeys(function ($relationship) use ($parent) {
+            $child = (int) $relationship->fromitemid === (int) $parent->id
+                ? $relationship->toItem
+                : $relationship->fromItem;
 
-                        return $relationship?->sortOrderFor($parent) ?? 999999;
-                    },
-                    'asc',
-                ],
-                [fn ($child) => mb_strtolower($child->itemname ?? ''), 'asc'],
-                ['id', 'asc'],
-            ])
-            ->values();
-    }
+            if (! $child) {
+                return [];
+            }
+
+            return [
+                (int) $child->id => $relationship->sortOrderFor($parent) ?? 999999,
+            ];
+        });
+
+    return $childRelationships
+        ->map(function ($relationship) use ($parent) {
+            return (int) $relationship->fromitemid === (int) $parent->id
+                ? $relationship->toItem
+                : $relationship->fromItem;
+        })
+        ->filter()
+        ->unique('id')
+        ->sort(function ($a, $b) use ($childSortMap) {
+            $sortA = $childSortMap[(int) $a->id] ?? 999999;
+            $sortB = $childSortMap[(int) $b->id] ?? 999999;
+
+            if ($sortA !== $sortB) {
+                return $sortA <=> $sortB;
+            }
+
+            return ((int) $a->id) <=> ((int) $b->id);
+        })
+        ->values();
+}
+
+protected function isChildRelationshipForParent($relationship, $parent): bool
+{
+    $parentId = (int) $parent->id;
+    $type = $this->normaliseRelationshipType($relationship->relationshiptype);
+
+    return ($type === 'parent-of' && (int) $relationship->fromitemid === $parentId)
+        || ($type === 'child-of' && (int) $relationship->toitemid === $parentId);
+}
 }

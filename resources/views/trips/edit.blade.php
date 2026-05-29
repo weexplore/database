@@ -1,3 +1,4 @@
+{{-- resources/views/trips/edit.blade.php --}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between gap-4">
@@ -210,36 +211,42 @@
                             <h3 class="text-lg font-medium text-gray-900">Trip Notes</h3>
                         </div>
 
-                        <div class="space-y-4">
-                            <div>
-                                <label for="summary" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Summary
-                                </label>
-                                <textarea name="summary"
-                                          id="summary"
-                                          rows="3"
-                                          class="js-auto-expand w-full min-h-[96px] rounded-md border-gray-300 shadow-sm text-sm resize-none overflow-hidden">{{ old('summary', $trip->summary) }}</textarea>
-                            </div>
+                        <div class="space-y-6">
+                            <x-forms.markdown-field
+                                name="summary"
+                                id="summary"
+                                :value="old('summary', $trip->summary)"
+                                label="Summary"
+                                rows="3"
+                                min-rows="3"
+                                placeholder="Short Markdown summary for this trip"
+                                help="Markdown supported, including headings, lists, links, emphasis, and tables."
+                                preview-title="Summary Preview"
+                            />
 
-                            <div>
-                                <label for="planningnotes" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Planning Notes
-                                </label>
-                                <textarea name="planningnotes"
-                                          id="planningnotes"
-                                          rows="6"
-                                          class="js-auto-expand w-full min-h-[144px] rounded-md border-gray-300 shadow-sm text-sm resize-none overflow-hidden">{{ old('planningnotes', $trip->planningnotes) }}</textarea>
-                            </div>
+                            <x-forms.markdown-field
+                                name="planningnotes"
+                                id="planningnotes"
+                                :value="old('planningnotes', $trip->planningnotes)"
+                                label="Planning Notes"
+                                rows="6"
+                                min-rows="6"
+                                placeholder="Planning notes, ideas, reminders, route thinking, bookings to make, and preparation details"
+                                help="Markdown supported, including headings, lists, links, emphasis, and tables."
+                                preview-title="Planning Notes Preview"
+                            />
 
-                            <div>
-                                <label for="actualnotes" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Actual Notes
-                                </label>
-                                <textarea name="actualnotes"
-                                          id="actualnotes"
-                                          rows="6"
-                                          class="js-auto-expand w-full min-h-[144px] rounded-md border-gray-300 shadow-sm text-sm resize-none overflow-hidden">{{ old('actualnotes', $trip->actualnotes) }}</textarea>
-                            </div>
+                            <x-forms.markdown-field
+                                name="actualnotes"
+                                id="actualnotes"
+                                :value="old('actualnotes', $trip->actualnotes)"
+                                label="Actual Notes"
+                                rows="6"
+                                min-rows="6"
+                                placeholder="What actually happened during the trip, lessons learned, changes, and observations"
+                                help="Markdown supported, including headings, lists, links, emphasis, and tables."
+                                preview-title="Actual Notes Preview"
+                            />
                         </div>
                     </div>
                 </div>
@@ -439,8 +446,11 @@
                                         </label>
                                         <textarea name="tripvehicles[{{ $index }}][notes]"
                                                   rows="3"
-                                                  class="js-auto-expand w-full min-h-[96px] rounded-md border-gray-300 shadow-sm text-sm resize-none overflow-hidden"
-                                                  placeholder="Optional notes for this trip vehicle setup">{{ $row['notes'] ?? '' }}</textarea>
+                                                  class="js-auto-expand js-markdown-editor w-full min-h-[96px] rounded-md border-gray-300 shadow-sm text-sm resize-none overflow-hidden"
+                                                  placeholder="Optional Markdown notes for this trip vehicle setup">{{ $row['notes'] ?? '' }}</textarea>
+                                        <p class="mt-1 text-xs text-gray-500">
+                                            Markdown supported.
+                                        </p>
                                     </div>
                                 </div>
                             @endforeach
@@ -519,8 +529,11 @@
                                     </label>
                                     <textarea name="tripvehicles[__INDEX__][notes]"
                                               rows="3"
-                                              class="js-auto-expand w-full min-h-[96px] rounded-md border-gray-300 shadow-sm text-sm resize-none overflow-hidden"
-                                              placeholder="Optional notes for this trip vehicle setup"></textarea>
+                                              class="js-auto-expand js-markdown-editor w-full min-h-[96px] rounded-md border-gray-300 shadow-sm text-sm resize-none overflow-hidden"
+                                              placeholder="Optional Markdown notes for this trip vehicle setup"></textarea>
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        Markdown supported.
+                                    </p>
                                 </div>
                             </div>
                         </template>
@@ -680,6 +693,9 @@
         </div>
     </div>
 
+    @include('partials.markdown.markdown-styles')
+    @include('partials.forms.markdown-field-scripts')
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const form = document.getElementById('trip-edit-form');
@@ -713,18 +729,26 @@
                 });
             }
 
+            function bindDirtyTracking(scope = document) {
+                scope.querySelectorAll('input, select, textarea').forEach((element) => {
+                    if (element.dataset.dirtyBound === '1') {
+                        return;
+                    }
+
+                    const type = (element.getAttribute('type') || '').toLowerCase();
+
+                    if (type === 'hidden' || element.hasAttribute('readonly') || element.disabled) {
+                        return;
+                    }
+
+                    element.addEventListener('change', () => isDirty = true);
+                    element.addEventListener('input', () => isDirty = true);
+                    element.dataset.dirtyBound = '1';
+                });
+            }
+
             bindAutoExpand(document);
-
-            form.querySelectorAll('input, select, textarea').forEach((element) => {
-                const type = (element.getAttribute('type') || '').toLowerCase();
-
-                if (type === 'hidden' || element.hasAttribute('readonly') || element.disabled) {
-                    return;
-                }
-
-                element.addEventListener('change', () => isDirty = true);
-                element.addEventListener('input', () => isDirty = true);
-            });
+            bindDirtyTracking(document);
 
             form.addEventListener('submit', function () {
                 isSubmitting = true;
@@ -783,17 +807,7 @@
                     const newRow = vehicleRowsContainer.lastElementChild;
                     if (newRow) {
                         bindAutoExpand(newRow);
-
-                        newRow.querySelectorAll('input, select, textarea').forEach((element) => {
-                            const type = (element.getAttribute('type') || '').toLowerCase();
-
-                            if (type === 'hidden' || element.hasAttribute('readonly') || element.disabled) {
-                                return;
-                            }
-
-                            element.addEventListener('change', () => isDirty = true);
-                            element.addEventListener('input', () => isDirty = true);
-                        });
+                        bindDirtyTracking(newRow);
                     }
 
                     nextVehicleIndex += 1;

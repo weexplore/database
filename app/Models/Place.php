@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\KnowledgeItem;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -102,5 +103,64 @@ class Place extends Model
     public function knowledgeItems(): HasMany
     {
         return $this->hasMany(KnowledgeItem::class, 'placeid');
+    }
+     public function scopeWithinRadius(
+        Builder $query,
+        float $latitude,
+        float $longitude,
+        float $radiusKm,
+        ?int $stateId = null,
+        ?string $placeType = null,
+        bool $activeOnly = true
+    ): Builder {
+        $latDelta = $radiusKm / 111.045;
+        $lngDelta = $radiusKm / (111.045 * max(cos(deg2rad($latitude)), 0.01));
+
+        $distanceSql = <<<SQL
+(
+    6371 * ACOS(
+        LEAST(
+            1,
+            COS(RADIANS(?)) *
+            COS(RADIANS(latitude)) *
+            COS(RADIANS(longitude) - RADIANS(?)) +
+            SIN(RADIANS(?)) *
+            SIN(RADIANS(latitude))
+        )
+    )
+)
+SQL;
+
+        return $query
+            ->select('places.*')
+            ->selectRaw($distanceSql . ' as distance_km', [$latitude, $longitude, $latitude])
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->whereBetween('latitude', [$latitude - $latDelta, $latitude + $latDelta])
+            ->whereBetween('longitude', [$longitude - $lngDelta, $longitude + $lngDelta])
+            ->when($stateId, fn (Builder $q) => $q->where('stateid', $stateId))
+            ->when($placeType, fn (Builder $q) => $q->where('placetype', $placeType))
+            ->when($activeOnly, fn (Builder $q) => $q->where('isactive', 1))
+            ->having('distance_km', '<=', $radiusKm)
+            ->orderBy('distance_km')
+            ->orderBy('placename');
+    }
+
+    public function scopeNearbyToPlace(
+        Builder $query,
+        Place $place,
+        float $radiusKm = 50,
+        bool $excludeSelf = true
+    ): Builder {
+        return $query
+            ->withinRadius(
+                latitude: (float) $place->latitude,
+                longitude: (float) $place->longitude,
+                radiusKm: $radiusKm,
+                stateId: $place->stateid,
+                placeType: null,
+                activeOnly: true
+            )
+            ->when($excludeSelf, fn (Builder $q) => $q->where('id', '!=', $place->id));
     }
 }

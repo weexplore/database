@@ -11,6 +11,8 @@ use App\Http\Controllers\StateController;
 use App\Http\Controllers\RegionController;
 use App\Http\Controllers\PlaceController;
 use App\Http\Controllers\PlaceAliasController;
+use App\Http\Controllers\PlaceNearbyController;
+
 use App\Http\Controllers\TravellerController;
 use App\Http\Controllers\TripController;
 use App\Http\Controllers\FuelStopController;
@@ -126,6 +128,10 @@ Route::prefix('places')->name('places.')->group(function () {
     Route::delete('{place}', [PlaceController::class, 'destroy'])->name('destroy');
     Route::get('{place}/destinations/create-from-place', [DestinationController::class, 'createFromPlace'])
         ->name('destinations.create-from-place');
+    Route::get('{place}/nearby', [PlaceNearbyController::class, 'index'])
+    ->name('nearby');
+    Route::get('{place}/nearby-data', [PlaceController::class, 'nearbyData'])
+    ->name('nearby-data');
 });
 
 Route::resource('place-aliases', PlaceAliasController::class);
@@ -242,10 +248,13 @@ Route::prefix('trips')->name('trips.')->group(function () {
             Route::post('reorder', [TripPlanItemController::class, 'reorder'])->name('reorder');
             Route::post('bulk-add-destination-items', [TripPlanItemController::class, 'bulkAddDestinationItems'])
                 ->name('bulk-add-destination-items');
+
+            Route::post('{tripPlanItem}/add-nearby-place', [TripPlanItemController::class, 'addNearbyPlace'])
+                ->name('add-nearby-place');
+
             Route::get('{tripPlanItem}/edit', [TripPlanItemController::class, 'edit'])->name('edit');
             Route::put('{tripPlanItem}', [TripPlanItemController::class, 'update'])->name('update');
             Route::delete('{tripPlanItem}', [TripPlanItemController::class, 'destroy'])->name('destroy');
-            
         });
 
         /*

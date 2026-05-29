@@ -1,9 +1,8 @@
-<x-app-layout>
-
 @php
     $showCreate = $showCreate ?? (request()->boolean('show_create') || $errors->any());
 @endphp
 
+<x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between gap-4">
             <div>
@@ -36,7 +35,6 @@
 
     <div class="py-6">
         <div class="w-full max-w-none mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 space-y-6">
-
             @include('partials.admin.flash-messages')
             @include('partials.admin.validation-summary')
 
@@ -130,9 +128,9 @@
 
             @if(!empty($showCreate))
                 <form method="POST"
-                    action="{{ route('trips.bookings.store', $trip) }}"
-                    id="trip-booking-create-form"
-                    class="space-y-6">
+                      action="{{ route('trips.bookings.store', $trip) }}"
+                      id="trip-booking-create-form"
+                      class="space-y-6">
                     @csrf
 
                     @include('tripbookings._form', [
@@ -151,7 +149,6 @@
                         'returnTo' => route('trips.bookings.index', $trip),
                     ])
                 </form>
-                    
             @endif
 
             @if($bookings->isEmpty())
@@ -293,7 +290,11 @@
             @endif
         </div>
     </div>
+</x-app-layout>
 
+@include('partials.forms.markdown-field-scripts')
+
+@pushOnce('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const form = document.getElementById('trip-booking-create-form');
@@ -318,18 +319,6 @@
                     event.returnValue = '';
                 }
             });
-
-            const textareas = form.querySelectorAll('.js-auto-resize-textarea');
-
-            const autoResize = (textarea) => {
-                textarea.style.height = 'auto';
-                textarea.style.height = textarea.scrollHeight + 'px';
-            };
-
-            textareas.forEach((textarea) => {
-                autoResize(textarea);
-                textarea.addEventListener('input', () => autoResize(textarea));
-            });
         });
     </script>
-</x-app-layout>
+@endPushOnce

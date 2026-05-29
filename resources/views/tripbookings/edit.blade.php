@@ -34,9 +34,9 @@
                 <div class="xl:col-span-2 space-y-6">
                     <div class="bg-white shadow-sm rounded-lg border border-gray-200">
                         <form method="POST"
-                            action="{{ route('trips.bookings.update', [$trip, $booking]) }}"
-                            id="trip-booking-edit-form"
-                            class="space-y-6">
+                              action="{{ route('trips.bookings.update', [$trip, $booking]) }}"
+                              id="trip-booking-edit-form"
+                              class="space-y-6">
                             @csrf
                             @method('PUT')
 
@@ -176,3 +176,34 @@
         </div>
     </div>
 </x-app-layout>
+
+@include('partials.forms.markdown-field-scripts')
+
+@pushOnce('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('trip-booking-edit-form');
+            if (!form) return;
+
+            let isDirty = false;
+            let isSubmitting = false;
+
+            form.querySelectorAll('input, select, textarea').forEach((element) => {
+                element.addEventListener('change', () => isDirty = true);
+                element.addEventListener('input', () => isDirty = true);
+            });
+
+            form.addEventListener('submit', function () {
+                isSubmitting = true;
+                isDirty = false;
+            });
+
+            window.addEventListener('beforeunload', function (event) {
+                if (isDirty && !isSubmitting) {
+                    event.preventDefault();
+                    event.returnValue = '';
+                }
+            });
+        });
+    </script>
+@endPushOnce

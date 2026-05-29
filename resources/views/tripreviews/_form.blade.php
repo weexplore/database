@@ -229,11 +229,17 @@
         </div>
 
         <div class="md:col-span-2 xl:col-span-5">
-            <label for="comments" class="block text-sm font-medium text-gray-700 mb-1">Comments</label>
-            <textarea name="comments"
-                      id="comments"
-                      rows="5"
-                      class="js-auto-resize-textarea w-full min-h-[120px] overflow-hidden rounded-md border-gray-300 shadow-sm text-sm">{{ old('comments', $review?->comments) }}</textarea>
+            <x-forms.markdown-field
+                name="comments"
+                id="comments"
+                label="Comments"
+                :value="old('comments', $review?->comments)"
+                rows="6"
+                minRows="5"
+                maxRows="18"
+                placeholder="Write review comments in Markdown..."
+                help="Markdown supported. Use Show preview to view formatted content."
+            />
         </div>
     </div>
 </div>
@@ -250,6 +256,7 @@
     </button>
 </div>
 
+@pushOnce('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const tripStaySelect = document.getElementById('tripstayid');
@@ -487,14 +494,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
     tripItemSelect?.addEventListener('change', function () {
         if (tripItemSelect.value) {
-            tripStaySelect && (tripStaySelect.value = '');
+            if (tripStaySelect) {
+                tripStaySelect.value = '';
+            }
             applyTripItemContext();
         }
     });
 
     tripStaySelect?.addEventListener('change', function () {
         if (tripStaySelect.value) {
-            tripItemSelect && (tripItemSelect.value = '');
+            if (tripItemSelect) {
+                tripItemSelect.value = '';
+            }
             applyTripStayContext();
         }
     });
@@ -512,4 +523,4 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 </script>
-</query>
+@endPushOnce

@@ -672,5 +672,45 @@ private function destinationItemTypeOptions(): array
         'other' => 'Other',
     ];
 }
+public function nearbyData(Request $request, Place $place)
+{
+    $radiusOptions = [25, 50, 100, 150, 200];
+    $radiusKm = (int) $request->input('radius_km', 50);
 
+    if (!in_array($radiusKm, $radiusOptions, true)) {
+        $radiusKm = 50;
+    }
+
+    abort_if(
+        is_null($place->latitude) || is_null($place->longitude),
+        404,
+        'This place does not have coordinates.'
+    );
+
+    $nearbyPlaces = Place::query()
+        ->nearbyToPlace($place, $radiusKm)
+        ->limit(100)
+        ->get()
+        ->map(function ($nearby) {
+            return [
+                'id' => $nearby->id,
+                'placename' => $nearby->placename,
+                'placetype' => $nearby->placetype,
+                'latitude' => $nearby->latitude,
+                'longitude' => $nearby->longitude,
+                'distance_km' => round((float) $nearby->distance_km, 1),
+            ];
+        })
+        ->values();
+
+    return response()->json([
+        'place' => [
+            'id' => $place->id,
+            'placename' => $place->placename,
+        ],
+        'radius_km' => $radiusKm,
+        'radius_options' => $radiusOptions,
+        'nearby_places' => $nearbyPlaces,
+    ]);
+}
 }

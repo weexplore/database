@@ -163,23 +163,34 @@
             </div>
         </div>
     </div>
+    @include('partials.forms.markdown-field-scripts')
+</x-app-layout>
 
+@pushOnce('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const form = document.getElementById('trip-review-edit-form');
+            const form = document.getElementById('trip-booking-create-form');
             if (!form) return;
 
-            const textareas = form.querySelectorAll('.js-auto-resize-textarea');
+            let isDirty = false;
+            let isSubmitting = false;
 
-            const autoResize = (textarea) => {
-                textarea.style.height = 'auto';
-                textarea.style.height = textarea.scrollHeight + 'px';
-            };
+            form.querySelectorAll('input, select, textarea').forEach((element) => {
+                element.addEventListener('change', () => isDirty = true);
+                element.addEventListener('input', () => isDirty = true);
+            });
 
-            textareas.forEach((textarea) => {
-                autoResize(textarea);
-                textarea.addEventListener('input', () => autoResize(textarea));
+            form.addEventListener('submit', function () {
+                isSubmitting = true;
+                isDirty = false;
+            });
+
+            window.addEventListener('beforeunload', function (event) {
+                if (isDirty && !isSubmitting) {
+                    event.preventDefault();
+                    event.returnValue = '';
+                }
             });
         });
     </script>
-</x-app-layout>
+@endPushOnce

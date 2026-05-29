@@ -477,17 +477,20 @@ public function update(Request $request, Trip $trip, TripPlanItem $tripPlanItem)
             ->map(fn ($id) => (int) $id)
             ->unique();
 
+        $currentDestinationItemId = (int) ($validated['destinationitemid'] ?? $tripPlanItem->destinationitemid ?? 0);
+
+        $existingTripDestinationItemIds = TripPlanItem::query()
+            ->where('tripid', $trip->id)
+            ->whereNotNull('destinationitemid')
+            ->where('id', '!=', $tripPlanItem->id)
+            ->pluck('destinationitemid')
+            ->map(fn ($id) => (int) $id)
+            ->unique();
+
         $missingIds = $selectedDestinationItemIds
-            ->reject(function ($id) use ($existingTripDestinationItemIds, $validated) {
-                if ($existingTripDestinationItemIds->contains($id)) {
-                    return true;
-                }
-
-                if (!empty($validated['destinationitemid']) && (int) $validated['destinationitemid'] === (int) $id) {
-                    return true;
-                }
-
-                return false;
+            ->reject(function ($id) use ($existingTripDestinationItemIds, $currentDestinationItemId) {
+                return $existingTripDestinationItemIds->contains((int) $id)
+                    || (int) $id === $currentDestinationItemId;
             })
             ->values();
 
@@ -505,11 +508,37 @@ public function update(Request $request, Trip $trip, TripPlanItem $tripPlanItem)
             return;
         }
 
-        $nextSequence = (int) TripPlanItem::query()
-            ->where('tripid', $trip->id)
-            ->max('sequence_no');
+        if ($destinationItems->isEmpty()) {
+            return;
+        }
 
-        foreach ($destinationItems as $destinationItem) {
+        $orderedDestinationItems = $selectedDestinationItemIds
+            ->map(fn ($id) => $destinationItems->firstWhere('id', $id))
+            ->filter()
+            ->values();
+
+        if ($orderedDestinationItems->isEmpty()) {
+            return;
+        }
+
+        $insertStartSequence = (int) $tripPlanItem->fresh()->sequence_no + 1;
+        $insertCount = $orderedDestinationItems->count();
+
+        TripPlanItem::query()
+            ->where('tripid', $trip->id)
+            ->where('id', '!=', $tripPlanItem->id)
+            ->where('sequence_no', '>=', $insertStartSequence)
+            ->orderBy('sequence_no', 'desc')
+            ->get()
+            ->each(function ($item) use ($insertCount) {
+                $item->update([
+                    'sequence_no' => (int) $item->sequence_no + $insertCount,
+                ]);
+            });
+
+        $nextSequence = $insertStartSequence - 1;
+
+        foreach ($orderedDestinationItems as $destinationItem) {
             $nextSequence++;
 
             $placeId = $destinationItem->placeid ?: $destinationItem->destination?->placeid;
@@ -526,12 +555,19 @@ public function update(Request $request, Trip $trip, TripPlanItem $tripPlanItem)
                 'destinationitemid' => $destinationItem->id,
                 'planneddate' => $validated['planneddate'] ?? null,
                 'plannedenddate' => $validated['plannedenddate'] ?? null,
+                'starttime' => $validated['starttime'] ?? null,
+                'endtime' => $validated['endtime'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'isrouteanchor' => 0,
                 'isovernight' => 0,
                 'isstaytarget' => 0,
+                'staytype' => null,
+                'nightsplanned' => null,
+                'triplegid' => null,
+                'tripstayid' => null,
             ]);
         }
+
     });
 
     return redirect()->route('trips.planner.edit', [
@@ -1364,5 +1400,60 @@ public function reorder(Request $request, Trip $trip)
     ]);
 }
 
+public function addNearbyPlace(Request $request, Trip $trip, TripPlanItem $tripPlanItem)
+{
+    abort_unless((int) $tripPlanItem->tripid === (int) $trip->id, 404);
+
+    $validated = $request->validate([
+        'placeid' => ['required', 'integer', 'exists:places,id'],
+        'returnto' => ['nullable', 'string'],
+    ]);
+
+    $nearbyPlace = Place::query()->findOrFail((int) $validated['placeid']);
+
+    $insertSequence = (int) $tripPlanItem->sequence_no + 1;
+
+    DB::transaction(function () use ($trip, $tripPlanItem, $nearbyPlace, $insertSequence) {
+        TripPlanItem::query()
+            ->where('tripid', $trip->id)
+            ->where('id', '!=', $tripPlanItem->id)
+            ->where('sequence_no', '>=', $insertSequence)
+            ->orderBy('sequence_no', 'desc')
+            ->get()
+            ->each(function ($item) {
+                $item->update([
+                    'sequence_no' => (int) $item->sequence_no + 1,
+                ]);
+            });
+
+        TripPlanItem::create([
+            'tripid' => $trip->id,
+            'sequence_no' => $insertSequence,
+            'plantype' => 'place',
+            'title' => $nearbyPlace->placename,
+            'placeid' => $nearbyPlace->id,
+            'destinationid' => null,
+            'destinationitemid' => null,
+            'planneddate' => $tripPlanItem->planneddate,
+            'plannedenddate' => $tripPlanItem->plannedenddate,
+            'starttime' => $tripPlanItem->starttime,
+            'endtime' => $tripPlanItem->endtime,
+            'notes' => null,
+            'sortgroup' => $tripPlanItem->sortgroup,
+            'isrouteanchor' => 0,
+            'isovernight' => 0,
+            'isstaytarget' => 0,
+            'staytype' => null,
+            'nightsplanned' => null,
+            'triplegid' => null,
+            'tripstayid' => null,
+        ]);
+    });
+
+    return redirect($validated['returnto'] ?: route('trips.planner.edit', [
+        'trip' => $trip->id,
+        'tripPlanItem' => $tripPlanItem->id,
+    ]))->with('success', 'Nearby place added after this planning item.');
+}
 
 }

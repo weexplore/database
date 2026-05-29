@@ -90,15 +90,17 @@
                     </div>
                 </div>
 
-                <div>
-                    <label for="review_summary" class="block text-sm font-medium text-gray-700 mb-1">
-                        Summary
-                    </label>
-                    <textarea name="summary"
-                              id="review_summary"
-                              rows="3"
-                              class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('summary') }}</textarea>
-                </div>
+                <x-forms.markdown-field
+                    name="summary"
+                    id="review_summary"
+                    :value="old('summary')"
+                    label="Summary"
+                    rows="4"
+                    min-rows="4"
+                    placeholder="Review summary, findings, and reasoning"
+                    help="Markdown supported, including headings, lists, links, emphasis, and tables."
+                    preview-title="Summary Preview"
+                />
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
@@ -127,7 +129,7 @@
         @forelse($knowledgeItem->reviewLogs->sortByDesc('reviewdate') as $log)
             <div class="p-4 space-y-3">
                 <div class="flex items-start justify-between gap-4">
-                    <div class="space-y-1 min-w-0">
+                    <div class="space-y-1 min-w-0 flex-1">
                         <div class="text-sm font-semibold text-gray-900">
                             {{ $log->reviewtype ?: 'Review' }} on
                             {{ $log->reviewdate?->format('d M Y') ?? '—' }}
@@ -140,14 +142,16 @@
                             @endif
                         </div>
 
-                        @if($log->summary)
-                            <div class="text-sm text-gray-700 line-clamp-2">
-                                {{ $log->summary }}
+                        @if(filled($log->summary))
+                            <div class="pt-1 text-sm markdown-content text-gray-700">
+                                @include('partials.markdown.rendered-block', [
+                                    'content' => $log->summary,
+                                ])
                             </div>
                         @endif
                     </div>
 
-                    <div class="flex flex-col items-end gap-2 text-xs text-gray-500 whitespace-nowrap">
+                    <div class="flex flex-col items-end gap-2 text-xs text-gray-500 whitespace-nowrap shrink-0">
                         <div>ID: {{ $log->id }}</div>
 
                         <div class="flex items-center gap-2 mt-1">
@@ -175,7 +179,7 @@
                     </div>
                 </div>
 
-                @if(isset($editingReviewLogId) && (int) $editingReviewLogId === $log->id)
+                @if(isset($editingReviewLogId) && (int) $editingReviewLogId === (int) $log->id)
                     <div class="mt-4 border-t border-gray-200 pt-4">
                         <form method="POST"
                               action="{{ route('knowledge.items.review-logs.update', [$knowledgeItem, $log]) }}"
@@ -185,17 +189,23 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Review Date</label>
+                                    <label for="edit_review_reviewdate_{{ $log->id }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Review Date
+                                    </label>
                                     <input type="date"
                                            name="reviewdate"
-                                           value="{{ optional($log->reviewdate)->format('Y-m-d') }}"
+                                           id="edit_review_reviewdate_{{ $log->id }}"
+                                           value="{{ old('reviewdate', optional($log->reviewdate)->format('Y-m-d')) }}"
                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
                                            required>
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Review Type</label>
+                                    <label for="edit_review_reviewtype_{{ $log->id }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Review Type
+                                    </label>
                                     <select name="reviewtype"
+                                            id="edit_review_reviewtype_{{ $log->id }}"
                                             class="w-full rounded-md border-gray-300 shadow-sm text-sm"
                                             required>
                                         <option value="">Select review type</option>
@@ -208,27 +218,38 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Outcome</label>
+                                    <label for="edit_review_outcome_{{ $log->id }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Outcome
+                                    </label>
                                     <input type="text"
                                            name="outcome"
+                                           id="edit_review_outcome_{{ $log->id }}"
                                            value="{{ old('outcome', $log->outcome) }}"
                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 </div>
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Summary</label>
-                                <textarea name="summary"
-                                          rows="3"
-                                          class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('summary', $log->summary) }}</textarea>
-                            </div>
+                            <x-forms.markdown-field
+                                name="summary"
+                                :id="'edit_review_summary_' . $log->id"
+                                :value="old('summary', $log->summary)"
+                                label="Summary"
+                                rows="4"
+                                min-rows="4"
+                                placeholder="Review summary, findings, and reasoning"
+                                help="Markdown supported, including headings, lists, links, emphasis, and tables."
+                                preview-title="Summary Preview"
+                            />
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Next Review Date</label>
+                                    <label for="edit_review_nextreviewdate_{{ $log->id }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Next Review Date
+                                    </label>
                                     <input type="date"
                                            name="nextreviewdate"
-                                           value="{{ optional($log->nextreviewdate)->format('Y-m-d') }}"
+                                           id="edit_review_nextreviewdate_{{ $log->id }}"
+                                           value="{{ old('nextreviewdate', optional($log->nextreviewdate)->format('Y-m-d')) }}"
                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 </div>
                             </div>
@@ -248,9 +269,10 @@
                                 </button>
                             </div>
                         </form>
+
                         <form method="POST"
-                            action="{{ route('knowledge.items.review-logs.destroy', [$knowledgeItem, $knowledgeReviewLog]) }}"
-                            class="inline">
+                              action="{{ route('knowledge.items.review-logs.destroy', [$knowledgeItem, $log]) }}"
+                              class="inline">
                             @csrf
                             @method('DELETE')
 
@@ -270,3 +292,8 @@
         @endforelse
     </div>
 </div>
+
+@if(($activeTab ?? null) === 'review-logs')
+    @include('partials.markdown.markdown-styles')
+    @include('partials.forms.markdown-field-scripts')
+@endif

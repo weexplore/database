@@ -34,7 +34,6 @@
             @include('partials.admin.validation-summary')
 
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                {{-- Main form --}}
                 <div class="xl:col-span-2">
                     <form method="POST"
                           action="{{ route('destinations.update', $destination) }}"
@@ -45,7 +44,6 @@
 
                         <input type="hidden" name="return_to" value="{{ $returnTo }}">
 
-                        {{-- Core Details --}}
                         <div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-6">
                             <div>
                                 <h3 class="text-lg font-medium text-gray-900">Core Details</h3>
@@ -149,75 +147,82 @@
                             </div>
                         </div>
 
-                        {{-- Editorial Overview --}}
                         <div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-6">
                             <div>
                                 <h3 class="text-lg font-medium text-gray-900">Editorial Overview</h3>
                             </div>
 
-                            <div>
-                                <label for="overview" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Overview
-                                </label>
-                                <textarea name="overview"
-                                          id="overview"
-                                          rows="5"
-                                          class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('overview', $destination->overview) }}</textarea>
-                            </div>
+                            <x-forms.markdown-field
+                                name="overview"
+                                id="overview"
+                                label="Overview"
+                                :value="old('overview', $destination->overview)"
+                                rows="6"
+                                minRows="4"
+                                maxRows="16"
+                                placeholder="Write an editorial overview for this destination..."
+                                help="Markdown supported. Use Show preview to view formatted content."
+                            />
 
-                            <div>
-                                <label for="travelnotes" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Travel Notes
-                                </label>
-                                <textarea name="travelnotes"
-                                          id="travelnotes"
-                                          rows="5"
-                                          class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('travelnotes', $destination->travelnotes) }}</textarea>
-                            </div>
+                            <x-forms.markdown-field
+                                name="travelnotes"
+                                id="travelnotes"
+                                label="Travel Notes"
+                                :value="old('travelnotes', $destination->travelnotes)"
+                                rows="6"
+                                minRows="4"
+                                maxRows="16"
+                                placeholder="Add travel notes, route thoughts, timing, or practical commentary..."
+                                help="Markdown supported. Use Show preview to view formatted content."
+                            />
                         </div>
 
-                        {{-- Suitability and Access --}}
                         <div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-6">
                             <div>
                                 <h3 class="text-lg font-medium text-gray-900">Suitability and Access</h3>
                             </div>
 
-                            <div>
-                                <label for="suitability" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Suitability
-                                </label>
-                                <textarea name="suitability"
-                                          id="suitability"
-                                          rows="4"
-                                          class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('suitability', $destination->suitability) }}</textarea>
-                            </div>
+                            <x-forms.markdown-field
+                                name="suitability"
+                                id="suitability"
+                                label="Suitability"
+                                :value="old('suitability', $destination->suitability)"
+                                rows="5"
+                                minRows="4"
+                                maxRows="14"
+                                placeholder="Describe who this destination suits..."
+                                help="Markdown supported. Use Show preview to view formatted content."
+                            />
 
-                            <div>
-                                <label for="accessnotes" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Access Notes
-                                </label>
-                                <textarea name="accessnotes"
-                                          id="accessnotes"
-                                          rows="4"
-                                          class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('accessnotes', $destination->accessnotes) }}</textarea>
-                            </div>
+                            <x-forms.markdown-field
+                                name="accessnotes"
+                                id="accessnotes"
+                                label="Access Notes"
+                                :value="old('accessnotes', $destination->accessnotes)"
+                                rows="5"
+                                minRows="4"
+                                maxRows="14"
+                                placeholder="Record access conditions, roads, gates, turning areas, or cautions..."
+                                help="Markdown supported. Use Show preview to view formatted content."
+                            />
                         </div>
 
-                        {{-- Personal Commentary --}}
                         <div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-6">
                             <div>
                                 <h3 class="text-lg font-medium text-gray-900">Personal Commentary</h3>
                             </div>
 
-                            <div>
-                                <label for="personalcommentary" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Personal Commentary
-                                </label>
-                                <textarea name="personalcommentary"
-                                          id="personalcommentary"
-                                          rows="6"
-                                          class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('personalcommentary', $destination->personalcommentary) }}</textarea>
-                            </div>
+                            <x-forms.markdown-field
+                                name="personalcommentary"
+                                id="personalcommentary"
+                                label="Personal Commentary"
+                                :value="old('personalcommentary', $destination->personalcommentary)"
+                                rows="7"
+                                minRows="5"
+                                maxRows="18"
+                                placeholder="Add personal reflections, impressions, and revisit thoughts..."
+                                help="Markdown supported. Use Show preview to view formatted content."
+                            />
                         </div>
 
                         <div class="flex items-center justify-end gap-3">
@@ -238,6 +243,7 @@
                             </button>
                         </div>
                     </form>
+
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-red-200">
                         <div class="px-4 py-3 border-b border-red-200 bg-red-50">
                             <h3 class="text-sm font-semibold text-red-800">Delete Destination</h3>
@@ -248,8 +254,8 @@
 
                         <div class="p-4">
                             <form method="POST"
-                                action="{{ route('destinations.destroy', $destination) }}"
-                                onsubmit="return confirm('Delete this destination? This cannot be undone.');">
+                                  action="{{ route('destinations.destroy', $destination) }}"
+                                  onsubmit="return confirm('Delete this destination? This cannot be undone.');">
                                 @csrf
                                 @method('DELETE')
                                 <input type="hidden" name="return_to" value="{{ $returnTo }}">
@@ -265,7 +271,6 @@
                     </div>
                 </div>
 
-                {{-- Sidebar --}}
                 <div class="xl:col-span-1 space-y-6">
                     @if ($destination->place)
                         <div class="bg-white shadow-sm sm:rounded-lg">
@@ -359,21 +364,19 @@
                                         </li>
                                     @endforeach
                                 </ul>
-                                
-
                             @else
                                 <p class="text-sm text-gray-500">
                                     No destination items are currently linked to this destination.
                                 </p>
                             @endif
+
                             <a href="{{ route('destinations.destination-items.create-from-destination', [
                                     'destination' => $destination,
                                     'return_to' => url()->full(),
                                 ]) }}"
-                                class="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-700 rounded hover:bg-green-100 text-xs">
+                               class="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-700 rounded hover:bg-green-100 text-xs">
                                 + Add Destination Item
                             </a>
-
                         </div>
                     </div>
 
@@ -406,16 +409,16 @@
                                             <div class="mt-2 flex flex-wrap gap-2">
                                                 @if (Route::has('attachments.view'))
                                                     <a href="{{ route('attachments.view', $attachment) }}"
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    class="inline-flex items-center px-2.5 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-xs">
+                                                       target="_blank"
+                                                       rel="noopener noreferrer"
+                                                       class="inline-flex items-center px-2.5 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-xs">
                                                         View
                                                     </a>
                                                 @endif
 
                                                 @if (Route::has('attachments.download'))
                                                     <a href="{{ route('attachments.download', $attachment) }}"
-                                                    class="inline-flex items-center px-2.5 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-xs">
+                                                       class="inline-flex items-center px-2.5 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-xs">
                                                         Download
                                                     </a>
                                                 @endif
@@ -425,7 +428,7 @@
                                                             'attachment' => $attachment,
                                                             'return_to' => url()->full(),
                                                         ]) }}"
-                                                    class="inline-flex items-center px-2.5 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-xs">
+                                                       class="inline-flex items-center px-2.5 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-xs">
                                                         Edit
                                                     </a>
                                                 @endif
@@ -444,7 +447,7 @@
                                         'linkedid' => $destination->id,
                                         'return_to' => url()->full(),
                                     ]) }}"
-                                    class="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-sm">
+                                       class="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-sm">
                                         View Attachments
                                     </a>
 
@@ -454,14 +457,13 @@
                                         'show_create' => 1,
                                         'return_to' => url()->full(),
                                     ]) }}"
-                                    class="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
+                                       class="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
                                         Add Attachment
                                     </a>
                                 </div>
                             @endif
                         </div>
                     </div>
-
 
                     <div class="bg-white shadow-sm sm:rounded-lg">
                         <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
@@ -545,6 +547,8 @@
         </div>
     </div>
 
+    @include('partials.forms.markdown-field-scripts')
+
     <script>
     document.addEventListener('DOMContentLoaded', function () {
         const form = document.getElementById('destination-edit-form');
@@ -596,18 +600,26 @@
                 if (data.fields) {
                     if (data.fields.overview && !document.getElementById('overview').value) {
                         document.getElementById('overview').value = data.fields.overview;
+                        document.getElementById('overview').dispatchEvent(new Event('input', { bubbles: true }));
                     }
                     if (data.fields.travelnotes && !document.getElementById('travelnotes').value) {
                         document.getElementById('travelnotes').value = data.fields.travelnotes;
+                        document.getElementById('travelnotes').dispatchEvent(new Event('input', { bubbles: true }));
                     }
                     if (data.fields.bestseason && !document.getElementById('bestseason').value) {
                         document.getElementById('bestseason').value = data.fields.bestseason;
                     }
                     if (data.fields.suitability && !document.getElementById('suitability').value) {
                         document.getElementById('suitability').value = data.fields.suitability;
+                        document.getElementById('suitability').dispatchEvent(new Event('input', { bubbles: true }));
                     }
                     if (data.fields.accessnotes && !document.getElementById('accessnotes').value) {
                         document.getElementById('accessnotes').value = data.fields.accessnotes;
+                        document.getElementById('accessnotes').dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    if (data.fields.personalcommentary && !document.getElementById('personalcommentary').value) {
+                        document.getElementById('personalcommentary').value = data.fields.personalcommentary;
+                        document.getElementById('personalcommentary').dispatchEvent(new Event('input', { bubbles: true }));
                     }
 
                     isDirty = true;

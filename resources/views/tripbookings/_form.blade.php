@@ -174,24 +174,23 @@
                     class="w-full rounded-md border-gray-300 shadow-sm text-sm">
         </div>
 
-        <div class="md:col-span-2 xl:col-span-4">
-            <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-            <textarea name="notes" id="notes" rows="3"
-                        class="js-auto-resize-textarea w-full min-h-[96px] overflow-hidden rounded-md border-gray-300 shadow-sm text-sm">{{ old('notes') }}</textarea>
+        <div class="md:col-span-2 xl:col-span-2">
+            <x-forms.markdown-field
+                name="notes"
+                label="Notes"
+                :value="old('notes', $booking?->notes)"
+                help="Use Markdown for booking notes, reminders, inclusions, or follow-up details."
+            />
         </div>
 
-        <div class="md:col-span-2 xl:col-span-4">
-            <label for="paymentnotes" class="block text-sm font-medium text-gray-700 mb-1">Payment Notes</label>
-            <textarea name="paymentnotes" id="paymentnotes" rows="2"
-                        class="js-auto-resize-textarea w-full min-h-[80px] overflow-hidden rounded-md border-gray-300 shadow-sm text-sm">{{ old('paymentnotes') }}</textarea>
+        <div class="md:col-span-2 xl:col-span-2">
+            <x-forms.markdown-field
+                name="paymentnotes"
+                label="Payment Notes"
+                :value="old('paymentnotes', $booking?->paymentnotes)"
+                help="Payment notes for deposits and progress payments."
+            />
         </div>
-    </div>
-</div>
-<div class="flex items-center justify-end gap-3">
-    <a href="{{ route('trips.bookings.index', $trip) }}"
-        class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
-        Cancel
-    </a>
 
     <button type="submit"
             class="inline-flex items-center px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">

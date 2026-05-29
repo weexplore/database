@@ -1,3 +1,4 @@
+{{-- resources/views/reports/knowledge/category-report.blade.php --}}
 <x-app-layout>
     @php
         $title = $reportTitle ?? 'Knowledge Category Report';
@@ -6,6 +7,24 @@
     @endphp
 
     <x-slot name="header">
+        <style>
+            @media print {
+                .print-hide {
+                    display: none !important;
+                }
+
+                .break-inside-avoid {
+                    break-inside: avoid;
+                    page-break-inside: avoid;
+                }
+
+                a {
+                    color: #000 !important;
+                    text-decoration: none !important;
+                }
+            }
+        </style>
+
         <div class="flex items-center justify-between gap-4">
             <div>
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
@@ -99,6 +118,7 @@
                         $currentParentHeading = $parentHeading;
                     @endphp
                 @endif
+
                 <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-4">
                         <div>
@@ -129,7 +149,11 @@
                     @else
                         <div class="divide-y divide-gray-200">
                             @foreach($category->knowledgeItems as $knowledgeItem)
-                                <div class="px-6 py-5 space-y-4">
+                                @php
+                                    $showPersonFacts = (bool) ($knowledgeItem->primaryCategory?->domain?->hasfamilyhistorytools ?? false);
+                                @endphp
+
+                                <div class="px-6 py-5 space-y-4 break-inside-avoid">
                                     <div class="flex flex-wrap items-start justify-between gap-4">
                                         <div class="space-y-1 min-w-0">
                                             <div class="flex items-center gap-2">
@@ -166,21 +190,15 @@
                                                 @endif
 
                                                 @if($knowledgeItem->startdate)
-                                                    <span>
-                                                        Start: {{ $knowledgeItem->startdate->format('d M Y') }}
-                                                    </span>
+                                                    <span>Start: {{ $knowledgeItem->startdate->format('d M Y') }}</span>
                                                 @endif
 
                                                 @if($knowledgeItem->enddate)
-                                                    <span>
-                                                        End: {{ $knowledgeItem->enddate->format('d M Y') }}
-                                                    </span>
+                                                    <span>End: {{ $knowledgeItem->enddate->format('d M Y') }}</span>
                                                 @endif
 
                                                 @if($knowledgeItem->nextreviewdate)
-                                                    <span>
-                                                        Next review: {{ $knowledgeItem->nextreviewdate->format('d M Y') }}
-                                                    </span>
+                                                    <span>Next review: {{ $knowledgeItem->nextreviewdate->format('d M Y') }}</span>
                                                 @endif
 
                                                 <span>Sort: {{ $knowledgeItem->sortorder ?? 0 }}</span>
@@ -189,16 +207,7 @@
 
                                         @if($knowledgeItem->attachments->isNotEmpty())
                                             <div class="flex flex-wrap gap-2 text-xs text-gray-500">
-                                                @php
-                                                    $primaryAttachment = $knowledgeItem->attachments->firstWhere('isprimary', 1)
-                                                        ?? $knowledgeItem->attachments->first();
-                                                @endphp
-
-                                                @if($primaryAttachment)
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200">
-                                                        Primary attachment: {{ $primaryAttachment->originalfilename ?? $primaryAttachment->filename }}
-                                                    </span>
-                                                @endif
+                                                <span>Attachments: {{ $knowledgeItem->attachments->count() }}</span>
                                             </div>
                                         @endif
                                     </div>
@@ -208,8 +217,10 @@
                                             @if($knowledgeItem->summary)
                                                 <div class="rounded-lg border border-gray-200 p-4">
                                                     <h5 class="text-sm font-semibold text-gray-900 mb-2">Summary</h5>
-                                                    <div class="text-sm text-gray-700 whitespace-pre-line">
-                                                        {{ $knowledgeItem->summary }}
+                                                    <div class="text-sm text-gray-700 markdown-content">
+                                                        @include('partials.markdown.rendered-block', [
+                                                            'content' => $knowledgeItem->summary,
+                                                        ])
                                                     </div>
                                                 </div>
                                             @endif
@@ -217,83 +228,103 @@
                                             @if($knowledgeItem->significance)
                                                 <div class="rounded-lg border border-gray-200 p-4">
                                                     <h5 class="text-sm font-semibold text-gray-900 mb-2">Significance</h5>
-                                                    <div class="text-sm text-gray-700 whitespace-pre-line">
-                                                        {{ $knowledgeItem->significance }}
+                                                    <div class="text-sm text-gray-700 markdown-content">
+                                                        @include('partials.markdown.rendered-block', [
+                                                            'content' => $knowledgeItem->significance,
+                                                        ])
                                                     </div>
                                                 </div>
                                             @endif
                                         </div>
                                     @endif
 
-@if($knowledgeItem->bibleReferences->isNotEmpty())
-    <div class="rounded-lg border border-gray-200 p-4 space-y-3">
-        <h5 class="text-sm font-semibold text-gray-900">Bible References</h5>
+                                    @include('reports.knowledge.partials.attachments', [
+                                        'attachments' => $knowledgeItem->attachments,
+                                        'heading' => 'Attachments',
+                                    ])
 
-        <div class="space-y-3">
-            @foreach($knowledgeItem->bibleReferences as $reference)
-                <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0 space-y-2">
-                    <div class="flex flex-wrap gap-2 text-xs">
-                        @if($reference->version)
-                            <span class="inline-flex items-center px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                {{ $reference->version->versionname ?? $reference->version->abbreviation ?? 'Version' }}
-                            </span>
-                        @endif
+                                    @if($knowledgeItem->bibleReferences->isNotEmpty())
+                                        <div class="rounded-lg border border-gray-200 p-4 space-y-3">
+                                            <h5 class="text-sm font-semibold text-gray-900">Bible References</h5>
 
-                        @if(!empty($reference->cachedreferencetext))
-                            <span class="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                                {{ $reference->cachedreferencetext }}
-                            </span>
-                        @endif
-                    </div>
+                                            <div class="space-y-3">
+                                                @foreach($knowledgeItem->bibleReferences as $reference)
+                                                    <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0 space-y-2">
+                                                        <div class="flex flex-wrap gap-2 text-xs">
+                                                            @if($reference->version)
+                                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                                                    {{ $reference->version->versionname ?? $reference->version->abbreviation ?? 'Version' }}
+                                                                </span>
+                                                            @endif
 
-                    <div class="text-sm text-gray-800">
-                        @php
-                            $bookName = $reference->book?->bookname ?? 'Unknown book';
-                            $chapterFrom = $reference->chapterfrom;
-                            $verseFrom = $reference->versefrom;
-                            $chapterTo = $reference->chapterto;
-                            $verseTo = $reference->verseto;
-                        @endphp
+                                                            @if(!empty($reference->cachedreferencetext))
+                                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                                                    {{ $reference->cachedreferencetext }}
+                                                                </span>
+                                                            @endif
+                                                        </div>
 
-                        <span class="font-medium">{{ $bookName }}</span>
+                                                        <div class="text-sm text-gray-800">
+                                                            @php
+                                                                $bookName = $reference->book?->bookname ?? 'Unknown book';
+                                                                $chapterFrom = $reference->chapterfrom;
+                                                                $verseFrom = $reference->versefrom;
+                                                                $chapterTo = $reference->chapterto;
+                                                                $verseTo = $reference->verseto;
+                                                            @endphp
 
-                        @if(!is_null($chapterFrom))
-                            {{ ' ' . $chapterFrom }}
-                            @if(!is_null($verseFrom))
-                                :{{ $verseFrom }}
-                            @endif
+                                                            <span class="font-medium">{{ $bookName }}</span>
 
-                            @if(!is_null($chapterTo) || !is_null($verseTo))
-                                –
-                                {{ $chapterTo ?? $chapterFrom }}
-                                @if(!is_null($verseTo))
-                                    :{{ $verseTo }}
-                                @endif
-                            @endif
-                        @endif
-                    </div>
+                                                            @if(!is_null($chapterFrom))
+                                                                {{ ' ' . $chapterFrom }}
+                                                                @if(!is_null($verseFrom))
+                                                                    :{{ $verseFrom }}
+                                                                @endif
 
-                    @if(!empty($reference->cachedpassagetext))
-                        <div class="rounded-md bg-gray-50 border border-gray-200 px-3 py-2">
-                            <div class="text-xs font-medium text-gray-500 mb-1">Cached Passage Text</div>
-                            <div class="text-sm text-gray-700 whitespace-pre-line">
-                                {{ $reference->cachedpassagetext }}
-                            </div>
-                        </div>
-                    @endif
-                </div>
-            @endforeach
-        </div>
-    </div>
-@endif
+                                                                @if(!is_null($chapterTo) || !is_null($verseTo))
+                                                                    –
+                                                                    {{ $chapterTo ?? $chapterFrom }}
+                                                                    @if(!is_null($verseTo))
+                                                                        :{{ $verseTo }}
+                                                                    @endif
+                                                                @endif
+                                                            @endif
+                                                        </div>
+
+                                                        @if(!empty($reference->cachedpassagetext))
+                                                            <div class="rounded-md bg-gray-50 border border-gray-200 px-3 py-2">
+                                                                <div class="text-xs font-medium text-gray-500 mb-1">Cached Passage Text</div>
+                                                                <div class="text-sm text-gray-700 whitespace-pre-line">
+                                                                    {{ $reference->cachedpassagetext }}
+                                                                </div>
+                                                            </div>
+                                                        @endif
+
+                                                        @if(filled($reference->notes))
+                                                            <div class="rounded-md bg-white border border-gray-200 px-3 py-2">
+                                                                <div class="text-xs font-medium text-gray-500 mb-1">Notes</div>
+                                                                <div class="text-sm text-gray-700 markdown-content">
+                                                                    @include('partials.markdown.rendered-block', [
+                                                                        'content' => $reference->notes,
+                                                                    ])
+                                                                </div>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
 
                                     @if($knowledgeItem->detailednotes || $knowledgeItem->reviewnotes)
                                         <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
                                             @if($knowledgeItem->detailednotes)
                                                 <div class="rounded-lg border border-gray-200 p-4 xl:col-span-2">
                                                     <h5 class="text-sm font-semibold text-gray-900 mb-2">Detailed Notes</h5>
-                                                    <div class="text-sm text-gray-700 whitespace-pre-line">
-                                                        {{ $knowledgeItem->detailednotes }}
+                                                    <div class="text-sm text-gray-700 markdown-content">
+                                                        @include('partials.markdown.rendered-block', [
+                                                            'content' => $knowledgeItem->detailednotes,
+                                                        ])
                                                     </div>
                                                 </div>
                                             @endif
@@ -301,15 +332,16 @@
                                             @if($knowledgeItem->reviewnotes)
                                                 <div class="rounded-lg border border-gray-200 p-4 xl:col-span-2">
                                                     <h5 class="text-sm font-semibold text-gray-900 mb-2">Review Notes</h5>
-                                                    <div class="text-sm text-gray-700 whitespace-pre-line">
-                                                        {{ $knowledgeItem->reviewnotes }}
+                                                    <div class="text-sm text-gray-700 markdown-content">
+                                                        @include('partials.markdown.rendered-block', [
+                                                            'content' => $knowledgeItem->reviewnotes,
+                                                        ])
                                                     </div>
                                                 </div>
                                             @endif
                                         </div>
                                     @endif
 
-                                    {{-- Relationships --}}
                                     @if($knowledgeItem->displayRelationships?->isNotEmpty())
                                         <div class="rounded-lg border border-gray-200 p-4 space-y-3">
                                             <h5 class="text-sm font-semibold text-gray-900">Relationships</h5>
@@ -330,7 +362,6 @@
                                                         @endif
                                                         —
                                                         @if($relatedItem)
-                                                            {{ $relatedItem->primaryCategory?->categoryname ?? 'Uncategorised' }}:
                                                             {{ $relatedItem->itemname }}
                                                         @else
                                                             <span class="text-xs text-gray-500">Missing related item</span>
@@ -346,154 +377,159 @@
                                         </div>
                                     @endif
 
+                                    @if($showPersonFacts && $knowledgeItem->personFacts->isNotEmpty())
+                                        <div class="rounded-lg border border-gray-200 p-4 space-y-3">
+                                            <h5 class="text-sm font-semibold text-gray-900">Person Facts</h5>
 
- @if($knowledgeItem->personFacts->isNotEmpty())
-    <div class="rounded-lg border border-gray-200 p-4 space-y-3">
-        <h5 class="text-sm font-semibold text-gray-900">Person Facts</h5>
+                                            <div class="space-y-3">
+                                                @foreach($knowledgeItem->personFacts as $fact)
+                                                    <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
+                                                        <div class="flex flex-wrap items-center gap-2">
+                                                            <div class="text-sm font-medium text-gray-800">
+                                                                {{ $fact->factlabel ?: (\App\Models\KnowledgePersonFact::factTypeOptions()[$fact->facttype] ?? ucfirst($fact->facttype)) }}
+                                                            </div>
 
-        <div class="space-y-3">
-            @foreach($knowledgeItem->personFacts as $fact)
-                <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <div class="text-sm font-medium text-gray-900">
-                            {{ $fact->factlabel ?: (\App\Models\KnowledgePersonFact::factTypeOptions()[$fact->facttype] ?? ucfirst($fact->facttype)) }}
-                        </div>
+                                                            @if($fact->ispreferred)
+                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs border border-emerald-200">
+                                                                    Preferred
+                                                                </span>
+                                                            @endif
 
-                        @if($fact->ispreferred)
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs border border-emerald-200">
-                                Preferred
-                            </span>
-                        @endif
+                                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs border border-gray-200">
+                                                                Sort: {{ $fact->sortorder ?? 0 }}
+                                                            </span>
+                                                        </div>
 
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs border border-gray-200">
-                            Sort: {{ $fact->sortorder ?? 0 }}
-                        </span>
-                    </div>
+                                                        <div class="mt-1 text-sm text-gray-700">
+                                                            @if($fact->datetext)
+                                                                {{ $fact->datetext }}
+                                                            @elseif($fact->datefrom)
+                                                                {{ $fact->datefrom->format('d M Y') }}
+                                                            @else
+                                                                No date recorded
+                                                            @endif
 
-                    <div class="mt-1 text-sm text-gray-700">
-                        @if($fact->datetext)
-                            {{ $fact->datetext }}
-                        @elseif($fact->datefrom)
-                            {{ $fact->datefrom->format('d M Y') }}
-                        @else
-                            No date recorded
-                        @endif
+                                                            @if($fact->datequalifier)
+                                                                · {{ \App\Models\KnowledgePersonFact::dateQualifierOptions()[$fact->datequalifier] ?? ucfirst($fact->datequalifier) }}
+                                                            @endif
 
-                        @if($fact->datequalifier)
-                            · {{ \App\Models\KnowledgePersonFact::dateQualifierOptions()[$fact->datequalifier] ?? ucfirst($fact->datequalifier) }}
-                        @endif
+                                                            @if($fact->place)
+                                                                · {{ $fact->place->placename }}@if($fact->place->locality), {{ $fact->place->locality }}@endif
+                                                            @endif
 
-                        @if($fact->place)
-                            · {{ $fact->place->placename }}@if($fact->place->locality), {{ $fact->place->locality }}@endif
-                        @endif
+                                                            @if($fact->proofstatus)
+                                                                · {{ \App\Models\KnowledgePersonFact::proofStatusOptions()[$fact->proofstatus] ?? ucfirst($fact->proofstatus) }}
+                                                            @endif
+                                                        </div>
 
-                        @if($fact->proofstatus)
-                            · {{ \App\Models\KnowledgePersonFact::proofStatusOptions()[$fact->proofstatus] ?? ucfirst($fact->proofstatus) }}
-                        @endif
-                    </div>
+                                                        @if($fact->valuetext)
+                                                            <div class="mt-1 text-sm text-gray-700 markdown-content">
+                                                                @include('partials.markdown.rendered-block', [
+                                                                    'content' => $fact->valuetext,
+                                                                ])
+                                                            </div>
+                                                        @endif
 
-                    @if($fact->valuetext)
-                        <div class="mt-1 text-sm text-gray-700 whitespace-pre-line">
-                            {{ $fact->valuetext }}
-                        </div>
-                    @endif
-
-                    @if($fact->notes)
-                        <div class="mt-2 text-sm text-gray-600 whitespace-pre-line">
-                            {{ $fact->notes }}
-                        </div>
-                    @endif
-                </div>
-            @endforeach
-        </div>
-    </div>
-@endif 
-
-@if($knowledgeItem->reportRelationships->isNotEmpty())
-    <div class="rounded-lg border border-gray-200 p-4 space-y-4">
-        <h5 class="text-sm font-semibold text-gray-900">Relationship Facts</h5>
-
-        @foreach($knowledgeItem->reportRelationships as $entry)
-            @php
-                $relatedItem = $entry['relatedItem'] ?? null;
-                $relationshipFacts = $entry['relationshipFacts'] ?? collect();
-            @endphp
-
-            <div class="border-t border-gray-100 pt-4 first:border-t-0 first:pt-0 space-y-2">
-                <div class="text-sm font-medium text-gray-900">
-                    {{ $entry['displayTypeLabel'] ?? 'Related' }}
-                    @if($relatedItem)
-                        — {{ $relatedItem->primaryCategory?->categoryname ?? 'Uncategorised' }}: {{ $relatedItem->itemname }}
-                    @endif
-                </div>
-
-                <div class="flex flex-wrap gap-2 text-xs text-gray-500">
-                    <span>{{ $entry['direction'] === 'incoming' ? 'Incoming' : 'Outgoing' }}</span>
-                    <span>Sort: {{ $entry['sortorder'] ?? 0 }}</span>
-                    @if(!empty($entry['effectiveDate']))
-                        <span>Effective: {{ $entry['effectiveDate']->format('d M Y') }}</span>
-                    @endif
-                </div>
-
-                @if($relationshipFacts->isNotEmpty())
-                    <div class="space-y-2">
-                        @foreach($relationshipFacts as $fact)
-                            <div class="rounded-md bg-gray-50 border border-gray-200 px-3 py-2">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <div class="text-sm font-medium text-gray-800">
-                                        {{ \App\Models\KnowledgeRelationshipFact::factTypeOptions()[$fact->facttype] ?? ucfirst($fact->facttype) }}
-                                    </div>
-
-                                    @if($fact->ispreferred)
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs border border-emerald-200">
-                                            Preferred
-                                        </span>
+                                                        @if($fact->notes)
+                                                            <div class="mt-2 text-sm text-gray-600 markdown-content">
+                                                                @include('partials.markdown.rendered-block', [
+                                                                    'content' => $fact->notes,
+                                                                ])
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
                                     @endif
 
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs border border-gray-200">
-                                        Sort: {{ $fact->sortorder ?? 0 }}
-                                    </span>
-                                </div>
+                                    @if($knowledgeItem->reportRelationships->isNotEmpty())
+                                        <div class="rounded-lg border border-gray-200 p-4 space-y-4">
+                                            <h5 class="text-sm font-semibold text-gray-900">Relationship Facts</h5>
 
-                                <div class="mt-1 text-sm text-gray-700">
-                                    @if($fact->datetext)
-                                        {{ $fact->datetext }}
-                                    @elseif($fact->datefrom)
-                                        {{ $fact->datefrom->format('d M Y') }}
-                                    @else
-                                        No date recorded
+                                            @foreach($knowledgeItem->reportRelationships as $entry)
+                                                @php
+                                                    $relatedItem = $entry['relatedItem'] ?? null;
+                                                    $relationshipFacts = $entry['relationshipFacts'] ?? collect();
+                                                @endphp
+
+                                                <div class="border-t border-gray-100 pt-4 first:border-t-0 first:pt-0 space-y-2">
+                                                    <div class="text-sm font-medium text-gray-900">
+                                                        {{ $entry['displayTypeLabel'] ?? 'Related' }}
+                                                        @if($relatedItem)
+                                                            — {{ $relatedItem->itemname }}
+                                                        @endif
+                                                    </div>
+
+                                                    <div class="flex flex-wrap gap-2 text-xs text-gray-500">
+                                                        <span>{{ $entry['direction'] === 'incoming' ? 'Incoming' : 'Outgoing' }}</span>
+                                                        <span>Sort: {{ $entry['sortorder'] ?? 0 }}</span>
+                                                        @if(!empty($entry['effectiveDate']))
+                                                            <span>Effective: {{ $entry['effectiveDate']->format('d M Y') }}</span>
+                                                        @endif
+                                                    </div>
+
+                                                    @if($relationshipFacts->isNotEmpty())
+                                                        <div class="space-y-2">
+                                                            @foreach($relationshipFacts as $fact)
+                                                                <div class="rounded-md bg-gray-50 border border-gray-200 px-3 py-2">
+                                                                    <div class="flex flex-wrap items-center gap-2">
+                                                                        <div class="text-sm font-medium text-gray-800">
+                                                                            {{ \App\Models\KnowledgeRelationshipFact::factTypeOptions()[$fact->facttype] ?? ucfirst($fact->facttype) }}
+                                                                        </div>
+
+                                                                        @if($fact->ispreferred)
+                                                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs border border-emerald-200">
+                                                                                Preferred
+                                                                            </span>
+                                                                        @endif
+
+                                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs border border-gray-200">
+                                                                            Sort: {{ $fact->sortorder ?? 0 }}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <div class="mt-1 text-sm text-gray-700">
+                                                                        @if($fact->datetext)
+                                                                            {{ $fact->datetext }}
+                                                                        @elseif($fact->datefrom)
+                                                                            {{ $fact->datefrom->format('d M Y') }}
+                                                                        @else
+                                                                            No date recorded
+                                                                        @endif
+
+                                                                        @if($fact->datequalifier)
+                                                                            · {{ \App\Models\KnowledgePersonFact::dateQualifierOptions()[$fact->datequalifier] ?? ucfirst($fact->datequalifier) }}
+                                                                        @endif
+
+                                                                        @if($fact->place)
+                                                                            · {{ $fact->place->placename }}@if($fact->place->locality), {{ $fact->place->locality }}@endif
+                                                                        @endif
+
+                                                                        @if($fact->proofstatus)
+                                                                            · {{ \App\Models\KnowledgePersonFact::proofStatusOptions()[$fact->proofstatus] ?? ucfirst($fact->proofstatus) }}
+                                                                        @endif
+                                                                    </div>
+
+                                                                    @if($fact->notes)
+                                                                        <div class="mt-2 text-sm text-gray-600 markdown-content">
+                                                                            @include('partials.markdown.rendered-block', [
+                                                                                'content' => $fact->notes,
+                                                                            ])
+                                                                        </div>
+                                                                    @endif
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    @else
+                                                        <div class="text-xs text-gray-500">
+                                                            No relationship facts recorded.
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
                                     @endif
-
-                                    @if($fact->datequalifier)
-                                        · {{ \App\Models\KnowledgePersonFact::dateQualifierOptions()[$fact->datequalifier] ?? ucfirst($fact->datequalifier) }}
-                                    @endif
-
-                                    @if($fact->place)
-                                        · {{ $fact->place->placename }}@if($fact->place->locality), {{ $fact->place->locality }}@endif
-                                    @endif
-
-                                    @if($fact->proofstatus)
-                                        · {{ \App\Models\KnowledgePersonFact::proofStatusOptions()[$fact->proofstatus] ?? ucfirst($fact->proofstatus) }}
-                                    @endif
-                                </div>
-
-                                @if($fact->notes)
-                                    <div class="mt-2 text-sm text-gray-600 whitespace-pre-line">
-                                        {{ $fact->notes }}
-                                    </div>
-                                @endif
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    <div class="text-xs text-gray-500">
-                        No relationship facts recorded.
-                    </div>
-                @endif
-            </div>
-        @endforeach
-    </div>
-@endif
 
                                     <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
                                         @if($knowledgeItem->notes->isNotEmpty())
@@ -529,8 +565,10 @@
                                                         @endif
 
                                                         @if($note->notecontent)
-                                                            <div class="mt-1 text-sm text-gray-700 whitespace-pre-line">
-                                                                {{ $note->notecontent }}
+                                                            <div class="mt-1 text-sm text-gray-700 markdown-content">
+                                                                @include('partials.markdown.rendered-block', [
+                                                                    'content' => $note->notecontent,
+                                                                ])
                                                             </div>
                                                         @endif
                                                     </div>
@@ -602,8 +640,10 @@
                                                     </div>
 
                                                     @if($log->reviewnotes)
-                                                        <div class="mt-1 text-sm text-gray-700 whitespace-pre-line">
-                                                            {{ $log->reviewnotes }}
+                                                        <div class="mt-1 text-sm text-gray-700 markdown-content">
+                                                            @include('partials.markdown.rendered-block', [
+                                                                'content' => $log->reviewnotes,
+                                                            ])
                                                         </div>
                                                     @endif
                                                 </div>
@@ -624,4 +664,6 @@
             @endforelse
         </div>
     </div>
+
+    @include('partials.markdown.markdown-styles')
 </x-app-layout>

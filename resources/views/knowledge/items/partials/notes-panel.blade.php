@@ -1,12 +1,16 @@
+@php
+    use Illuminate\Support\Str;
+@endphp
 {{-- resources/views/knowledge/items/partials/notes-panel.blade.php --}}
 
 <style>
-    .knowledge-note-content[data-collapsed="true"] {
+    .knowledge-note-content[data-collapsed="true"]:not(.knowledge-note-content--complex) {
         display: -webkit-box;
         -webkit-line-clamp: 5;
         -webkit-box-orient: vertical;
         overflow: hidden;
     }
+
 </style>
 
 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -90,15 +94,18 @@
                 </div>
 
                 <div>
-                    <label for="note_notecontent" class="block text-sm font-medium text-gray-700 mb-1">
-                        Note Content
-                    </label>
-                    <textarea name="notecontent"
-                              id="note_notecontent"
-                              rows="4"
-                              class="js-auto-resize-textarea w-full rounded-md border-gray-300 shadow-sm text-sm"
-                              data-min-rows="4"
-                              required>{{ old('notecontent') }}</textarea>
+                    <x-forms.markdown-field
+                        name="notecontent"
+                        id="note_notecontent"
+                        label="Note Content"
+                        :value="old('notecontent')"
+                        rows="5"
+                        minRows="4"
+                        maxRows="18"
+                        placeholder="Write the note content in Markdown..."
+                        help="Markdown supported. Use Show preview to view formatted content."
+                        required
+                    />
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -222,12 +229,18 @@
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Note Content</label>
-                            <textarea name="notecontent"
-                                      rows="4"
-                                      class="js-auto-resize-textarea w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                      data-min-rows="4"
-                                      required>{{ old('notecontent', $note->notecontent) }}</textarea>
+                            <x-forms.markdown-field
+                                name="notecontent"
+                                id="note_notecontent_{{ $note->id }}"
+                                label="Note Content"
+                                :value="old('notecontent', $note->notecontent)"
+                                rows="5"
+                                minRows="4"
+                                maxRows="18"
+                                placeholder="Write the note content in Markdown..."
+                                help="Markdown supported. Use Show preview to view formatted content."
+                                required
+                            />
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -298,8 +311,23 @@
             @else
                 @php
                     $raw = $note->notecontent ?? '';
-                    $normalised = str_replace(["\\r\\n", "\\n"], "\n", $raw);
+                    $normalised = str_replace(["\r\n", "\r"], "\n", $raw);
                     $contentId = 'knowledge-note-content-' . $note->id;
+                    $previewText = trim($normalised);
+
+                    $looksComplex =
+                        str_contains($previewText, '|') ||
+                        str_contains($previewText, '```') ||
+                        preg_match('/^\s*#{1,6}\s+/m', $previewText) ||
+                        preg_match('/^\s*[-*+]\s+/m', $previewText) ||
+                        preg_match('/^\s*\d+\.\s+/m', $previewText) ||
+                        preg_match('/^\s*>\s+/m', $previewText);
+
+                    $contentClass = $looksComplex
+                        ? 'knowledge-note-content knowledge-note-content--complex markdown-content text-gray-700'
+                        : 'knowledge-note-content markdown-content text-gray-700';
+
+                    $startCollapsed = $looksComplex ? 'false' : 'true';
                 @endphp
 
                 <div class="p-4 space-y-3 knowledge-note-row" data-note-id="{{ $note->id }}">
@@ -329,21 +357,23 @@
                                     · {{ $note->isprivate ? 'Private' : 'Shared' }}
                                 </div>
 
-                                <div class="space-y-2">
-                                    <div id="{{ $contentId }}"
-                                         class="knowledge-note-content text-sm text-gray-700 whitespace-pre-line"
-                                         data-collapsed="true">
-                                        {{ $normalised }}
-                                    </div>
+                                <div id="{{ $contentId }}"
+                                    class="{{ $contentClass }}"
+                                    data-collapsed="{{ $startCollapsed }}">
+                                    @include('partials.markdown.rendered-block', [
+                                        'content' => $normalised,
+                                    ])
+                                </div>
 
+                                @if(! $looksComplex)
                                     <button type="button"
-                                            class="knowledge-note-toggle hidden inline-flex items-center px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
-                                            data-target="{{ $contentId }}"
-                                            aria-expanded="false"
-                                            aria-controls="{{ $contentId }}">
+                                        class="knowledge-note-toggle hidden inline-flex items-center px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
+                                        data-target="{{ $contentId }}"
+                                        aria-expanded="false"
+                                        aria-controls="{{ $contentId }}">
                                         Show more
                                     </button>
-                                </div>
+                                @endif
                             </div>
                         </div>
 
@@ -394,38 +424,16 @@
 </div>
 
 @if(($activeTab ?? null) === 'notes')
+    @include('partials.forms.markdown-field-scripts')
+
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const textareas = Array.from(document.querySelectorAll('.js-auto-resize-textarea'));
         const list = document.getElementById('knowledge-notes-list');
         const reorderFields = document.getElementById('knowledge-notes-reorder-fields');
         const reorderForm = document.getElementById('knowledge-notes-reorder-form');
         const noteContentBlocks = Array.from(document.querySelectorAll('.knowledge-note-content'));
-
-        function getMinHeight(textarea) {
-            const computed = window.getComputedStyle(textarea);
-            const lineHeight = parseFloat(computed.lineHeight) || 20;
-            const paddingTop = parseFloat(computed.paddingTop) || 0;
-            const paddingBottom = parseFloat(computed.paddingBottom) || 0;
-            const borderTop = parseFloat(computed.borderTopWidth) || 0;
-            const borderBottom = parseFloat(computed.borderBottomWidth) || 0;
-            const minRows = parseInt(textarea.dataset.minRows || textarea.getAttribute('rows') || 4, 10);
-
-            return (lineHeight * minRows) + paddingTop + paddingBottom + borderTop + borderBottom;
-        }
-
-        function autoResize(textarea) {
-            const minHeight = getMinHeight(textarea);
-
-            textarea.style.overflowY = 'hidden';
-            textarea.style.resize = 'vertical';
-            textarea.style.height = 'auto';
-
-            const nextHeight = Math.max(textarea.scrollHeight, minHeight);
-            textarea.style.height = nextHeight + 'px';
-        }
 
         function updateNoteToggleVisibility(content) {
             const button = document.querySelector('.knowledge-note-toggle[data-target="' + content.id + '"]');
@@ -513,20 +521,10 @@
             });
         });
 
-        textareas.forEach((textarea) => {
-            autoResize(textarea);
-
-            textarea.addEventListener('input', function () {
-                autoResize(textarea);
-            });
-        });
-
         window.addEventListener('resize', function () {
             noteContentBlocks.forEach((content) => {
                 updateNoteToggleVisibility(content);
             });
-
-            textareas.forEach(autoResize);
         });
 
         if (list && reorderFields && reorderForm && typeof Sortable !== 'undefined') {

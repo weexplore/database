@@ -62,7 +62,17 @@
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-                <label for="placeid" class="block text-sm font-medium text-gray-700">Place</label>
+                <div class="flex items-center justify-between gap-3">
+                    <label for="placeid" class="block text-sm font-medium text-gray-700">Place</label>
+
+                    <button type="button"
+                            id="nearby_places_toggle"
+                            class="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-xs font-medium disabled:opacity-50"
+                            disabled>
+                        Nearby Places
+                    </button>
+                </div>
+
                 <select name="placeid"
                         id="placeid"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm js-place-select">
@@ -74,6 +84,10 @@
                         </option>
                     @endforeach
                 </select>
+
+                <p class="mt-1 text-xs text-gray-500">
+                    Browse nearby places for the selected place and add one after this planning item.
+                </p>
             </div>
 
             <div class="md:col-span-2">
@@ -211,6 +225,74 @@
                 </div>
             </div>
         </div>
+
+        <div id="nearby_places_card"
+             class="hidden bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-4">
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-900">Nearby Places</h3>
+                    <p class="text-xs text-gray-600">
+                        Search nearby places for the selected place without leaving this page.
+                    </p>
+                </div>
+
+                <div class="flex items-end gap-3">
+                    <div>
+                        <label for="nearby_radius_km" class="block text-xs font-medium text-gray-700 mb-1">
+                            Radius
+                        </label>
+                        <select id="nearby_radius_km"
+                                class="rounded-md border-gray-300 shadow-sm text-sm">
+                            <option value="25">25 km</option>
+                            <option value="50" selected>50 km</option>
+                            <option value="100">100 km</option>
+                            <option value="150">150 km</option>
+                            <option value="200">200 km</option>
+                        </select>
+                    </div>
+
+                    <button type="button"
+                            id="nearby_places_apply"
+                            class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
+                        Apply
+                    </button>
+
+                    <button type="button"
+                            id="nearby_places_close"
+                            class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 text-sm">
+                        Close
+                    </button>
+                </div>
+            </div>
+
+            <div id="nearby_places_status" class="text-xs text-gray-500">
+                Select a place and click Apply.
+            </div>
+
+            <div class="overflow-x-auto border border-indigo-100 rounded-md bg-white">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Place</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Distance</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="nearby_places_results" class="divide-y divide-gray-100 bg-white">
+                        <tr>
+                            <td colspan="4" class="px-3 py-4 text-center text-sm text-gray-500">
+                                No nearby search loaded yet.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="text-[11px] text-gray-500">
+                Use <span class="font-medium">Add after</span> to insert a new planning item after the current one.
+            </p>
+        </div>
     </div>
 
     <div class="space-y-6">
@@ -334,8 +416,28 @@ document.addEventListener('DOMContentLoaded', function () {
     const destinationOptions = Array.from(destinationSelect ? destinationSelect.querySelectorAll('option[data-place-id]') : []);
     const rows = Array.from(document.querySelectorAll('.related-destination-item-row'));
 
+    const nearbyToggle = document.getElementById('nearby_places_toggle');
+    const nearbyCard = document.getElementById('nearby_places_card');
+    const nearbyClose = document.getElementById('nearby_places_close');
+    const nearbyApply = document.getElementById('nearby_places_apply');
+    const nearbyRadius = document.getElementById('nearby_radius_km');
+    const nearbyStatus = document.getElementById('nearby_places_status');
+    const nearbyResults = document.getElementById('nearby_places_results');
+    const nearbyBaseTemplate = @json(route('places.nearby-data', ['place' => '__PLACE__']));
+
     if (!placeSelect || !destinationSelect) {
         return;
+    }
+
+    function setNearbyButtonState() {
+        const hasPlace = !!(placeSelect.value || '');
+        if (nearbyToggle) {
+            nearbyToggle.disabled = !hasPlace;
+        }
+
+        if (!hasPlace && nearbyCard) {
+            nearbyCard.classList.add('hidden');
+        }
     }
 
     function filterDestinations() {
@@ -388,14 +490,124 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function refreshDependentFields() {
-        filterDestinations();
-        filterRows();
+    function renderNearbyRows(items) {
+        if (!nearbyResults) {
+            return;
+        }
+
+        if (!items.length) {
+            nearbyResults.innerHTML = `
+                <tr>
+                    <td colspan="4" class="px-3 py-4 text-center text-sm text-gray-500">
+                        No places found within the selected radius.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        nearbyResults.innerHTML = items.map(item => `
+            <tr>
+                <td class="px-3 py-2 text-sm text-gray-900">${escapeHtml(item.placename || '')}</td>
+                <td class="px-3 py-2 text-sm text-gray-700">${escapeHtml(item.placetype || '')}</td>
+                <td class="px-3 py-2 text-sm text-gray-700">${Number(item.distance_km).toFixed(1)} km</td>
+                <td class="px-3 py-2 text-sm whitespace-nowrap">
+                    <button type="button"
+                            class="nearby-add-after inline-flex items-center px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium"
+                            data-place-id="${escapeHtmlAttr(item.id)}"
+                            data-place-name="${escapeHtmlAttr(item.placename || '')}">
+                        Add after
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
+
+    function escapeHtmlAttr(value) {
+        return escapeHtml(value);
+    }
+
+    async function loadNearbyPlaces() {
+        const selectedPlaceId = placeSelect.value || '';
+
+        if (!selectedPlaceId) {
+            nearbyStatus.textContent = 'Select a place first.';
+            renderNearbyRows([]);
+            return;
+        }
+
+        const url = nearbyBaseTemplate.replace('__PLACE__', selectedPlaceId);
+        const finalUrl = new URL(url, window.location.origin);
+        finalUrl.searchParams.set('radius_km', nearbyRadius.value || '50');
+
+        nearbyStatus.textContent = 'Loading nearby places...';
+        nearbyResults.innerHTML = `
+            <tr>
+                <td colspan="4" class="px-3 py-4 text-center text-sm text-gray-500">
+                    Loading...
+                </td>
+            </tr>
+        `;
+
+        try {
+            const response = await fetch(finalUrl.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            if (!response.ok) {
+                throw new Error('Nearby lookup failed.');
+            }
+
+            const data = await response.json();
+            nearbyStatus.textContent = `Showing places within ${data.radius_km} km of ${data.place.placename}.`;
+            renderNearbyRows(data.nearby_places || []);
+        } catch (error) {
+            nearbyStatus.textContent = 'Could not load nearby places.';
+            nearbyResults.innerHTML = `
+                <tr>
+                    <td colspan="4" class="px-3 py-4 text-center text-sm text-red-600">
+                        Could not load nearby places.
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    if (nearbyToggle) {
+        nearbyToggle.addEventListener('click', function () {
+            nearbyCard.classList.toggle('hidden');
+
+            if (!nearbyCard.classList.contains('hidden')) {
+                loadNearbyPlaces();
+            }
+        });
+    }
+
+    if (nearbyClose) {
+        nearbyClose.addEventListener('click', function () {
+            nearbyCard.classList.add('hidden');
+        });
+    }
+
+    if (nearbyApply) {
+        nearbyApply.addEventListener('click', function () {
+            loadNearbyPlaces();
+        });
     }
 
     placeSelect.addEventListener('change', function () {
         filterDestinations();
         filterRows();
+        setNearbyButtonState();
     });
 
     destinationSelect.addEventListener('change', function () {
@@ -415,6 +627,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    refreshDependentFields();
+    filterDestinations();
+    filterRows();
+    setNearbyButtonState();
 });
 </script>

@@ -20,7 +20,7 @@
                             'tab' => 'sources',
                             'show_fetch_source' => 1,
                         ]) }}"
-                    class="inline-flex items-center px-3 py-1.5 bg-slate-700 text-white rounded text-sm hover:bg-slate-800">
+                       class="inline-flex items-center px-3 py-1.5 bg-slate-700 text-white rounded text-sm hover:bg-slate-800">
                         Fetch from Internet
                     </a>
                 @endif
@@ -31,7 +31,7 @@
                             'tab' => 'sources',
                             'show_add_source' => 1,
                         ]) }}"
-                    class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+                       class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
                         Add Source
                     </a>
                 @endif
@@ -53,14 +53,14 @@
                     'knowledgeItem' => $knowledgeItem,
                     'tab' => 'sources',
                 ]) }}"
-                class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-sm hover:bg-gray-300">
+                   class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-sm hover:bg-gray-300">
                     Cancel
                 </a>
             </div>
 
             <form method="POST"
-                action="{{ route('knowledge.items.sources.fetch', $knowledgeItem) }}"
-                class="space-y-4">
+                  action="{{ route('knowledge.items.sources.fetch', $knowledgeItem) }}"
+                  class="space-y-4">
                 @csrf
 
                 <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -69,12 +69,12 @@
                             Page URL
                         </label>
                         <input type="url"
-                            name="fetch_url"
-                            id="fetch_url"
-                            value="{{ old('fetch_url') }}"
-                            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                            placeholder="https://"
-                            required>
+                               name="fetch_url"
+                               id="fetch_url"
+                               value="{{ old('fetch_url') }}"
+                               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                               placeholder="https://"
+                               required>
                     </div>
 
                     <div class="flex items-end">
@@ -200,25 +200,29 @@
                     </div>
                 </div>
 
-                <div>
-                    <label for="source_importedsummary" class="block text-sm font-medium text-gray-700 mb-1">
-                        Imported Summary
-                    </label>
-                    <textarea name="importedsummary"
-                              id="source_importedsummary"
-                              rows="3"
-                              class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('importedsummary') }}</textarea>
-                </div>
-<div>
-    <label for="source_importednotes" class="block text-sm font-medium text-gray-700 mb-1">
-        Imported Notes
-    </label>
-    <textarea name="importednotes"
-              id="source_importednotes"
-              rows="3"
-              class="js-autosize w-full rounded-md border-gray-300 shadow-sm text-sm resize-none overflow-hidden"
-              oninput="autoResizeTextarea(this)">{{ old('importednotes') }}</textarea>
-</div>
+                <x-forms.markdown-field
+                    name="importedsummary"
+                    id="source_importedsummary"
+                    :value="old('importedsummary')"
+                    label="Imported Summary"
+                    rows="3"
+                    min-rows="3"
+                    placeholder="Short imported summary from the source"
+                    help="Markdown supported, including headings, lists, links, emphasis, and tables."
+                    preview-title="Imported Summary Preview"
+                />
+
+                <x-forms.markdown-field
+                    name="importednotes"
+                    id="source_importednotes"
+                    :value="old('importednotes')"
+                    label="Imported Notes"
+                    rows="4"
+                    min-rows="4"
+                    placeholder="Imported notes captured from review or fetch workflow"
+                    help="Markdown supported, including headings, lists, links, emphasis, and tables."
+                    preview-title="Imported Notes Preview"
+                />
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -226,21 +230,25 @@
                             Reviewed By
                         </label>
                         <input type="text"
-                            name="reviewedby"
-                            id="source_reviewedby"
-                            value="{{ old('reviewedby') }}"
-                            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                            maxlength="100">
+                               name="reviewedby"
+                               id="source_reviewedby"
+                               value="{{ old('reviewedby') }}"
+                               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                               maxlength="100">
                     </div>
 
                     <div>
-                        <label for="source_internalnotes" class="block text-sm font-medium text-gray-700 mb-1">
-                            Internal Notes
-                        </label>
-                        <textarea name="internalnotes"
-                                id="source_internalnotes"
-                                rows="3"
-                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('internalnotes') }}</textarea>
+                        <x-forms.markdown-field
+                            name="internalnotes"
+                            id="source_internalnotes"
+                            :value="old('internalnotes')"
+                            label="Internal Notes"
+                            rows="4"
+                            min-rows="4"
+                            placeholder="Internal curation or review notes"
+                            help="Markdown supported for internal comments, checklists, and tables."
+                            preview-title="Internal Notes Preview"
+                        />
                     </div>
                 </div>
 
@@ -258,7 +266,7 @@
         @forelse($knowledgeItem->sources->sortBy('sourcetitle') as $source)
             <div class="p-4 space-y-3">
                 <div class="flex items-start justify-between gap-4">
-                    <div class="space-y-1 min-w-0">
+                    <div class="space-y-1 min-w-0 flex-1">
                         <div class="text-sm font-semibold text-gray-900">
                             {{ $source->sourcetitle ?: 'Untitled source' }}
                         </div>
@@ -279,20 +287,33 @@
                                 </a>
                             </div>
                         @endif
-@if($source->importedsummary)
-    <div class="text-sm text-gray-700 line-clamp-2">
-        {{ $source->importedsummary }}
-    </div>
-@endif
 
-@if($source->importednotes)
-    <div class="text-sm text-gray-700 whitespace-pre-line line-clamp-3">
-        {{ $source->importednotes }}
-    </div>
-@endif
+                        @if(filled($source->importedsummary))
+                            <div class="pt-1 text-sm markdown-content text-gray-700">
+                                @include('partials.markdown.rendered-block', [
+                                    'content' => $source->importedsummary,
+                                ])
+                            </div>
+                        @endif
+
+                        @if(filled($source->importednotes))
+                            <div class="pt-1 text-sm markdown-content text-gray-700">
+                                @include('partials.markdown.rendered-block', [
+                                    'content' => $source->importednotes,
+                                ])
+                            </div>
+                        @endif
+
+                        @if(filled($source->internalnotes) && ! (isset($editingSourceId) && (int) $editingSourceId === (int) $source->id))
+                            <div class="pt-1 text-sm markdown-content text-gray-700">
+                                @include('partials.markdown.rendered-block', [
+                                    'content' => $source->internalnotes,
+                                ])
+                            </div>
+                        @endif
                     </div>
 
-                    <div class="flex flex-col items-end gap-2 text-xs text-gray-500 whitespace-nowrap">
+                    <div class="flex flex-col items-end gap-2 text-xs text-gray-500 whitespace-nowrap shrink-0">
                         <div>ID: {{ $source->id }}</div>
                         <div>Retrieved: {{ $source->retrievedon?->format('d M Y') ?? '—' }}</div>
                         <div>Reviewed: {{ $source->reviewedon?->format('d M Y') ?? '—' }}</div>
@@ -322,7 +343,7 @@
                     </div>
                 </div>
 
-                @if(isset($editingSourceId) && (int) $editingSourceId === $source->id)
+                @if(isset($editingSourceId) && (int) $editingSourceId === (int) $source->id)
                     <div class="mt-4 border-t border-gray-200 pt-4">
                         <form method="POST"
                               action="{{ route('knowledge.items.sources.update', [$knowledgeItem, $source]) }}"
@@ -332,8 +353,11 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Source Type</label>
+                                    <label for="edit_source_sourcetype_{{ $source->id }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Source Type
+                                    </label>
                                     <select name="sourcetype"
+                                            id="edit_source_sourcetype_{{ $source->id }}"
                                             class="w-full rounded-md border-gray-300 shadow-sm text-sm"
                                             required>
                                         <option value="">Select source type</option>
@@ -346,9 +370,12 @@
                                 </div>
 
                                 <div class="md:col-span-2">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                    <label for="edit_source_sourcetitle_{{ $source->id }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Title
+                                    </label>
                                     <input type="text"
                                            name="sourcetitle"
+                                           id="edit_source_sourcetitle_{{ $source->id }}"
                                            value="{{ old('sourcetitle', $source->sourcetitle) }}"
                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
                                            required>
@@ -357,17 +384,23 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div class="md:col-span-2">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                                    <label for="edit_source_sourceurl_{{ $source->id }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                        URL
+                                    </label>
                                     <input type="url"
                                            name="sourceurl"
+                                           id="edit_source_sourceurl_{{ $source->id }}"
                                            value="{{ old('sourceurl', $source->sourceurl) }}"
                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Publisher / Source</label>
+                                    <label for="edit_source_sourcepublisher_{{ $source->id }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Publisher / Source
+                                    </label>
                                     <input type="text"
                                            name="sourcepublisher"
+                                           id="edit_source_sourcepublisher_{{ $source->id }}"
                                            value="{{ old('sourcepublisher', $source->sourcepublisher) }}"
                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 </div>
@@ -375,65 +408,88 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Retrieved On</label>
+                                    <label for="edit_source_retrievedon_{{ $source->id }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Retrieved On
+                                    </label>
                                     <input type="date"
                                            name="retrievedon"
-                                           value="{{ optional($source->retrievedon)->format('Y-m-d') }}"
+                                           id="edit_source_retrievedon_{{ $source->id }}"
+                                           value="{{ old('retrievedon', optional($source->retrievedon)->format('Y-m-d')) }}"
                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Import Status</label>
+                                    <label for="edit_source_importstatus_{{ $source->id }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Import Status
+                                    </label>
                                     <input type="text"
                                            name="importstatus"
+                                           id="edit_source_importstatus_{{ $source->id }}"
                                            value="{{ old('importstatus', $source->importstatus) }}"
                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Reviewed On</label>
+                                    <label for="edit_source_reviewedon_{{ $source->id }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Reviewed On
+                                    </label>
                                     <input type="date"
                                            name="reviewedon"
-                                           value="{{ optional($source->reviewedon)->format('Y-m-d') }}"
+                                           id="edit_source_reviewedon_{{ $source->id }}"
+                                           value="{{ old('reviewedon', optional($source->reviewedon)->format('Y-m-d')) }}"
                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 </div>
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Imported Summary / Notes</label>
-                                <textarea name="importedsummary"
-                                          rows="3"
-                                          class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('importedsummary', $source->importedsummary) }}</textarea>
-                            </div>
-<div>
-    <label class="block text-sm font-medium text-gray-700 mb-1">Imported Notes</label>
-    <textarea name="importednotes"
-              rows="3"
-              class="js-autosize w-full rounded-md border-gray-300 shadow-sm text-sm resize-none overflow-hidden"
-              oninput="autoResizeTextarea(this)">{{ old('importednotes', $source->importednotes) }}</textarea>
-</div>
+                            <x-forms.markdown-field
+                                name="importedsummary"
+                                :id="'edit_source_importedsummary_' . $source->id"
+                                :value="old('importedsummary', $source->importedsummary)"
+                                label="Imported Summary"
+                                rows="3"
+                                min-rows="3"
+                                placeholder="Short imported summary from the source"
+                                help="Markdown supported, including headings, lists, links, emphasis, and tables."
+                                preview-title="Imported Summary Preview"
+                            />
+
+                            <x-forms.markdown-field
+                                name="importednotes"
+                                :id="'edit_source_importednotes_' . $source->id"
+                                :value="old('importednotes', $source->importednotes)"
+                                label="Imported Notes"
+                                rows="4"
+                                min-rows="4"
+                                placeholder="Imported notes captured from review or fetch workflow"
+                                help="Markdown supported, including headings, lists, links, emphasis, and tables."
+                                preview-title="Imported Notes Preview"
+                            />
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label for="source_reviewedby" class="block text-sm font-medium text-gray-700 mb-1">
+                                    <label for="edit_source_reviewedby_{{ $source->id }}" class="block text-sm font-medium text-gray-700 mb-1">
                                         Reviewed By
                                     </label>
                                     <input type="text"
-                                        name="reviewedby"
-                                        id="source_reviewedby"
-                                        value="{{ old('reviewedby', $source->reviewedby) }}"
-                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                        maxlength="100">
+                                           name="reviewedby"
+                                           id="edit_source_reviewedby_{{ $source->id }}"
+                                           value="{{ old('reviewedby', $source->reviewedby) }}"
+                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                           maxlength="100">
                                 </div>
 
                                 <div>
-                                    <label for="source_internalnotes" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Internal Notes
-                                    </label>
-                                    <textarea name="internalnotes"
-                                            id="source_internalnotes"
-                                            rows="3"
-                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('internalnotes', $source->internalnotes) }}</textarea>
+                                    <x-forms.markdown-field
+                                        name="internalnotes"
+                                        :id="'edit_source_internalnotes_' . $source->id"
+                                        :value="old('internalnotes', $source->internalnotes)"
+                                        label="Internal Notes"
+                                        rows="4"
+                                        min-rows="4"
+                                        placeholder="Internal curation or review notes"
+                                        help="Markdown supported for internal comments, checklists, and tables."
+                                        preview-title="Internal Notes Preview"
+                                    />
                                 </div>
                             </div>
 
@@ -452,9 +508,10 @@
                                 </button>
                             </div>
                         </form>
+
                         <form method="POST"
-                            action="{{ route('knowledge.items.sources.destroy', [$knowledgeItem, $source]) }}"
-                            class="inline">
+                              action="{{ route('knowledge.items.sources.destroy', [$knowledgeItem, $source]) }}"
+                              class="inline">
                             @csrf
                             @method('DELETE')
 
@@ -474,17 +531,8 @@
         @endforelse
     </div>
 </div>
-@once
-    <script>
-        function autoResizeTextarea(el) {
-            el.style.height = 'auto';
-            el.style.height = el.scrollHeight + 'px';
-        }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('.js-autosize').forEach(function (el) {
-                autoResizeTextarea(el);
-            });
-        });
-    </script>
-@endonce
+@if(($activeTab ?? null) === 'sources')
+    @include('partials.markdown.markdown-styles')
+    @include('partials.forms.markdown-field-scripts')
+@endif

@@ -221,7 +221,8 @@ class KnowledgeReportController extends Controller
             },
             'knowledgeItems.incomingRelationships.relationshipFacts.place',
             'knowledgeItems.attachments' => function ($query) {
-                $query->orderByDesc('isprimary')
+                $query->orderByPivot('isprimary', 'desc')
+                    ->orderByPivot('sortorder')
                     ->orderBy('originalfilename')
                     ->orderBy('filename');
             },

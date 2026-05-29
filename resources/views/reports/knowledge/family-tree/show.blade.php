@@ -220,5 +220,50 @@
                 <div class="tree-muted">No spouse groups or children found.</div>
             </div>
         @endforelse
+
+        @if(($unmatchedChildren ?? collect())->isNotEmpty())
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+                <div class="mb-4">
+                    <div class="tree-label">Other children</div>
+                    <div class="tree-muted" style="margin-top: .25rem;">
+                        Linked to {{ $focusPerson->itemname }} but not linked to a shown spouse.
+                    </div>
+                </div>
+
+                <div class="tree-children-grid">
+                    @foreach($unmatchedChildren as $childEntry)
+                        @php
+                            $child = $childEntry['person'];
+                            $childSpouse = $childEntry['spouse'];
+                            $childMarriageFact = $childEntry['spouseRelationship']?->relationshipFacts
+                                ?->first(fn ($fact) => in_array(strtolower((string) $fact->facttype), ['marriage', 'married'], true));
+                        @endphp
+
+                        <div class="tree-card">
+                            <div>
+                                <div class="tree-label">Child</div>
+                                <div class="tree-name">{{ $child->itemname }}</div>
+                                @if($formatFact($child->tree_birth ?? null))
+                                    <div class="tree-meta" style="margin-top: .5rem;">B: {{ $formatFact($child->tree_birth) }}</div>
+                                @endif
+                                @if($formatFact($child->tree_death ?? null))
+                                    <div class="tree-meta">D: {{ $formatFact($child->tree_death) }}</div>
+                                @endif
+                            </div>
+
+                            @if($childSpouse)
+                                <div style="border-top: 1px solid #e5e7eb; padding-top: .75rem; margin-top: .75rem;">
+                                    <div class="tree-label">Spouse</div>
+                                    <div class="tree-name">{{ $childSpouse->itemname }}</div>
+                                    <div class="tree-muted" style="margin-top: .5rem;">
+                                        Marriage: {{ $childMarriageFact ? $formatFact($childMarriageFact) : 'No marriage fact recorded' }}
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
     </div>
 </x-report-layout>

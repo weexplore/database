@@ -25,7 +25,6 @@
                    class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
                     Back to trip
                 </a>
-
             </div>
         </div>
     </x-slot>
@@ -117,8 +116,14 @@
                             <div class="text-xs uppercase tracking-wide text-gray-500">
                                 Summary
                             </div>
-                            <div class="mt-1 text-sm text-gray-800 whitespace-pre-line">
-                                {{ $trip->summary ?: 'No summary recorded.' }}
+                            <div class="mt-1 text-sm text-gray-800 markdown-content">
+                                @if($trip->summary)
+                                    @include('partials.markdown.rendered-block', [
+                                        'content' => $trip->summary,
+                                    ])
+                                @else
+                                    <span class="text-gray-500">No summary recorded.</span>
+                                @endif
                             </div>
                         </div>
 
@@ -126,8 +131,14 @@
                             <div class="text-xs uppercase tracking-wide text-gray-500">
                                 Planning notes
                             </div>
-                            <div class="mt-1 text-sm text-gray-800 whitespace-pre-line">
-                                {{ $trip->planningnotes ?: 'No planning notes recorded.' }}
+                            <div class="mt-1 text-sm text-gray-800 markdown-content">
+                                @if($trip->planningnotes)
+                                    @include('partials.markdown.rendered-block', [
+                                        'content' => $trip->planningnotes,
+                                    ])
+                                @else
+                                    <span class="text-gray-500">No planning notes recorded.</span>
+                                @endif
                             </div>
                         </div>
 
@@ -135,8 +146,14 @@
                             <div class="text-xs uppercase tracking-wide text-gray-500">
                                 Actual notes
                             </div>
-                            <div class="mt-1 text-sm text-gray-800 whitespace-pre-line">
-                                {{ $trip->actualnotes ?: 'No post-trip notes recorded.' }}
+                            <div class="mt-1 text-sm text-gray-800 markdown-content">
+                                @if($trip->actualnotes)
+                                    @include('partials.markdown.rendered-block', [
+                                        'content' => $trip->actualnotes,
+                                    ])
+                                @else
+                                    <span class="text-gray-500">No post-trip notes recorded.</span>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -237,7 +254,7 @@
                 </div>
             </div>
 
-                        {{-- Trip legs --}}
+            {{-- Trip legs --}}
             <div class="bg-white shadow-sm sm:rounded-lg">
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h3 class="text-sm font-semibold text-gray-900">
@@ -425,8 +442,10 @@
                                                             </div>
 
                                                             @if ($point->notes)
-                                                                <div class="mt-1 text-[11px] text-gray-700 whitespace-pre-line">
-                                                                    {{ $point->notes }}
+                                                                <div class="mt-1 text-[11px] text-gray-700 markdown-content">
+                                                                    @include('partials.markdown.rendered-block', [
+                                                                        'content' => $point->notes,
+                                                                    ])
                                                                 </div>
                                                             @endif
                                                         </div>
@@ -466,28 +485,44 @@
                                             @if ($leg->description)
                                                 <div>
                                                     <div class="text-xs uppercase tracking-wide text-gray-500">Description</div>
-                                                    <div class="mt-1 text-gray-700 whitespace-pre-line">{{ $leg->description }}</div>
+                                                    <div class="mt-1 text-gray-700 markdown-content">
+                                                        @include('partials.markdown.rendered-block', [
+                                                            'content' => $leg->description,
+                                                        ])
+                                                    </div>
                                                 </div>
                                             @endif
 
                                             @if ($leg->drivingnotes)
                                                 <div>
                                                     <div class="text-xs uppercase tracking-wide text-gray-500">Driving notes</div>
-                                                    <div class="mt-1 text-gray-700 whitespace-pre-line">{{ $leg->drivingnotes }}</div>
+                                                    <div class="mt-1 text-gray-700 markdown-content">
+                                                        @include('partials.markdown.rendered-block', [
+                                                            'content' => $leg->drivingnotes,
+                                                        ])
+                                                    </div>
                                                 </div>
                                             @endif
 
                                             @if ($leg->planningnotes)
                                                 <div>
                                                     <div class="text-xs uppercase tracking-wide text-gray-500">Planning notes</div>
-                                                    <div class="mt-1 text-gray-700 whitespace-pre-line">{{ $leg->planningnotes }}</div>
+                                                    <div class="mt-1 text-gray-700 markdown-content">
+                                                        @include('partials.markdown.rendered-block', [
+                                                            'content' => $leg->planningnotes,
+                                                        ])
+                                                    </div>
                                                 </div>
                                             @endif
 
                                             @if ($leg->actualnotes)
                                                 <div>
                                                     <div class="text-xs uppercase tracking-wide text-gray-500">Actual notes</div>
-                                                    <div class="mt-1 text-gray-700 whitespace-pre-line">{{ $leg->actualnotes }}</div>
+                                                    <div class="mt-1 text-gray-700 markdown-content">
+                                                        @include('partials.markdown.rendered-block', [
+                                                            'content' => $leg->actualnotes,
+                                                        ])
+                                                    </div>
                                                 </div>
                                             @endif
                                         </div>
@@ -639,8 +674,10 @@
                                                 {{ $item->title }}
                                             </div>
                                             @if ($item->description)
-                                                <div class="mt-0.5 text-gray-600 whitespace-pre-line">
-                                                    {{ $item->description }}
+                                                <div class="mt-0.5 text-gray-600 markdown-content">
+                                                    @include('partials.markdown.rendered-block', [
+                                                        'content' => $item->description,
+                                                    ])
                                                 </div>
                                             @endif
                                         </td>
@@ -721,8 +758,10 @@
                                         @endif
                                     </div>
                                     @if ($review->comments)
-                                        <div class="mt-1 text-gray-800 whitespace-pre-line">
-                                            {{ $review->comments }}
+                                        <div class="mt-1 text-gray-800 markdown-content">
+                                            @include('partials.markdown.rendered-block', [
+                                                'content' => $review->comments,
+                                            ])
                                         </div>
                                     @endif
                                 </div>
@@ -900,234 +939,280 @@
 
         </div>
     </div>
-<style>
-    .trip-leg-card {
-        break-inside: avoid;
-        page-break-inside: avoid;
-    }
 
-    .trip-leg-map-wrap {
-        width: 100%;
-        max-width: 35rem;
-        margin: 0 auto;
-    }
-
-    .trip-leg-map {
-        width: 100%;
-        height: 28rem;
-    }
-
-    @media print {
+    <style>
         .trip-leg-card {
             break-inside: avoid;
             page-break-inside: avoid;
         }
 
         .trip-leg-map-wrap {
-            max-width: 36rem !important;
-            margin: 0 auto !important;
+            width: 100%;
+            max-width: 35rem;
+            margin: 0 auto;
         }
 
         .trip-leg-map {
-            width: 100% !important;
-            height: 18rem !important;
+            width: 100%;
+            height: 28rem;
         }
 
-        .trip-leg-map .leaflet-control-container {
-            display: none !important;
+        .markdown-content > *:first-child {
+            margin-top: 0;
         }
-    }
-</style>
-<link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
-/>
 
-<style>
-    .trip-leg-map {
-        height: 18rem;
-        width: 100%;
-        position: relative;
-    }
-</style>
+        .markdown-content > *:last-child {
+            margin-bottom: 0;
+        }
 
-<script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""
-></script>
+        .markdown-content p,
+        .markdown-content ul,
+        .markdown-content ol,
+        .markdown-content blockquote {
+            margin-bottom: 0.75rem;
+        }
 
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    if (typeof L === 'undefined') {
-        console.error('Leaflet did not load.');
-        return;
-    }
+        .markdown-content ul,
+        .markdown-content ol {
+            padding-left: 1.25rem;
+        }
 
-    const tripBookMaps = [];
+        .markdown-content li + li {
+            margin-top: 0.25rem;
+        }
 
-    document.querySelectorAll('.trip-leg-map').forEach(function (element) {
-        const fromLat = parseFloat(element.dataset.fromLat);
-        const fromLng = parseFloat(element.dataset.fromLng);
-        const toLat = parseFloat(element.dataset.toLat);
-        const toLng = parseFloat(element.dataset.toLng);
-        const fromName = element.dataset.fromName || 'Start';
-        const toName = element.dataset.toName || 'Destination';
+        .markdown-content h1,
+        .markdown-content h2,
+        .markdown-content h3,
+        .markdown-content h4 {
+            font-weight: 600;
+            color: #111827;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
 
-        if (
-            Number.isNaN(fromLat) ||
-            Number.isNaN(fromLng) ||
-            Number.isNaN(toLat) ||
-            Number.isNaN(toLng)
-        ) {
+        .markdown-content a {
+            color: #1d4ed8;
+            text-decoration: underline;
+        }
+
+        @media print {
+            .trip-leg-card {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            .trip-leg-map-wrap {
+                max-width: 36rem !important;
+                margin: 0 auto !important;
+            }
+
+            .trip-leg-map {
+                width: 100% !important;
+                height: 18rem !important;
+            }
+
+            .trip-leg-map .leaflet-control-container {
+                display: none !important;
+            }
+
+            .markdown-content a {
+                color: #000 !important;
+                text-decoration: none !important;
+            }
+        }
+    </style>
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""
+    />
+
+    <style>
+        .trip-leg-map {
+            height: 18rem;
+            width: 100%;
+            position: relative;
+        }
+    </style>
+
+    <script
+        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""
+    ></script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof L === 'undefined') {
+            console.error('Leaflet did not load.');
             return;
         }
 
-        const map = L.map(element, {
-            scrollWheelZoom: false,
-        });
+        const tripBookMaps = [];
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap contributors',
-        }).addTo(map);
+        document.querySelectorAll('.trip-leg-map').forEach(function (element) {
+            const fromLat = parseFloat(element.dataset.fromLat);
+            const fromLng = parseFloat(element.dataset.fromLng);
+            const toLat = parseFloat(element.dataset.toLat);
+            const toLng = parseFloat(element.dataset.toLng);
+            const fromName = element.dataset.fromName || 'Start';
+            const toName = element.dataset.toName || 'Destination';
 
-        const points = [
-            [fromLat, fromLng],
-            [toLat, toLng]
-        ];
-
-        L.circleMarker(points[0], {
-            radius: 7,
-            color: '#1d4ed8',
-            weight: 2,
-            fillColor: '#3b82f6',
-            fillOpacity: 1,
-        }).addTo(map).bindPopup('From: ' + fromName);
-
-        L.circleMarker(points[1], {
-            radius: 7,
-            color: '#b91c1c',
-            weight: 2,
-            fillColor: '#ef4444',
-            fillOpacity: 1,
-        }).addTo(map).bindPopup('To: ' + toName);
-
-        let activeRouteLayer = null;
-
-        function fitMapToLayer(layer) {
-            map.invalidateSize();
-
-            if (fromLat === toLat && fromLng === toLng) {
-                map.setView([fromLat, fromLng], 11);
+            if (
+                Number.isNaN(fromLat) ||
+                Number.isNaN(fromLng) ||
+                Number.isNaN(toLat) ||
+                Number.isNaN(toLng)
+            ) {
                 return;
             }
 
-            map.fitBounds(layer.getBounds(), {
-                padding: [24, 24],
-                maxZoom: 10,
-                animate: false,
+            const map = L.map(element, {
+                scrollWheelZoom: false,
             });
-        }
 
-        function storeMapForPrint() {
-            tripBookMaps.push({
-                map: map,
-                getLayer: function () {
-                    return activeRouteLayer;
-                },
-                fromLat: fromLat,
-                fromLng: fromLng,
-                toLat: toLat,
-                toLng: toLng,
-            });
-        }
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors',
+            }).addTo(map);
 
-        const routeUrl =
-            'https://router.project-osrm.org/route/v1/driving/' +
-            fromLng + ',' + fromLat + ';' + toLng + ',' + toLat +
-            '?overview=full&geometries=geojson&steps=false';
+            const points = [
+                [fromLat, fromLng],
+                [toLat, toLng]
+            ];
 
-        fetch(routeUrl)
-            .then(function (response) {
-                return response.json();
-            })
-            .then(function (data) {
-                if (data.code !== 'Ok' || !data.routes || !data.routes.length) {
-                    throw new Error('Route not available');
-                }
+            L.circleMarker(points[0], {
+                radius: 7,
+                color: '#1d4ed8',
+                weight: 2,
+                fillColor: '#3b82f6',
+                fillOpacity: 1,
+            }).addTo(map).bindPopup('From: ' + fromName);
 
-                const routeGeometry = data.routes[0].geometry;
+            L.circleMarker(points[1], {
+                radius: 7,
+                color: '#b91c1c',
+                weight: 2,
+                fillColor: '#ef4444',
+                fillOpacity: 1,
+            }).addTo(map).bindPopup('To: ' + toName);
 
-                activeRouteLayer = L.geoJSON(routeGeometry, {
-                    style: {
-                        color: '#2563eb',
-                        weight: 4,
-                        opacity: 0.85,
-                    }
-                }).addTo(map);
+            let activeRouteLayer = null;
 
-                fitMapToLayer(activeRouteLayer);
-                storeMapForPrint();
-            })
-            .catch(function () {
-                activeRouteLayer = L.polyline(points, {
-                    color: '#2563eb',
-                    weight: 4,
-                    opacity: 0.85,
-                    dashArray: '6,6',
-                }).addTo(map);
+            function fitMapToLayer(layer) {
+                map.invalidateSize();
 
-                fitMapToLayer(activeRouteLayer);
-                storeMapForPrint();
-            });
-    });
-
-    function refreshTripBookMapsForPrint() {
-        setTimeout(function () {
-            tripBookMaps.forEach(function (entry) {
-                const layer = entry.getLayer();
-
-                if (!layer) {
+                if (fromLat === toLat && fromLng === toLng) {
+                    map.setView([fromLat, fromLng], 11);
                     return;
                 }
 
-                entry.map.invalidateSize();
+                map.fitBounds(layer.getBounds(), {
+                    padding: [24, 24],
+                    maxZoom: 10,
+                    animate: false,
+                });
+            }
 
-                if (entry.fromLat === entry.toLat && entry.fromLng === entry.toLng) {
-                    entry.map.setView([entry.fromLat, entry.fromLng], 11);
-                } else {
-                    entry.map.fitBounds(layer.getBounds(), {
-                        padding: [24, 24],
-                        maxZoom: 10,
-                        animate: false,
-                    });
-                }
-            });
-        }, 300);
-    }
+            function storeMapForPrint() {
+                tripBookMaps.push({
+                    map: map,
+                    getLayer: function () {
+                        return activeRouteLayer;
+                    },
+                    fromLat: fromLat,
+                    fromLng: fromLng,
+                    toLat: toLat,
+                    toLng: toLng,
+                });
+            }
 
-    window.addEventListener('beforeprint', refreshTripBookMapsForPrint);
+            const routeUrl =
+                'https://router.project-osrm.org/route/v1/driving/' +
+                fromLng + ',' + fromLat + ';' + toLng + ',' + toLat +
+                '?overview=full&geometries=geojson&steps=false';
 
-    if (window.matchMedia) {
-        const mediaQueryList = window.matchMedia('print');
+            fetch(routeUrl)
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (data.code !== 'Ok' || !data.routes || !data.routes.length) {
+                        throw new Error('Route not available');
+                    }
 
-        if (mediaQueryList.addEventListener) {
-            mediaQueryList.addEventListener('change', function (event) {
-                if (event.matches) {
-                    refreshTripBookMapsForPrint();
-                }
-            });
-        } else if (mediaQueryList.addListener) {
-            mediaQueryList.addListener(function (event) {
-                if (event.matches) {
-                    refreshTripBookMapsForPrint();
-                }
-            });
+                    const routeGeometry = data.routes[0].geometry;
+
+                    activeRouteLayer = L.geoJSON(routeGeometry, {
+                        style: {
+                            color: '#2563eb',
+                            weight: 4,
+                            opacity: 0.85,
+                        }
+                    }).addTo(map);
+
+                    fitMapToLayer(activeRouteLayer);
+                    storeMapForPrint();
+                })
+                .catch(function () {
+                    activeRouteLayer = L.polyline(points, {
+                        color: '#2563eb',
+                        weight: 4,
+                        opacity: 0.85,
+                        dashArray: '6,6',
+                    }).addTo(map);
+
+                    fitMapToLayer(activeRouteLayer);
+                    storeMapForPrint();
+                });
+        });
+
+        function refreshTripBookMapsForPrint() {
+            setTimeout(function () {
+                tripBookMaps.forEach(function (entry) {
+                    const layer = entry.getLayer();
+
+                    if (!layer) {
+                        return;
+                    }
+
+                    entry.map.invalidateSize();
+
+                    if (entry.fromLat === entry.toLat && entry.fromLng === entry.toLng) {
+                        entry.map.setView([entry.fromLat, entry.fromLng], 11);
+                    } else {
+                        entry.map.fitBounds(layer.getBounds(), {
+                            padding: [24, 24],
+                            maxZoom: 10,
+                            animate: false,
+                        });
+                    }
+                });
+            }, 300);
         }
-    }
-});
-</script>
+
+        window.addEventListener('beforeprint', refreshTripBookMapsForPrint);
+
+        if (window.matchMedia) {
+            const mediaQueryList = window.matchMedia('print');
+
+            if (mediaQueryList.addEventListener) {
+                mediaQueryList.addEventListener('change', function (event) {
+                    if (event.matches) {
+                        refreshTripBookMapsForPrint();
+                    }
+                });
+            } else if (mediaQueryList.addListener) {
+                mediaQueryList.addListener(function (event) {
+                    if (event.matches) {
+                        refreshTripBookMapsForPrint();
+                    }
+                });
+            }
+        }
+    });
+    </script>
 </x-app-layout>

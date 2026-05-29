@@ -102,15 +102,17 @@
                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                 </div>
 
-                <div>
-                    <label for="relationship_notes" class="block text-sm font-medium text-gray-700 mb-1">
-                        Notes
-                    </label>
-                    <textarea name="notes"
-                              id="relationship_notes"
-                              rows="3"
-                              class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('notes') }}</textarea>
-                </div>
+                <x-forms.markdown-field
+                    name="notes"
+                    id="relationship_notes"
+                    :value="old('notes')"
+                    label="Notes"
+                    rows="4"
+                    min-rows="4"
+                    placeholder="Relationship notes, context, evidence, and rationale"
+                    help="Markdown supported, including headings, lists, links, emphasis, and tables."
+                    preview-title="Notes Preview"
+                />
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
@@ -181,9 +183,11 @@
                                     · Sort: <span class="knowledge-relationship-sort-label">{{ $displaySortOrder }}</span>
                                 </div>
 
-                                @if($relationship->notes)
-                                    <div class="text-sm text-gray-700 line-clamp-2">
-                                        {{ $relationship->notes }}
+                                @if(filled($relationship->notes))
+                                    <div class="pt-1 text-sm markdown-content text-gray-700">
+                                        @include('partials.markdown.rendered-block', [
+                                            'content' => $relationship->notes,
+                                        ])
                                     </div>
                                 @endif
                             </div>
@@ -230,22 +234,26 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div class="md:col-span-2">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Related Item</label>
+                                    <label for="edit_relationship_item_{{ $relationship->id }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Related Item
+                                    </label>
 
                                     @if($direction === 'incoming')
                                         <select name="fromitemid"
+                                                id="edit_relationship_item_{{ $relationship->id }}"
                                                 class="w-full rounded-md border-gray-300 shadow-sm text-sm"
                                                 required>
                                             <option value="">Select related item</option>
                                             @foreach($relationshipItems as $item)
                                                 <option value="{{ $item->id }}"
                                                     @selected((string) old('fromitemid', $relationship->fromitemid) === (string) $item->id)>
-                                                    {{ $item->itemname }}
+                                                    {{ $item->primaryCategory?->categoryname ?? 'Uncategorised' }}: {{ $item->itemname }}
                                                 </option>
                                             @endforeach
                                         </select>
                                     @else
                                         <select name="toitemid"
+                                                id="edit_relationship_item_{{ $relationship->id }}"
                                                 class="w-full rounded-md border-gray-300 shadow-sm text-sm"
                                                 required>
                                             <option value="">Select related item</option>
@@ -260,8 +268,11 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Relationship Type</label>
+                                    <label for="edit_relationship_relationshiptype_{{ $relationship->id }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Relationship Type
+                                    </label>
                                     <select name="relationshiptype"
+                                            id="edit_relationship_relationshiptype_{{ $relationship->id }}"
                                             class="w-full rounded-md border-gray-300 shadow-sm text-sm"
                                             required>
                                         <option value="">Select relationship type</option>
@@ -275,27 +286,36 @@
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Effective Date</label>
+                                <label for="edit_relationship_effective_date_{{ $relationship->id }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Effective Date
+                                </label>
                                 <input type="date"
                                        name="effective_date"
+                                       id="edit_relationship_effective_date_{{ $relationship->id }}"
                                        value="{{ old('effective_date', optional($relationship->effective_date)->format('Y-m-d')) }}"
                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                                <textarea name="notes"
-                                          rows="3"
-                                          class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('notes', $relationship->notes) }}</textarea>
-                            </div>
+                            <x-forms.markdown-field
+                                name="notes"
+                                :id="'edit_relationship_notes_' . $relationship->id"
+                                :value="old('notes', $relationship->notes)"
+                                label="Notes"
+                                rows="4"
+                                min-rows="4"
+                                placeholder="Relationship notes, context, evidence, and rationale"
+                                help="Markdown supported, including headings, lists, links, emphasis, and tables."
+                                preview-title="Notes Preview"
+                            />
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    <label for="edit_relationship_sortorder_{{ $relationship->id }}" class="block text-sm font-medium text-gray-700 mb-1">
                                         Sort Order ({{ ucfirst($direction) }} view)
                                     </label>
                                     <input type="number"
                                            name="sortorder"
+                                           id="edit_relationship_sortorder_{{ $relationship->id }}"
                                            value="{{ old('sortorder', $displaySortOrder) }}"
                                            min="0"
                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
@@ -337,6 +357,9 @@
 </div>
 
 @if(($activeTab ?? null) === 'relationships')
+    @include('partials.markdown.markdown-styles')
+    @include('partials.forms.markdown-field-scripts')
+
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 
     <script>
@@ -344,6 +367,7 @@
         const list = document.getElementById('knowledge-relationships-list');
         const reorderFields = document.getElementById('knowledge-relationships-reorder-fields');
         const saveOrderButton = document.getElementById('save-knowledge-relationships-order-button');
+        const reorderForm = document.getElementById('knowledge-relationships-reorder-form');
 
         function syncRelationshipSortLabels() {
             if (!list) {
@@ -393,7 +417,6 @@
                     syncRelationshipSortLabels();
                     buildRelationshipReorderFields();
 
-                    const reorderForm = document.getElementById('knowledge-relationships-reorder-form');
                     if (reorderForm) {
                         reorderForm.submit();
                     }
@@ -404,10 +427,10 @@
             buildRelationshipReorderFields();
         }
 
-        if (saveOrderButton) {
+        if (saveOrderButton && reorderForm) {
             saveOrderButton.addEventListener('click', function () {
                 buildRelationshipReorderFields();
-                document.getElementById('knowledge-relationships-reorder-form').submit();
+                reorderForm.submit();
             });
         }
     });

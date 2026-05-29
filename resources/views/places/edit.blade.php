@@ -12,23 +12,33 @@
         ])));
     @endphp
 
-<x-slot name="header">
-    <div class="flex items-center justify-between gap-4">
-        <div>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Edit Place
-            </h2>
-            <p class="mt-1 text-sm text-gray-500">
-                {{ $place->placename }}
-            </p>
-        </div>
+    <x-slot name="header">
+        <div class="flex items-center justify-between gap-4">
+            <div>
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                    Edit Place
+                </h2>
+                <p class="mt-1 text-sm text-gray-500">
+                    {{ $place->placename }}
+                </p>
+            </div>
+            <div>
+                <a href="{{ route('places.nearby', [
+                        'place' => $place->id,
+                        'radius_km' => 50,
+                        'returnto' => request()->fullUrl(),
+                    ]) }}"
+                   class="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm">
+                    Nearby 50 km
+                </a>
 
-        <a href="{{ $returnTo }}"
-           class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
-            Back
-        </a>
-    </div>
-</x-slot>
+                <a href="{{ $returnTo }}"
+                   class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
+                    Back
+                </a>
+            </div>
+        </div>
+    </x-slot>
 
     <div class="py-6">
         <div class="w-full max-w-none mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 space-y-6">
@@ -37,7 +47,6 @@
             @include('partials.admin.validation-summary')
 
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                {{-- Main edit form --}}
                 <div class="xl:col-span-2">
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <form
@@ -335,35 +344,35 @@
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label for="accessnotes" class="block text-sm font-medium text-gray-700">
-                                        Access notes
-                                    </label>
-                                    <textarea
-                                        id="accessnotes"
-                                        name="accessnotes"
-                                        rows="5"
-                                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm"
-                                    >{{ old('accessnotes', $place->accessnotes) }}</textarea>
-                                </div>
+                            <div class="grid grid-cols-1 gap-6">
+                                <x-forms.markdown-field
+                                    name="accessnotes"
+                                    id="accessnotes"
+                                    :value="old('accessnotes', $place->accessnotes)"
+                                    label="Access notes"
+                                    rows="5"
+                                    min-rows="5"
+                                    placeholder="Access details, approach notes, vehicle restrictions, gate codes, arrival tips, or check-in instructions"
+                                    help="Markdown supported, including headings, lists, links, emphasis, and tables."
+                                    preview-title="Access Notes Preview"
+                                />
 
-                                <div>
-                                    <label for="generalnotes" class="block text-sm font-medium text-gray-700">
-                                        General notes
-                                    </label>
-                                    <textarea
-                                        id="generalnotes"
-                                        name="generalnotes"
-                                        rows="5"
-                                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm"
-                                    >{{ old('generalnotes', $place->generalnotes) }}</textarea>
-                                </div>
+                                <x-forms.markdown-field
+                                    name="generalnotes"
+                                    id="generalnotes"
+                                    :value="old('generalnotes', $place->generalnotes)"
+                                    label="General notes"
+                                    rows="5"
+                                    min-rows="5"
+                                    placeholder="General notes about the place, suitability, facilities, nearby context, or planning remarks"
+                                    help="Markdown supported, including headings, lists, links, emphasis, and tables."
+                                    preview-title="General Notes Preview"
+                                />
                             </div>
 
                             <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
                                 <a href="{{ $returnTo }}"
-                                class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
+                                   class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
                                     Cancel
                                 </a>
 
@@ -375,6 +384,7 @@
                             </div>
                         </form>
                     </div>
+
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-red-200">
                         <div class="px-4 py-3 border-b border-red-200 bg-red-50">
                             <h3 class="text-sm font-semibold text-red-800">Delete Place</h3>
@@ -385,8 +395,8 @@
 
                         <div class="p-4">
                             <form method="POST"
-                                action="{{ route('places.destroy', $place) }}"
-                                onsubmit="return confirm('Delete this place? This cannot be undone.');">
+                                  action="{{ route('places.destroy', $place) }}"
+                                  onsubmit="return confirm('Delete this place? This cannot be undone.');">
                                 @csrf
                                 @method('DELETE')
                                 <input type="hidden" name="returnto" value="{{ $returnTo }}">
@@ -400,10 +410,8 @@
                             </form>
                         </div>
                     </div>
-
                 </div>
 
-                {{-- Read-only sidebar --}}
                 <div class="xl:col-span-1 space-y-6">
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
@@ -458,73 +466,78 @@
                         </div>
                     </div>
 
-
-                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                            <div class="px-4 py-3 border-b border-gray-200">
-                                <div>
-                                    <h3 class="text-sm font-semibold text-gray-900">
-                                        Destination Items
-                                    </h3>
-                                    <p class="mt-1 text-xs text-gray-500">
-                                        {{ $destinationItems->count() }} linked record{{ $destinationItems->count() === 1 ? '' : 's' }}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div class="p-4">
-                                @if ($place->destinations->isNotEmpty())
-                                    <div class="space-y-4">
-                                        @foreach ($place->destinations as $destination)
-                                            @php
-                                                $types = $destination->items
-                                                    ->pluck('itemtype')
-                                                    ->filter()
-                                                    ->unique()
-                                                    ->map(fn ($type) => $itemTypeOptions[$type] ?? $type)
-                                                    ->values();
-
-                                                $typesLabel = $types->isNotEmpty()
-                                                    ? $types->join(', ')
-                                                    : '-';
-                                            @endphp
-
-                                            <div class="border border-gray-200 rounded-lg">
-
-
-                                                <div class="p-3">
-                                                    @if ($destination->items->isNotEmpty())
-                                                        <ul class="space-y-2">
-                                                            @foreach ($destination->items as $item)
-                                                                <li>
-                                                                    <a href="{{ route('destination-items.edit', ['destinationItem' => $item, 'return_to' => url()->full()]) }}"
-                                                                    class="block border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                                                        <div class="text-sm font-medium text-gray-900">
-                                                                            {{ $item->itemname }}
-                                                                        </div>
-                                                                        <div class="mt-1 text-xs text-gray-500">
-                                                                            Type: {{ $item->itemTypes->pluck('typename')->join(', ') ?: '—' }}
-                                                                        </div>
-                                                                    </a>
-                                                                </li>
-                                                            @endforeach
-                                                        </ul>
-                                                    @else
-                                                        <p class="text-xs text-gray-500">
-                                                            No destination items linked to this destination.
-                                                        </p>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @else
-                                    <p class="text-sm text-gray-500">
-                                        No destinations are currently linked to this place.
-                                    </p>
-                                @endif
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="px-4 py-3 border-b border-gray-200">
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-900">
+                                    Destination Items
+                                </h3>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    {{ $destinationItems->count() }} linked record{{ $destinationItems->count() === 1 ? '' : 's' }}
+                                </p>
                             </div>
                         </div>
 
+                        <div class="p-4">
+                            @if ($place->destinations->isNotEmpty())
+                                <div class="space-y-4">
+                                    @foreach ($place->destinations as $destination)
+                                        @php
+                                            $types = $destination->items
+                                                ->pluck('itemtype')
+                                                ->filter()
+                                                ->unique()
+                                                ->map(fn ($type) => $itemTypeOptions[$type] ?? $type)
+                                                ->values();
+
+                                            $typesLabel = $types->isNotEmpty()
+                                                ? $types->join(', ')
+                                                : '-';
+                                        @endphp
+
+                                        <div class="border border-gray-200 rounded-lg">
+                                            <div class="px-3 py-2 border-b border-gray-200 bg-gray-50">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    {{ $destination->destinationname }}
+                                                </div>
+                                                <div class="mt-1 text-xs text-gray-500">
+                                                    Types: {{ $typesLabel }}
+                                                </div>
+                                            </div>
+
+                                            <div class="p-3">
+                                                @if ($destination->items->isNotEmpty())
+                                                    <ul class="space-y-2">
+                                                        @foreach ($destination->items as $item)
+                                                            <li>
+                                                                <a href="{{ route('destination-items.edit', ['destinationItem' => $item, 'return_to' => url()->full()]) }}"
+                                                                   class="block border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                                    <div class="text-sm font-medium text-gray-900">
+                                                                        {{ $item->itemname }}
+                                                                    </div>
+                                                                    <div class="mt-1 text-xs text-gray-500">
+                                                                        Type: {{ $item->itemTypes->pluck('typename')->join(', ') ?: '—' }}
+                                                                    </div>
+                                                                </a>
+                                                            </li>
+                                                        @endforeach
+                                                    </ul>
+                                                @else
+                                                    <p class="text-xs text-gray-500">
+                                                        No destination items linked to this destination.
+                                                    </p>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <p class="text-sm text-gray-500">
+                                    No destinations are currently linked to this place.
+                                </p>
+                            @endif
+                        </div>
+                    </div>
 
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="px-4 py-3 border-b border-gray-200">
@@ -620,106 +633,107 @@
                             @endif
                         </div>
                     </div>
+
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-    <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-        <div>
-            <h3 class="text-sm font-semibold text-gray-900">
-                Trip Legs to this Place
-            </h3>
-            <p class="mt-1 text-xs text-gray-500">
-                {{ $place->tripLegsTo->count() }} linked record{{ $place->tripLegsTo->count() === 1 ? '' : 's' }}
-            </p>
-        </div>
-    </div>
-
-    <div class="p-4">
-        @if ($place->tripLegsTo->isNotEmpty())
-            <ul class="space-y-3">
-                @foreach ($place->tripLegsTo as $tripLeg)
-                    <li>
-                        <a href="{{ route('trips.legs.edit', [
-                                'trip'   => $tripLeg->trip,
-                                'tripLeg'=> $tripLeg,
-                                'return_to' => url()->full(),
-                            ]) }}"
-                           class="block border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <div class="text-sm font-medium text-gray-900">
-                                {{ $tripLeg->legname ?? 'Trip leg' }}
+                        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-900">
+                                    Trip Legs to this Place
+                                </h3>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    {{ $place->tripLegsTo->count() }} linked record{{ $place->tripLegsTo->count() === 1 ? '' : 's' }}
+                                </p>
                             </div>
+                        </div>
 
-                            <div class="mt-1 text-xs text-gray-500">
-                                Trip: {{ optional($tripLeg->trip)->tripname ?? 'Unnamed trip' }}
+                        <div class="p-4">
+                            @if ($place->tripLegsTo->isNotEmpty())
+                                <ul class="space-y-3">
+                                    @foreach ($place->tripLegsTo as $tripLeg)
+                                        <li>
+                                            <a href="{{ route('trips.legs.edit', [
+                                                    'trip' => $tripLeg->trip,
+                                                    'tripLeg' => $tripLeg,
+                                                    'return_to' => url()->full(),
+                                                ]) }}"
+                                               class="block border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    {{ $tripLeg->legname ?? 'Trip leg' }}
+                                                </div>
+
+                                                <div class="mt-1 text-xs text-gray-500">
+                                                    Trip: {{ optional($tripLeg->trip)->tripname ?? 'Unnamed trip' }}
+                                                </div>
+
+                                                @php
+                                                    $depart = $tripLeg->startdate ? \Carbon\Carbon::parse($tripLeg->startdate)->format('d M Y') : null;
+                                                    $arrive = $tripLeg->enddate ? \Carbon\Carbon::parse($tripLeg->enddate)->format('d M Y') : null;
+                                                @endphp
+                                                <div class="mt-1 text-xs text-gray-500">
+                                                    @if ($depart || $arrive)
+                                                        {{ $depart ?? '?' }} → {{ $arrive ?? '?' }}
+                                                    @else
+                                                        Dates not set
+                                                    @endif
+                                                </div>
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @else
+                                <p class="text-sm text-gray-500">
+                                    No trip legs currently end at this place.
+                                </p>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="px-4 py-3 border-b border-gray-200">
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-900">Linked Knowledge Items</h3>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    {{ $place->knowledgeItems->count() }} linked record{{ $place->knowledgeItems->count() === 1 ? '' : 's' }}
+                                </p>
                             </div>
+                        </div>
 
-                            @php
-                                $depart = $tripLeg->startdate ? \Carbon\Carbon::parse($tripLeg->startdate)->format('d M Y') : null;
-                                $arrive = $tripLeg->enddate ? \Carbon\Carbon::parse($tripLeg->enddate)->format('d M Y') : null;
-                            @endphp
-                            <div class="mt-1 text-xs text-gray-500">
-                                @if ($depart || $arrive)
-                                    {{ $depart ?? '?' }} → {{ $arrive ?? '?' }}
-                                @else
-                                    Dates not set
-                                @endif
-                            </div>
-                        </a>
-                    </li>
-                @endforeach
-            </ul>
-        @else
-            <p class="text-sm text-gray-500">
-                No trip legs currently end at this place.
-            </p>
-        @endif
-    </div>
-</div>
+                        <div class="p-4">
+                            @if($place->knowledgeItems->isNotEmpty())
+                                <ul class="space-y-3">
+                                    @foreach($place->knowledgeItems as $knowledgeItem)
+                                        <li>
+                                            <a href="{{ route('knowledge.items.edit', [
+                                                    'knowledgeItem' => $knowledgeItem,
+                                                    'return_to' => url()->full(),
+                                                ]) }}"
+                                               class="block border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    {{ $knowledgeItem->itemname ?: 'Untitled knowledge item' }}
+                                                </div>
 
-<div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-    <div class="px-4 py-3 border-b border-gray-200">
-        <div>
-            <h3 class="text-sm font-semibold text-gray-900">Linked Knowledge Items</h3>
-            <p class="mt-1 text-xs text-gray-500">
-                {{ $place->knowledgeItems->count() }} linked record{{ $place->knowledgeItems->count() === 1 ? '' : 's' }}
-            </p>
-        </div>
-    </div>
+                                                <div class="mt-1 text-xs text-gray-500">
+                                                    Type: {{ $knowledgeItem->itemType?->typename ?? '—' }}
+                                                </div>
 
-    <div class="p-4">
-        @if($place->knowledgeItems->isNotEmpty())
-            <ul class="space-y-3">
-                @foreach($place->knowledgeItems as $knowledgeItem)
-                    <li>
-                        <a href="{{ route('knowledge.items.edit', [
-                                'knowledgeItem' => $knowledgeItem,
-                                'return_to' => url()->full(),
-                            ]) }}"
-                           class="block border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <div class="text-sm font-medium text-gray-900">
-                                {{ $knowledgeItem->itemname ?: 'Untitled knowledge item' }}
-                            </div>
+                                                <div class="mt-1 text-xs text-gray-500">
+                                                    Category: {{ $knowledgeItem->primaryCategory?->categoryname ?? '—' }}
+                                                </div>
 
-                            <div class="mt-1 text-xs text-gray-500">
-                                Type: {{ $knowledgeItem->itemType?->typename ?? '—' }}
-                            </div>
-
-                            <div class="mt-1 text-xs text-gray-500">
-                                Category: {{ $knowledgeItem->primaryCategory?->categoryname ?? '—' }}
-                            </div>
-
-                            <div class="mt-1 text-xs text-gray-500">
-                                Status: {{ $knowledgeItem->itemstatus ?: '—' }}
-                            </div>
-                        </a>
-                    </li>
-                @endforeach
-            </ul>
-        @else
-            <p class="text-sm text-gray-500">
-                No knowledge items are currently linked to this place.
-            </p>
-        @endif
-    </div>
-</div>
+                                                <div class="mt-1 text-xs text-gray-500">
+                                                    Status: {{ $knowledgeItem->itemstatus ?: '—' }}
+                                                </div>
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @else
+                                <p class="text-sm text-gray-500">
+                                    No knowledge items are currently linked to this place.
+                                </p>
+                            @endif
+                        </div>
+                    </div>
 
                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
                         <h3 class="text-sm font-semibold text-gray-900">
@@ -748,6 +762,9 @@
             </div>
         </div>
     </div>
+
+    @include('partials.markdown.markdown-styles')
+    @include('partials.forms.markdown-field-scripts')
 
     <link
         rel="stylesheet"
@@ -892,62 +909,61 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-    const latInput = document.getElementById('latitude');
-    const lngInput = document.getElementById('longitude');
-    const searchInput = document.getElementById('map-search');
-    const placeNameInput = document.getElementById('placename');
-    let searchTouchedManually = false;
+        const latInput = document.getElementById('latitude');
+        const lngInput = document.getElementById('longitude');
+        const searchInput = document.getElementById('map-search');
+        const placeNameInput = document.getElementById('placename');
+        let searchTouchedManually = false;
 
-    const searchButton = document.getElementById('map-search-button');
-    const useMyLocationButton = document.getElementById('use-my-location');
-    const syncFromFieldsButton = document.getElementById('sync-from-fields');
-    const mapStatus = document.getElementById('map-status');
-    const googleMapsLink = document.getElementById('open-in-google-maps');
+        const searchButton = document.getElementById('map-search-button');
+        const useMyLocationButton = document.getElementById('use-my-location');
+        const syncFromFieldsButton = document.getElementById('sync-from-fields');
+        const mapStatus = document.getElementById('map-status');
+        const googleMapsLink = document.getElementById('open-in-google-maps');
 
-    if (!latInput || !lngInput || !document.getElementById('place-map') || typeof L === 'undefined') return;
+        if (!latInput || !lngInput || !document.getElementById('place-map') || typeof L === 'undefined') return;
 
-    function coordsAreBlank() {
-        return latInput.value.trim() === '' && lngInput.value.trim() === '';
-    }
-
-    function shouldAutoFillSearch() {
-        return placeNameInput && searchInput && coordsAreBlank();
-    }
-
-    function syncSearchFromPlaceName(force = false) {
-        if (!placeNameInput || !searchInput) return;
-        if (!shouldAutoFillSearch()) return;
-
-        const placeName = placeNameInput.value.trim();
-        const currentSearch = searchInput.value.trim();
-
-        if (
-            force ||
-            !searchTouchedManually ||
-            currentSearch === '' ||
-            currentSearch === placeName
-        ) {
-            searchInput.value = placeName;
+        function coordsAreBlank() {
+            return latInput.value.trim() === '' && lngInput.value.trim() === '';
         }
-    }
 
-    if (searchInput) {
-        searchInput.addEventListener('input', function () {
-            const placeName = placeNameInput ? placeNameInput.value.trim() : '';
+        function shouldAutoFillSearch() {
+            return placeNameInput && searchInput && coordsAreBlank();
+        }
+
+        function syncSearchFromPlaceName(force = false) {
+            if (!placeNameInput || !searchInput) return;
+            if (!shouldAutoFillSearch()) return;
+
+            const placeName = placeNameInput.value.trim();
             const currentSearch = searchInput.value.trim();
 
-            searchTouchedManually = currentSearch !== '' && currentSearch !== placeName;
-        });
-    }
+            if (
+                force ||
+                !searchTouchedManually ||
+                currentSearch === '' ||
+                currentSearch === placeName
+            ) {
+                searchInput.value = placeName;
+            }
+        }
 
-    if (placeNameInput) {
-        placeNameInput.addEventListener('input', function () {
-            syncSearchFromPlaceName();
-        });
-    }
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                const placeName = placeNameInput ? placeNameInput.value.trim() : '';
+                const currentSearch = searchInput.value.trim();
 
-    syncSearchFromPlaceName(true);
+                searchTouchedManually = currentSearch !== '' && currentSearch !== placeName;
+            });
+        }
 
+        if (placeNameInput) {
+            placeNameInput.addEventListener('input', function () {
+                syncSearchFromPlaceName();
+            });
+        }
+
+        syncSearchFromPlaceName(true);
 
         const defaultLat = parseFloat(latInput.value) || -37.8136;
         const defaultLng = parseFloat(lngInput.value) || 144.9631;

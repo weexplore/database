@@ -256,9 +256,13 @@
         </div>
     </div>
 
+@include('partials.forms.markdown-field-scripts')
+</x-app-layout>
+
+@pushOnce('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const form = document.getElementById('trip-review-create-form');
+            const form = document.getElementById('trip-booking-create-form');
             if (!form) return;
 
             let isDirty = false;
@@ -280,18 +284,6 @@
                     event.returnValue = '';
                 }
             });
-
-            const textareas = form.querySelectorAll('.js-auto-resize-textarea');
-
-            const autoResize = (textarea) => {
-                textarea.style.height = 'auto';
-                textarea.style.height = textarea.scrollHeight + 'px';
-            };
-
-            textareas.forEach((textarea) => {
-                autoResize(textarea);
-                textarea.addEventListener('input', () => autoResize(textarea));
-            });
         });
     </script>
-</x-app-layout>
+@endPushOnce
