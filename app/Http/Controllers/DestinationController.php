@@ -378,5 +378,95 @@ public static function revisitOptions(): array
         'very_unlikely' => 'Very Unlikely',
     ];
 }
+public function storeSource(Request $request, Destination $destination)
+{
+    $validated = $request->validate([
+        'sourcetitle' => ['required', 'string', 'max:255'],
+        'sourcepublisher' => ['nullable', 'string', 'max:255'],
+        'sourceurl' => ['nullable', 'url', 'max:1000'],
+        'retrievedon' => ['nullable', 'date'],
+        'importstatus' => ['nullable', Rule::in(['pendingreview', 'approved', 'rejected', 'archived'])],
+        'summary' => ['nullable', 'string'],
+        'notes' => ['nullable', 'string'],
+        'return_to' => ['nullable', 'string'],
+    ]);
 
+    DestinationSource::create([
+        'destinationid' => $destination->id,
+        'sourcetitle' => trim($validated['sourcetitle']),
+        'sourcepublisher' => $validated['sourcepublisher'] ?? null,
+        'sourceurl' => $validated['sourceurl'] ?? null,
+        'retrievedon' => $validated['retrievedon'] ?? now()->toDateString(),
+        'importstatus' => $validated['importstatus'] ?? 'pendingreview',
+        'summary' => $validated['summary'] ?? null,
+        'notes' => $validated['notes'] ?? null,
+    ]);
+
+    $returnTo = $request->input('return_to');
+
+    if ($returnTo) {
+        return redirect($returnTo)->with('success', 'Internet source added successfully.');
+    }
+
+    return redirect()
+        ->route('destinations.edit', $destination)
+        ->with('success', 'Internet source added successfully.');
+}
+
+public function updateSource(Request $request, Destination $destination, DestinationSource $source)
+{
+    if ((int) $source->destinationid !== (int) $destination->id) {
+        abort(404);
+    }
+
+    $validated = $request->validate([
+        'sourcetitle' => ['required', 'string', 'max:255'],
+        'sourcepublisher' => ['nullable', 'string', 'max:255'],
+        'sourceurl' => ['nullable', 'url', 'max:1000'],
+        'retrievedon' => ['nullable', 'date'],
+        'importstatus' => ['nullable', Rule::in(['pendingreview', 'approved', 'rejected', 'archived'])],
+        'summary' => ['nullable', 'string'],
+        'notes' => ['nullable', 'string'],
+        'return_to' => ['nullable', 'string'],
+    ]);
+
+    $source->update([
+        'sourcetitle' => trim($validated['sourcetitle']),
+        'sourcepublisher' => $validated['sourcepublisher'] ?? null,
+        'sourceurl' => $validated['sourceurl'] ?? null,
+        'retrievedon' => $validated['retrievedon'] ?? null,
+        'importstatus' => $validated['importstatus'] ?? 'pendingreview',
+        'summary' => $validated['summary'] ?? null,
+        'notes' => $validated['notes'] ?? null,
+    ]);
+
+    $returnTo = $request->input('return_to');
+
+    if ($returnTo) {
+        return redirect($returnTo)->with('success', 'Internet source updated successfully.');
+    }
+
+    return redirect()
+        ->route('destinations.edit', $destination)
+        ->with('success', 'Internet source updated successfully.');
+}
+
+public function destroySource(Request $request, Destination $destination, DestinationSource $source)
+{
+    if ((int) $source->destinationid !== (int) $destination->id) {
+        abort(404);
+    }
+
+    $source->delete();
+
+    $returnTo = $request->input('return_to');
+
+    if ($returnTo) {
+        return redirect($returnTo)->with('success', 'Internet source deleted successfully.');
+    }
+
+    return redirect()
+        ->route('destinations.edit', $destination)
+        ->with('success', 'Internet source deleted successfully.');
+}
 }

@@ -477,38 +477,231 @@
                             </div>
                         </div>
 
-                        <div class="p-4">
-                            <div id="destination-sources-panel">
-                                @forelse($destination->sources as $source)
-                                    <div class="border border-gray-200 rounded-md px-3 py-2 mb-2">
-                                        <div class="text-xs font-semibold text-gray-900">
-                                            {{ $source->sourcetitle ?: 'Source' }}
-                                        </div>
-                                        <div class="mt-1 text-xs text-gray-500">
-                                            {{ $source->sourcepublisher ?: '—' }}
-                                            @if($source->retrievedon)
-                                                • Retrieved {{ \Illuminate\Support\Carbon::parse($source->retrievedon)->format('d M Y') }}
-                                            @endif
-                                            @if($source->importstatus)
-                                                • Status: {{ $source->importstatus }}
-                                            @endif
-                                        </div>
-                                        @if($source->sourceurl)
-                                            <div class="mt-1">
-                                                <a href="{{ $source->sourceurl }}"
-                                                   target="_blank"
-                                                   rel="noopener"
-                                                   class="text-xs text-blue-600 hover:underline">
-                                                    Open source
-                                                </a>
-                                            </div>
-                                        @endif
-                                    </div>
-                                @empty
-                                    <p class="text-xs text-gray-500">
-                                        No internet sources recorded yet. Use “Suggest from web” to add one.
+                        <div class="bg-white shadow-sm sm:rounded-lg">
+                            <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-3">
+                                <div>
+                                    <h3 class="text-sm font-semibold text-gray-900">Internet Sources</h3>
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        Curated links and summaries for this destination
                                     </p>
-                                @endforelse
+                                </div>
+
+                                <button type="button"
+                                        id="toggle-source-create"
+                                        class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-xs">
+                                    Add Source
+                                </button>
+                            </div>
+
+                            <div class="p-4 space-y-4">
+                                <form method="POST"
+                                    action="{{ route('destinations.sources.store', $destination) }}"
+                                    id="destination-source-create-form"
+                                    class="hidden border border-gray-200 rounded-lg p-4 space-y-3 bg-gray-50">
+                                    @csrf
+                                    <input type="hidden" name="return_to" value="{{ url()->full() }}">
+
+                                    <div>
+                                        <label for="new_source_title" class="block text-xs font-medium text-gray-700 mb-1">Title</label>
+                                        <input type="text" name="sourcetitle" id="new_source_title"
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm" required>
+                                    </div>
+
+                                    <div>
+                                        <label for="new_source_publisher" class="block text-xs font-medium text-gray-700 mb-1">Publisher</label>
+                                        <input type="text" name="sourcepublisher" id="new_source_publisher"
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                    </div>
+
+                                    <div>
+                                        <label for="new_source_url" class="block text-xs font-medium text-gray-700 mb-1">URL</label>
+                                        <input type="url" name="sourceurl" id="new_source_url"
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div>
+                                            <label for="new_source_retrievedon" class="block text-xs font-medium text-gray-700 mb-1">Retrieved on</label>
+                                            <input type="date" name="retrievedon" id="new_source_retrievedon"
+                                                value="{{ now()->toDateString() }}"
+                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                        </div>
+
+                                        <div>
+                                            <label for="new_source_importstatus" class="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                                            <select name="importstatus" id="new_source_importstatus"
+                                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                <option value="pendingreview">Pending review</option>
+                                                <option value="approved">Approved</option>
+                                                <option value="rejected">Rejected</option>
+                                                <option value="archived">Archived</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label for="new_source_summary" class="block text-xs font-medium text-gray-700 mb-1">Summary</label>
+                                        <textarea name="summary" id="new_source_summary" rows="3"
+                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm"></textarea>
+                                    </div>
+
+                                    <div>
+                                        <label for="new_source_notes" class="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+                                        <textarea name="notes" id="new_source_notes" rows="2"
+                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm"></textarea>
+                                    </div>
+
+                                    <div class="flex items-center justify-end gap-2">
+                                        <button type="button"
+                                                id="cancel-source-create"
+                                                class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-xs">
+                                            Cancel
+                                        </button>
+                                        <button type="submit"
+                                                class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-xs">
+                                            Save Source
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <div id="destination-sources-panel" class="space-y-3">
+                                    @forelse($destination->sources as $source)
+                                        <div class="border border-gray-200 rounded-md px-3 py-3">
+                                            <div class="flex items-start justify-between gap-3">
+                                                <div class="min-w-0">
+                                                    <div class="text-xs font-semibold text-gray-900">
+                                                        {{ $source->sourcetitle ?: 'Source' }}
+                                                    </div>
+                                                    <div class="mt-1 text-xs text-gray-500">
+                                                        {{ $source->sourcepublisher ?: '—' }}
+                                                        @if($source->retrievedon)
+                                                            • Retrieved {{ \Illuminate\Support\Carbon::parse($source->retrievedon)->format('d M Y') }}
+                                                        @endif
+                                                        @if($source->importstatus)
+                                                            • Status: {{ $source->importstatus }}
+                                                        @endif
+                                                    </div>
+
+                                                    @if($source->sourceurl)
+                                                        <div class="mt-1">
+                                                            <a href="{{ $source->sourceurl }}"
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            class="text-xs text-blue-600 hover:underline">
+                                                                Open source
+                                                            </a>
+                                                        </div>
+                                                    @endif
+
+                                                    @if($source->summary)
+                                                        <div class="mt-2 text-xs text-gray-600 whitespace-pre-line">
+                                                            {{ $source->summary }}
+                                                        </div>
+                                                    @endif
+                                                </div>
+
+                                                <div class="flex items-center gap-2 shrink-0">
+                                                    <button type="button"
+                                                            class="toggle-source-edit inline-flex items-center px-2.5 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs"
+                                                            data-target="source-edit-{{ $source->id }}">
+                                                        Edit
+                                                    </button>
+
+                                                    <form method="POST"
+                                                        action="{{ route('destinations.sources.destroy', [$destination, $source]) }}"
+                                                        onsubmit="return confirm('Delete this internet source?');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <input type="hidden" name="return_to" value="{{ url()->full() }}">
+                                                        <button type="submit"
+                                                                class="inline-flex items-center px-2.5 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-xs">
+                                                            Delete
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+
+                                            <form method="POST"
+                                                action="{{ route('destinations.sources.update', [$destination, $source]) }}"
+                                                id="source-edit-{{ $source->id }}"
+                                                class="hidden mt-3 border-t border-gray-200 pt-3 space-y-3">
+                                                @csrf
+                                                @method('PUT')
+                                                <input type="hidden" name="return_to" value="{{ url()->full() }}">
+
+                                                <div>
+                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Title</label>
+                                                    <input type="text" name="sourcetitle"
+                                                        value="{{ old("source_edit_{$source->id}.sourcetitle", $source->sourcetitle) }}"
+                                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                                        required>
+                                                </div>
+
+                                                <div>
+                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Publisher</label>
+                                                    <input type="text" name="sourcepublisher"
+                                                        value="{{ old("source_edit_{$source->id}.sourcepublisher", $source->sourcepublisher) }}"
+                                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                </div>
+
+                                                <div>
+                                                    <label class="block text-xs font-medium text-gray-700 mb-1">URL</label>
+                                                    <input type="url" name="sourceurl"
+                                                        value="{{ old("source_edit_{$source->id}.sourceurl", $source->sourceurl) }}"
+                                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                </div>
+
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Retrieved on</label>
+                                                        <input type="date" name="retrievedon"
+                                                            value="{{ old("source_edit_{$source->id}.retrievedon", optional($source->retrievedon)->format('Y-m-d')) }}"
+                                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                    </div>
+
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                                                        <select name="importstatus" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                            @foreach(['pendingreview' => 'Pending review', 'approved' => 'Approved', 'rejected' => 'Rejected', 'archived' => 'Archived'] as $value => $label)
+                                                                <option value="{{ $value }}" @selected($source->importstatus === $value)>
+                                                                    {{ $label }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Summary</label>
+                                                    <textarea name="summary" rows="3"
+                                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ $source->summary }}</textarea>
+                                                </div>
+
+                                                <div>
+                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+                                                    <textarea name="notes" rows="2"
+                                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ $source->notes }}</textarea>
+                                                </div>
+
+                                                <div class="flex items-center justify-end gap-2">
+                                                    <button type="button"
+                                                            class="toggle-source-edit inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-xs"
+                                                            data-target="source-edit-{{ $source->id }}">
+                                                        Cancel
+                                                    </button>
+                                                    <button type="submit"
+                                                            class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs">
+                                                        Save Changes
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    @empty
+                                        <p class="text-xs text-gray-500">
+                                            No internet sources recorded yet. Use “Suggest from web” or Add Source.
+                                        </p>
+                                    @endforelse
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -550,6 +743,9 @@
     @include('partials.forms.markdown-field-scripts')
 
     <script>
+
+
+    
     document.addEventListener('DOMContentLoaded', function () {
         const form = document.getElementById('destination-edit-form');
         if (!form) return;
@@ -572,6 +768,32 @@
                 event.preventDefault();
                 event.returnValue = '';
             }
+        });
+
+        const toggleCreateButton = document.getElementById('toggle-source-create');
+        const createForm = document.getElementById('destination-source-create-form');
+        const cancelCreateButton = document.getElementById('cancel-source-create');
+
+        if (toggleCreateButton && createForm) {
+            toggleCreateButton.addEventListener('click', function () {
+                createForm.classList.toggle('hidden');
+            });
+        }
+
+        if (cancelCreateButton && createForm) {
+            cancelCreateButton.addEventListener('click', function () {
+                createForm.classList.add('hidden');
+            });
+        }
+
+        document.querySelectorAll('.toggle-source-edit').forEach((button) => {
+            button.addEventListener('click', function () {
+                const targetId = button.getAttribute('data-target');
+                const panel = document.getElementById(targetId);
+                if (panel) {
+                    panel.classList.toggle('hidden');
+                }
+            });
         });
 
         const suggestButton = document.getElementById('suggest-from-web-button');

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Destination;
 use App\Models\DestinationItem;
 use App\Models\DestinationItemType;
+use App\Models\DestinationSource;
 use App\Models\Place;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -155,24 +156,39 @@ public function create(Request $request)
         'notes' => $data['notes'] ?? null,
         'estimatedcostperperson' => $data['estimatedcostperperson'] ?? null,
         'estimatedtotalcost' => $data['estimatedtotalcost'] ?? null,
-        'bookingrequired' => !empty($data['bookingrequired']),
+        'bookingrequired' => ! empty($data['bookingrequired']),
         'caravanaccessnotes' => $data['caravanaccessnotes'] ?? null,
         'recommendedstayminutes' => $data['recommendedstayminutes'] ?? null,
         'sortorder' => $data['sortorder'] ?? null,
-        'isactive' => array_key_exists('isactive', $data) ? !empty($data['isactive']) : true,
+        'isactive' => array_key_exists('isactive', $data) ? ! empty($data['isactive']) : true,
     ]);
 
-    // Sync item types AFTER the item exists
     $item->itemTypes()->sync($data['itemtype_ids'] ?? []);
+
+    $openWebsiteAfterSave = $request->input('open_website_after_save');
+
+    if ($openWebsiteAfterSave) {
+        return redirect()
+            ->route('destination-items.edit', [
+                'destinationItem' => $item,
+                'return_to' => $request->input('return_to'),
+            ])
+            ->with('success', 'Destination item created successfully.')
+            ->with('open_website_after_save_url', $openWebsiteAfterSave);
+    }
 
     $returnTo = $request->input('return_to');
 
     if ($returnTo) {
-        return redirect($returnTo)->with('success', 'Destination item created successfully.');
+        return redirect($returnTo)
+            ->with('success', 'Destination item created successfully.');
     }
 
     return redirect()
-        ->route('destination-items.edit', $item)
+        ->route('destination-items.edit', [
+            'destinationItem' => $item,
+            'return_to' => $request->input('return_to'),
+        ])
         ->with('success', 'Destination item created successfully.');
 }
 
@@ -182,6 +198,16 @@ public function edit(Request $request, DestinationItem $destinationItem)
         'destination',
         'place',
         'itemTypes',
+        'sources' => fn ($query) => $query
+            ->orderByRaw("CASE importstatus
+                WHEN 'pendingreview' THEN 1
+                WHEN 'approved' THEN 2
+                WHEN 'rejected' THEN 3
+                WHEN 'archived' THEN 4
+                ELSE 5
+            END")
+            ->orderByDesc('retrievedon')
+            ->orderByDesc('createdat'),
         'reviews' => function ($query) {
             $query->latest('reviewdate')
                 ->latest('createdat');
@@ -214,6 +240,9 @@ public function edit(Request $request, DestinationItem $destinationItem)
 
     $returnTo = $request->input('return_to', route('destinations.edit', $destinationItem->destinationid));
 
+    $sourceTypeOptions = DestinationSource::sourceTypeOptions();
+    $sourceImportStatusOptions = DestinationSource::importStatusOptions();
+
     return view('destination-items.edit', compact(
         'destinationItem',
         'destinations',
@@ -223,7 +252,9 @@ public function edit(Request $request, DestinationItem $destinationItem)
         'reviews',
         'reviewCount',
         'averageOverallRating',
-        'latestReviews'
+        'latestReviews',
+        'sourceTypeOptions',
+        'sourceImportStatusOptions'
     ));
 }
 
@@ -258,41 +289,57 @@ public function edit(Request $request, DestinationItem $destinationItem)
         'isactive' => ['nullable', 'boolean'],
     ]);
 
-$destinationItem->update([
-    'destinationid' => $data['destinationid'],
-    'placeid' => $data['placeid'] ?? null,
-    'addressline1' => $data['addressline1'] ?? null,
-    'addressline2' => $data['addressline2'] ?? null,
-    'addressline3' => $data['addressline3'] ?? null,
-    'postcode' => $data['postcode'] ?? null,
-    'telephone' => $data['telephone'] ?? null,
-    'website' => $data['website'] ?? null,
-    'latitude' => $data['latitude'] ?? null,
-    'longitude' => $data['longitude'] ?? null,
-    'internetsearch' => $data['internetsearch'] ?? null,
-    'itemname' => $data['itemname'],
-    'shortdescription' => $data['shortdescription'] ?? null,
-    'notes' => $data['notes'] ?? null,
-    'estimatedcostperperson' => $data['estimatedcostperperson'] ?? null,
-    'estimatedtotalcost' => $data['estimatedtotalcost'] ?? null,
-    'bookingrequired' => !empty($data['bookingrequired']),
-    'caravanaccessnotes' => $data['caravanaccessnotes'] ?? null,
-    'disabilityaccessnotes' => $data['disabilityaccessnotes'] ?? null,
-    'recommendedstayminutes' => $data['recommendedstayminutes'] ?? null,
-    'sortorder' => $data['sortorder'] ?? null,
-    'isactive' => !empty($data['isactive']),
-]);
+    $destinationItem->update([
+        'destinationid' => $data['destinationid'],
+        'placeid' => $data['placeid'] ?? null,
+        'addressline1' => $data['addressline1'] ?? null,
+        'addressline2' => $data['addressline2'] ?? null,
+        'addressline3' => $data['addressline3'] ?? null,
+        'postcode' => $data['postcode'] ?? null,
+        'telephone' => $data['telephone'] ?? null,
+        'website' => $data['website'] ?? null,
+        'latitude' => $data['latitude'] ?? null,
+        'longitude' => $data['longitude'] ?? null,
+        'internetsearch' => $data['internetsearch'] ?? null,
+        'itemname' => $data['itemname'],
+        'shortdescription' => $data['shortdescription'] ?? null,
+        'notes' => $data['notes'] ?? null,
+        'estimatedcostperperson' => $data['estimatedcostperperson'] ?? null,
+        'estimatedtotalcost' => $data['estimatedtotalcost'] ?? null,
+        'bookingrequired' => !empty($data['bookingrequired']),
+        'caravanaccessnotes' => $data['caravanaccessnotes'] ?? null,
+        'disabilityaccessnotes' => $data['disabilityaccessnotes'] ?? null,
+        'recommendedstayminutes' => $data['recommendedstayminutes'] ?? null,
+        'sortorder' => $data['sortorder'] ?? null,
+        'isactive' => !empty($data['isactive']),
+    ]);
 
-$destinationItem->itemTypes()->sync($data['itemtype_ids'] ?? []);
+    $destinationItem->itemTypes()->sync($data['itemtype_ids'] ?? []);
+
+    $openWebsiteAfterSave = $request->input('open_website_after_save');
+
+    if ($openWebsiteAfterSave) {
+        return redirect()
+            ->route('destination-items.edit', [
+                'destinationItem' => $destinationItem,
+                'return_to' => $request->input('return_to'),
+            ])
+            ->with('success', 'Destination item updated successfully.')
+            ->with('open_website_after_save_url', $openWebsiteAfterSave);
+    }
 
     $returnTo = $request->input('return_to');
 
     if ($returnTo) {
-        return redirect($returnTo)->with('success', 'Destination item updated successfully.');
+        return redirect($returnTo)
+            ->with('success', 'Destination item updated successfully.');
     }
 
     return redirect()
-        ->route('destination-items.edit', $destinationItem)
+        ->route('destination-items.edit', [
+            'destinationItem' => $destinationItem,
+            'return_to' => $request->input('return_to'),
+        ])
         ->with('success', 'Destination item updated successfully.');
 }
 
@@ -339,4 +386,107 @@ $destinationItem->itemTypes()->sync($data['itemtype_ids'] ?? []);
         ])
         ->with('success', 'Destination item created. You can now complete the details.');
 }
+
+public function storeSource(Request $request, DestinationItem $destinationItem)
+{
+    $validated = $request->validate([
+        'sourcetype' => ['nullable', 'string', Rule::in(array_keys(DestinationSource::sourceTypeOptions()))],
+        'sourcetitle' => ['required', 'string', 'max:255'],
+        'sourcepublisher' => ['nullable', 'string', 'max:255'],
+        'sourceurl' => ['nullable', 'url', 'max:1000'],
+        'retrievedon' => ['nullable', 'date'],
+        'importstatus' => ['nullable', 'string', Rule::in(array_keys(DestinationSource::importStatusOptions()))],
+        'importedsummary' => ['nullable', 'string'],
+        'importednotes' => ['nullable', 'string'],
+        'internalnotes' => ['nullable', 'string'],
+        'return_to' => ['nullable', 'string'],
+    ]);
+
+    DestinationSource::create([
+        'destinationid' => $destinationItem->destinationid,
+        'destinationitemid' => $destinationItem->id,
+        'sourcetype' => $validated['sourcetype'] ?? 'website',
+        'sourcetitle' => trim($validated['sourcetitle']),
+        'sourcepublisher' => $validated['sourcepublisher'] ?? null,
+        'sourceurl' => $validated['sourceurl'] ?? null,
+        'retrievedon' => $validated['retrievedon'] ?? now()->toDateString(),
+        'importstatus' => $validated['importstatus'] ?? 'pendingreview',
+        'importedsummary' => $validated['importedsummary'] ?? null,
+        'importednotes' => $validated['importednotes'] ?? null,
+        'internalnotes' => $validated['internalnotes'] ?? null,
+    ]);
+
+    $returnTo = $request->input('return_to');
+
+    if ($returnTo) {
+        return redirect($returnTo)->with('success', 'Internet source added successfully.');
+    }
+
+    return redirect()
+        ->route('destination-items.edit', $destinationItem)
+        ->with('success', 'Internet source added successfully.');
+}
+
+public function updateSource(Request $request, DestinationItem $destinationItem, DestinationSource $source)
+{
+    if ((int) $source->destinationitemid !== (int) $destinationItem->id) {
+        abort(404);
+    }
+
+    $validated = $request->validate([
+        'sourcetype' => ['nullable', 'string', Rule::in(array_keys(DestinationSource::sourceTypeOptions()))],
+        'sourcetitle' => ['required', 'string', 'max:255'],
+        'sourcepublisher' => ['nullable', 'string', 'max:255'],
+        'sourceurl' => ['nullable', 'url', 'max:1000'],
+        'retrievedon' => ['nullable', 'date'],
+        'importstatus' => ['nullable', 'string', Rule::in(array_keys(DestinationSource::importStatusOptions()))],
+        'importedsummary' => ['nullable', 'string'],
+        'importednotes' => ['nullable', 'string'],
+        'internalnotes' => ['nullable', 'string'],
+        'return_to' => ['nullable', 'string'],
+    ]);
+
+    $source->update([
+        'sourcetype' => $validated['sourcetype'] ?? 'website',
+        'sourcetitle' => trim($validated['sourcetitle']),
+        'sourcepublisher' => $validated['sourcepublisher'] ?? null,
+        'sourceurl' => $validated['sourceurl'] ?? null,
+        'retrievedon' => $validated['retrievedon'] ?? null,
+        'importstatus' => $validated['importstatus'] ?? 'pendingreview',
+        'importedsummary' => $validated['importedsummary'] ?? null,
+        'importednotes' => $validated['importednotes'] ?? null,
+        'internalnotes' => $validated['internalnotes'] ?? null,
+    ]);
+
+    $returnTo = $request->input('return_to');
+
+    if ($returnTo) {
+        return redirect($returnTo)->with('success', 'Internet source updated successfully.');
+    }
+
+    return redirect()
+        ->route('destination-items.edit', $destinationItem)
+        ->with('success', 'Internet source updated successfully.');
+}
+
+public function destroySource(Request $request, DestinationItem $destinationItem, DestinationSource $source)
+{
+    if ((int) $source->destinationitemid !== (int) $destinationItem->id) {
+        abort(404);
+    }
+
+    $source->delete();
+
+    $returnTo = $request->input('return_to');
+
+    if ($returnTo) {
+        return redirect($returnTo)->with('success', 'Internet source deleted successfully.');
+    }
+
+    return redirect()
+        ->route('destination-items.edit', $destinationItem)
+        ->with('success', 'Internet source deleted successfully.');
+}
+
+
 }

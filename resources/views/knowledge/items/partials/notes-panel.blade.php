@@ -1,14 +1,21 @@
 @php
     use Illuminate\Support\Str;
+    $startCollapsed = 'true';
 @endphp
 {{-- resources/views/knowledge/items/partials/notes-panel.blade.php --}}
 
 <style>
-    .knowledge-note-content[data-collapsed="true"]:not(.knowledge-note-content--complex) {
-        display: -webkit-box;
-        -webkit-line-clamp: 5;
-        -webkit-box-orient: vertical;
+    .knowledge-note-content {
+        position: relative;
         overflow: hidden;
+    }
+
+    .knowledge-note-content[data-collapsed="true"] {
+        max-height: 10rem; /* adjust as needed */
+    }
+
+    .knowledge-note-content[data-collapsed="false"] {
+        max-height: none;
     }
 
 </style>
@@ -327,7 +334,7 @@
                         ? 'knowledge-note-content knowledge-note-content--complex markdown-content text-gray-700'
                         : 'knowledge-note-content markdown-content text-gray-700';
 
-                    $startCollapsed = $looksComplex ? 'false' : 'true';
+                    $startCollapsed = 'true';
                 @endphp
 
                 <div class="p-4 space-y-3 knowledge-note-row" data-note-id="{{ $note->id }}">
@@ -365,15 +372,13 @@
                                     ])
                                 </div>
 
-                                @if(! $looksComplex)
-                                    <button type="button"
-                                        class="knowledge-note-toggle hidden inline-flex items-center px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
-                                        data-target="{{ $contentId }}"
-                                        aria-expanded="false"
-                                        aria-controls="{{ $contentId }}">
-                                        Show more
-                                    </button>
-                                @endif
+                                <button type="button"
+                                    class="knowledge-note-toggle hidden inline-flex items-center px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
+                                    data-target="{{ $contentId }}"
+                                    aria-expanded="false"
+                                    aria-controls="{{ $contentId }}">
+                                    Show more
+                                </button>
                             </div>
                         </div>
 

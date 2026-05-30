@@ -174,6 +174,9 @@ Route::prefix('destinations')->name('destinations.')->group(function () {
     Route::post('{destination}/suggest-from-web', [DestinationController::class, 'suggestFromWeb'])->name('suggest-from-web');
     Route::get('{destination}/destination-items/create-from-destination', [DestinationItemController::class, 'createFromDestination'])
         ->name('destination-items.create-from-destination');
+    Route::post('{destination}/sources', [DestinationController::class, 'storeSource'])->name('sources.store');
+    Route::put('{destination}/sources/{source}', [DestinationController::class, 'updateSource'])->name('sources.update');
+    Route::delete('{destination}/sources/{source}', [DestinationController::class, 'destroySource'])->name('sources.destroy');
 });
 
 Route::prefix('destination-sources')->name('destination-sources.')->group(function () {
@@ -189,6 +192,9 @@ Route::prefix('destination-items')->name('destination-items.')->group(function (
     Route::get('{destinationItem}/edit', [DestinationItemController::class, 'edit'])->name('edit');
     Route::put('{destinationItem}', [DestinationItemController::class, 'update'])->name('update');
     Route::delete('{destinationItem}', [DestinationItemController::class, 'destroy'])->name('destroy');
+    Route::post('{destinationItem}/sources', [DestinationItemController::class, 'storeSource'])->name('sources.store');
+    Route::put('{destinationItem}/sources/{source}', [DestinationItemController::class, 'updateSource'])->name('sources.update');
+    Route::delete('{destinationItem}/sources/{source}', [DestinationItemController::class, 'destroySource'])->name('sources.destroy');
 });
 
 /*

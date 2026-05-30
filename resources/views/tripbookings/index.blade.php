@@ -290,35 +290,9 @@
             @endif
         </div>
     </div>
+@pushOnce('scripts')
+    @include('partials.forms.markdown-field-scripts')
+@endPushOnce
 </x-app-layout>
 
-@include('partials.forms.markdown-field-scripts')
 
-@pushOnce('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const form = document.getElementById('trip-booking-create-form');
-            if (!form) return;
-
-            let isDirty = false;
-            let isSubmitting = false;
-
-            form.querySelectorAll('input, select, textarea').forEach((element) => {
-                element.addEventListener('change', () => isDirty = true);
-                element.addEventListener('input', () => isDirty = true);
-            });
-
-            form.addEventListener('submit', function () {
-                isSubmitting = true;
-                isDirty = false;
-            });
-
-            window.addEventListener('beforeunload', function (event) {
-                if (isDirty && !isSubmitting) {
-                    event.preventDefault();
-                    event.returnValue = '';
-                }
-            });
-        });
-    </script>
-@endPushOnce

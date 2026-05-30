@@ -89,4 +89,8 @@ class DestinationSource extends Model
     {
         return $query->where('importstatus', 'approved');
     }
+    public function sources()
+    {
+        return $this->hasMany(DestinationSource::class, 'destinationitemid');
+    }
 }

@@ -680,4 +680,7 @@ function reindexAndSyncLegPointRows() {
     }, 150);
 });
 </script>
+@pushOnce('scripts')
+    @include('partials.forms.markdown-field-scripts')
+@endPushOnce
 </x-app-layout>

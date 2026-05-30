@@ -125,9 +125,12 @@
         </div>
 
         <div>
-            <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea id="description" name="description" rows="3"
-                      class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">{{ $currentDescription }}</textarea>
+            <x-forms.markdown-field
+                name="description"
+                label="Description"
+                :value="$currentDescription"
+                help="Use Markdown for item details, activity summaries, inclusions, and planning context."
+            />
         </div>
     </div>
 
@@ -230,9 +233,12 @@
 
     {{-- Internal notes --}}
     <div class="space-y-2">
-        <label for="notesinternal" class="block text-sm font-medium text-gray-700">Internal notes</label>
-        <textarea id="notesinternal" name="notesinternal" rows="4"
-                  class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">{{ $currentNotesInternal }}</textarea>
+        <x-forms.markdown-field
+            name="notesinternal"
+            label="Internal notes"
+            :value="$currentNotesInternal"
+            help="Use Markdown for private planning notes, reminders, admin details, or follow-up actions."
+        />
     </div>
 </div>
 

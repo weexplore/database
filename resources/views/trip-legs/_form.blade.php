@@ -451,10 +451,13 @@
                 </div>
 
                 <div class="md:col-span-12">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                    <textarea name="leg_points[{{ $index }}][notes]"
-                              rows="2"
-                              class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ $point['notes'] ?? '' }}</textarea>
+                    <x-forms.markdown-field
+                        name="legpoints[{{ $index }}][notes]"
+                        id="legpoints_{{ $index }}_notes"
+                        label="Notes"
+                        :value="$point['notes'] ?? ''"
+                        help="Use Markdown for waypoint notes, stop details, and reminders."
+                    />
                 </div>
             </div>
         </div>
@@ -566,10 +569,13 @@
             </div>
 
             <div class="md:col-span-12">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                <textarea name="leg_points[__INDEX__][notes]"
-                          rows="2"
-                          class="w-full rounded-md border-gray-300 shadow-sm text-sm"></textarea>
+                <x-forms.markdown-field
+                    name="legpoints[INDEX][notes]"
+                    id="legpoints_INDEX_notes"
+                    label="Notes"
+                    :value="''"
+                    help="Use Markdown for waypoint notes, stop details, and reminders."
+                />
             </div>
         </div>
     </div>
@@ -698,37 +704,33 @@
                 </div>
 
                 <div class="space-y-4">
-                    <div>
-                        <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                        <textarea name="description"
-                                  id="description"
-                                  rows="4"
-                                  class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('description', $tripLeg->description ?? '') }}</textarea>
-                    </div>
+                    <x-forms.markdown-field
+                        name="description"
+                        label="Description"
+                        :value="old('description', $tripLeg->description ?? '')"
+                        help="Use Markdown for leg summaries, route context, and overview notes."
+                    />
 
-                    <div>
-                        <label for="drivingnotes" class="block text-sm font-medium text-gray-700 mb-1">Driving Notes</label>
-                        <textarea name="drivingnotes"
-                                  id="drivingnotes"
-                                  rows="4"
-                                  class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('drivingnotes', $tripLeg->drivingnotes ?? '') }}</textarea>
-                    </div>
+                    <x-forms.markdown-field
+                        name="drivingnotes"
+                        label="Driving Notes"
+                        :value="old('drivingnotes', $tripLeg->drivingnotes ?? '')"
+                        help="Use Markdown for driving conditions, cautions, road tips, and timing notes."
+                    />
 
-                    <div>
-                        <label for="planningnotes" class="block text-sm font-medium text-gray-700 mb-1">Planning Notes</label>
-                        <textarea name="planningnotes"
-                                  id="planningnotes"
-                                  rows="5"
-                                  class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('planningnotes', $tripLeg->planningnotes ?? '') }}</textarea>
-                    </div>
+                    <x-forms.markdown-field
+                        name="planningnotes"
+                        label="Planning Notes"
+                        :value="old('planningnotes', $tripLeg->planningnotes ?? '')"
+                        help="Use Markdown for planning ideas, to-do items, and pre-trip reminders."
+                    />
 
-                    <div>
-                        <label for="actualnotes" class="block text-sm font-medium text-gray-700 mb-1">Actual Notes</label>
-                        <textarea name="actualnotes"
-                                  id="actualnotes"
-                                  rows="5"
-                                  class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('actualnotes', $tripLeg->actualnotes ?? '') }}</textarea>
-                    </div>
+                    <x-forms.markdown-field
+                        name="actualnotes"
+                        label="Actual Notes"
+                        :value="old('actualnotes', $tripLeg->actualnotes ?? '')"
+                        help="Use Markdown for what actually happened on the leg, lessons learned, and post-trip notes."
+                    />
                 </div>
             </div>
         </div>

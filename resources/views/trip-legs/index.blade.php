@@ -709,4 +709,7 @@ function getCurrentToPoint() {
             }
         });
     </script>
+@pushOnce('scripts')
+    @include('partials.forms.markdown-field-scripts')
+@endPushOnce
 </x-app-layout>

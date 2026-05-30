@@ -156,13 +156,14 @@
             </div>
         </div>
 
-        <div>
-            <label for="notes" class="block text-sm font-medium text-gray-700">Notes</label>
-            <textarea name="notes"
-                      id="notes"
-                      rows="6"
-                      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">{{ old('notes', $tripPlanItem->notes) }}</textarea>
-        </div>
+
+            <x-forms.markdown-field
+                name="notes"
+                label="Notes"
+                :value="old('notes', $tripPlanItem->notes)"
+                help="Use Markdown for planning notes, reminders, linked destination details, or activity planning."
+            />
+
 
         <div class="mt-6">
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">

@@ -115,16 +115,36 @@
                                         value="{{ old('telephone', $destinationItem->telephone) }}"
                                         class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 </div>
+                                <input type="hidden" name="open_website_after_save" id="open-website-after-save" value="">
+
+                                <input type="hidden" id="open-website-after-save-url" value="{{ session('open_website_after_save_url', '') }}">
 
                                 <div class="md:col-span-2">
                                     <label for="website" class="block text-sm font-medium text-gray-700 mb-1">
                                         Website
                                     </label>
-                                    <input type="url"
-                                        name="website"
-                                        id="website"
-                                        value="{{ old('website', $destinationItem->website) }}"
-                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+
+                                    @php
+                                        $websiteValue = old('website', $destinationItem->website ?? '');
+                                    @endphp
+
+                                    <div class="flex items-center gap-2">
+                                        <input type="url"
+                                            name="website"
+                                            id="website"
+                                            value="{{ $websiteValue }}"
+                                            class="flex-1 rounded-md border-gray-300 shadow-sm text-sm">
+
+                                        <button type="button"
+                                                id="website-open-button"
+                                                class="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed">
+                                            Open
+                                        </button>
+                                    </div>
+
+                                    <p id="website-open-help" class="mt-1 text-xs text-gray-500">
+                                        Enter a valid website to enable this button. If there are unsaved changes, the record will save first and stay on this page.
+                                    </p>
                                 </div>
                             </div>
 
@@ -335,6 +355,252 @@
                             </div>
                         </div>
                     @endif
+                    <div class="bg-white shadow-sm sm:rounded-lg">
+                        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-3">
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-900">Internet Sources</h3>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    Curated links and summaries for this destination item
+                                </p>
+                            </div>
+
+                            <button type="button"
+                                    id="toggle-item-source-create"
+                                    class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-xs">
+                                Add Source
+                            </button>
+                        </div>
+
+                        <div class="p-4 space-y-4">
+                            <form method="POST"
+                                action="{{ route('destination-items.sources.store', $destinationItem) }}"
+                                id="destination-item-source-create-form"
+                                class="hidden border border-gray-200 rounded-lg p-4 space-y-3 bg-gray-50">
+                                @csrf
+                                <input type="hidden" name="return_to" value="{{ url()->full() }}">
+
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Source type</label>
+                                    <select name="sourcetype" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                        @foreach($sourceTypeOptions as $value => $label)
+                                            <option value="{{ $value }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Title</label>
+                                    <input type="text" name="sourcetitle" class="w-full rounded-md border-gray-300 shadow-sm text-sm" required>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Publisher</label>
+                                    <input type="text" name="sourcepublisher" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">URL</label>
+                                    <input type="url" name="sourceurl" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Retrieved on</label>
+                                        <input type="date" name="retrievedon" value="{{ now()->toDateString() }}"
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                                        <select name="importstatus" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                            @foreach($sourceImportStatusOptions as $value => $label)
+                                                <option value="{{ $value }}">{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Imported summary</label>
+                                    <textarea name="importedsummary" rows="3" class="w-full rounded-md border-gray-300 shadow-sm text-sm"></textarea>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Imported notes</label>
+                                    <textarea name="importednotes" rows="2" class="w-full rounded-md border-gray-300 shadow-sm text-sm"></textarea>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Internal notes</label>
+                                    <textarea name="internalnotes" rows="2" class="w-full rounded-md border-gray-300 shadow-sm text-sm"></textarea>
+                                </div>
+
+                                <div class="flex items-center justify-end gap-2">
+                                    <button type="button"
+                                            id="cancel-item-source-create"
+                                            class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-xs">
+                                        Cancel
+                                    </button>
+                                    <button type="submit"
+                                            class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-xs">
+                                        Save Source
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div class="space-y-3">
+                                @forelse($destinationItem->sources as $source)
+                                    <div class="border border-gray-200 rounded-md px-3 py-3">
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div class="min-w-0">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    {{ $source->sourcetitle ?: 'Source' }}
+                                                </div>
+
+                                                <div class="mt-1 text-xs text-gray-500">
+                                                    {{ $sourceTypeOptions[$source->sourcetype] ?? ucfirst($source->sourcetype ?? 'other') }}
+                                                    @if($source->sourcepublisher)
+                                                        · {{ $source->sourcepublisher }}
+                                                    @endif
+                                                    @if($source->retrievedon)
+                                                        · Retrieved {{ $source->retrievedon->format('d M Y') }}
+                                                    @endif
+                                                    @if($source->importstatus)
+                                                        · Status: {{ $sourceImportStatusOptions[$source->importstatus] ?? $source->importstatus }}
+                                                    @endif
+                                                </div>
+
+                                                @if($source->sourceurl)
+                                                    <div class="mt-1">
+                                                        <a href="{{ $source->sourceurl }}"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        class="text-xs text-blue-600 hover:underline">
+                                                            Open source
+                                                        </a>
+                                                    </div>
+                                                @endif
+
+                                                @if($source->importedsummary)
+                                                    <div class="mt-2 text-xs text-gray-600 whitespace-pre-line">
+                                                        {{ $source->importedsummary }}
+                                                    </div>
+                                                @endif
+                                            </div>
+
+                                            <div class="flex items-center gap-2 shrink-0">
+                                                <button type="button"
+                                                        class="toggle-item-source-edit inline-flex items-center px-2.5 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs"
+                                                        data-target="item-source-edit-{{ $source->id }}">
+                                                    Edit
+                                                </button>
+
+                                                <form method="POST"
+                                                    action="{{ route('destination-items.sources.destroy', [$destinationItem, $source]) }}"
+                                                    onsubmit="return confirm('Delete this internet source?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <input type="hidden" name="return_to" value="{{ url()->full() }}">
+                                                    <button type="submit"
+                                                            class="inline-flex items-center px-2.5 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-xs">
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+
+                                        <form method="POST"
+                                            action="{{ route('destination-items.sources.update', [$destinationItem, $source]) }}"
+                                            id="item-source-edit-{{ $source->id }}"
+                                            class="hidden mt-3 border-t border-gray-200 pt-3 space-y-3">
+                                            @csrf
+                                            @method('PUT')
+                                            <input type="hidden" name="return_to" value="{{ url()->full() }}">
+
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-700 mb-1">Source type</label>
+                                                <select name="sourcetype" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                    @foreach($sourceTypeOptions as $value => $label)
+                                                        <option value="{{ $value }}" @selected($source->sourcetype === $value)>{{ $label }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-700 mb-1">Title</label>
+                                                <input type="text" name="sourcetitle" value="{{ $source->sourcetitle }}"
+                                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm" required>
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-700 mb-1">Publisher</label>
+                                                <input type="text" name="sourcepublisher" value="{{ $source->sourcepublisher }}"
+                                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-700 mb-1">URL</label>
+                                                <input type="url" name="sourceurl" value="{{ $source->sourceurl }}"
+                                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                            </div>
+
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <div>
+                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Retrieved on</label>
+                                                    <input type="date" name="retrievedon"
+                                                        value="{{ optional($source->retrievedon)->format('Y-m-d') }}"
+                                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                </div>
+
+                                                <div>
+                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                                                    <select name="importstatus" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                        @foreach($sourceImportStatusOptions as $value => $label)
+                                                            <option value="{{ $value }}" @selected($source->importstatus === $value)>{{ $label }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-700 mb-1">Imported summary</label>
+                                                <textarea name="importedsummary" rows="3"
+                                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ $source->importedsummary }}</textarea>
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-700 mb-1">Imported notes</label>
+                                                <textarea name="importednotes" rows="2"
+                                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ $source->importednotes }}</textarea>
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-700 mb-1">Internal notes</label>
+                                                <textarea name="internalnotes" rows="2"
+                                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ $source->internalnotes }}</textarea>
+                                            </div>
+
+                                            <div class="flex items-center justify-end gap-2">
+                                                <button type="button"
+                                                        class="toggle-item-source-edit inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-xs"
+                                                        data-target="item-source-edit-{{ $source->id }}">
+                                                    Cancel
+                                                </button>
+                                                <button type="submit"
+                                                        class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs">
+                                                    Save Changes
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                @empty
+                                    <p class="text-sm text-gray-500">
+                                        No internet sources are currently linked to this destination item.
+                                    </p>
+                                @endforelse
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="bg-white shadow-sm sm:rounded-lg">
                         <div class="px-4 py-3 border-b border-gray-200">
@@ -973,4 +1239,91 @@ window.addEventListener('load', function () {
     }, 300);
 });
 </script>
+@pushOnce('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('destination-item-edit-form');
+    const websiteInput = document.getElementById('website');
+    const openButton = document.getElementById('website-open-button');
+
+    const toggleItemSourceCreateButton = document.getElementById('toggle-item-source-create');
+    const itemSourceCreateForm = document.getElementById('destination-item-source-create-form');
+    const cancelItemSourceCreateButton = document.getElementById('cancel-item-source-create');
+
+    if (toggleItemSourceCreateButton && itemSourceCreateForm) {
+        toggleItemSourceCreateButton.addEventListener('click', function () {
+            itemSourceCreateForm.classList.toggle('hidden');
+        });
+    }
+
+    if (cancelItemSourceCreateButton && itemSourceCreateForm) {
+        cancelItemSourceCreateButton.addEventListener('click', function () {
+            itemSourceCreateForm.classList.add('hidden');
+        });
+    }
+
+    document.querySelectorAll('.toggle-item-source-edit').forEach((button) => {
+        button.addEventListener('click', function () {
+            const panel = document.getElementById(button.dataset.target);
+            if (panel) {
+                panel.classList.toggle('hidden');
+            }
+        });
+    });
+
+    if (!form || !websiteInput || !openButton) {
+        return;
+    }
+
+    let isDirty = false;
+
+    function normaliseUrl(value) {
+        const trimmed = value.trim();
+        if (!trimmed) return '';
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        return 'https://' + trimmed;
+    }
+
+    function isValidUrl(value) {
+        const href = normaliseUrl(value);
+        if (!href) return false;
+
+        try {
+            const url = new URL(href);
+            return ['http:', 'https:'].includes(url.protocol) && !!url.hostname;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function updateOpenButtonState() {
+        openButton.disabled = !isValidUrl(websiteInput.value);
+    }
+
+    form.querySelectorAll('input, select, textarea').forEach((element) => {
+        element.addEventListener('input', function () {
+            isDirty = true;
+            updateOpenButtonState();
+        });
+
+        element.addEventListener('change', function () {
+            isDirty = true;
+            updateOpenButtonState();
+        });
+    });
+
+openButton.addEventListener('click', function () {
+    if (!isValidUrl(websiteInput.value)) {
+        return;
+    }
+
+    const href = normaliseUrl(websiteInput.value);
+
+    window.open(href, '_blank', 'noopener,noreferrer');
+});
+
+    updateOpenButtonState();
+});
+</script>
+@endPushOnce
 </x-app-layout>
