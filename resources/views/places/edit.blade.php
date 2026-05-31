@@ -414,40 +414,35 @@
 
                 <div class="xl:col-span-1 space-y-6">
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-3">
                             <div>
-                                <h3 class="text-sm font-semibold text-gray-900">
-                                    Linked Destinations
-                                </h3>
+                                <h3 class="text-sm font-semibold text-gray-900">Destinations and Items</h3>
                                 <p class="mt-1 text-xs text-gray-500">
-                                    {{ $place->destinations->count() }} linked record{{ $place->destinations->count() === 1 ? '' : 's' }}
+                                    {{ $place->destinations->count() }} destination{{ $place->destinations->count() === 1 ? '' : 's' }}
+                                    · {{ $destinationItems->count() }} destination item{{ $destinationItems->count() === 1 ? '' : 's' }}
                                 </p>
                             </div>
 
                             <div class="flex items-center gap-2">
-                                <button
-                                    type="submit"
-                                    form="place-edit-form"
-                                    onclick="document.getElementById('create_destination_after_save').value = '1';"
-                                    class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-                                >
+                                <button type="submit"
+                                        form="place-edit-form"
+                                        onclick="document.getElementById('createdestinationaftersave').value = 1"
+                                        class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">
                                     Add destination
                                 </button>
                             </div>
                         </div>
 
                         <div class="p-4">
-                            @if ($place->destinations->isNotEmpty())
-                                <ul class="space-y-3">
-                                    @foreach ($place->destinations as $destination)
-                                        <li>
-                                            <a
-                                                href="{{ route('destinations.edit', [
+                            @if($place->destinations->isNotEmpty())
+                                <div class="space-y-4">
+                                    @foreach($place->destinations as $destination)
+                                        <div class="border border-gray-200 rounded-lg">
+                                            <a href="{{ route('destinations.edit', [
                                                     'destination' => $destination,
                                                     'return_to' => url()->full(),
                                                 ]) }}"
-                                                class="block border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            >
+                                            class="block px-3 py-2 border-b border-gray-200 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
                                                 <div class="text-sm font-medium text-gray-900">
                                                     {{ $destination->destinationname }}
                                                 </div>
@@ -455,66 +450,15 @@
                                                     Type: {{ $destination->destinationtype ?: '—' }}
                                                 </div>
                                             </a>
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            @else
-                                <p class="text-sm text-gray-500">
-                                    No destinations are currently linked to this place.
-                                </p>
-                            @endif
-                        </div>
-                    </div>
-
-                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <div class="px-4 py-3 border-b border-gray-200">
-                            <div>
-                                <h3 class="text-sm font-semibold text-gray-900">
-                                    Destination Items
-                                </h3>
-                                <p class="mt-1 text-xs text-gray-500">
-                                    {{ $destinationItems->count() }} linked record{{ $destinationItems->count() === 1 ? '' : 's' }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="p-4">
-                            @if ($place->destinations->isNotEmpty())
-                                <div class="space-y-4">
-                                    @foreach ($place->destinations as $destination)
-                                        @php
-                                            $types = $destination->items
-                                                ->pluck('itemtype')
-                                                ->filter()
-                                                ->unique()
-                                                ->map(fn ($type) => $itemTypeOptions[$type] ?? $type)
-                                                ->values();
-
-                                            $typesLabel = $types->isNotEmpty()
-                                                ? $types->join(', ')
-                                                : '-';
-                                        @endphp
-
-                                        <div class="border border-gray-200 rounded-lg">
-                                            <div class="px-3 py-2 border-b border-gray-200 bg-gray-50">
-                                                <div class="text-sm font-medium text-gray-900">
-                                                    {{ $destination->destinationname }}
-                                                </div>
-                                                <div class="mt-1 text-xs text-gray-500">
-                                                    Types: {{ $typesLabel }}
-                                                </div>
-                                            </div>
 
                                             <div class="p-3">
-                                                @if ($destination->items->isNotEmpty())
+                                                @if($destination->items->isNotEmpty())
                                                     <ul class="space-y-2">
-                                                        @foreach ($destination->items as $item)
+                                                        @foreach($destination->items as $item)
                                                             <li>
                                                                 <a href="{{ route('destination-items.edit', ['destinationItem' => $item, 'return_to' => url()->full()]) }}"
-                                                                   class="block border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                                                    <div class="text-sm font-medium text-gray-900">
-                                                                        {{ $item->itemname }}
-                                                                    </div>
+                                                                class="block border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 hover:border-gray-300">
+                                                                    <div class="text-sm font-medium text-gray-900">{{ $item->itemname }}</div>
                                                                     <div class="mt-1 text-xs text-gray-500">
                                                                         Type: {{ $item->itemTypes->pluck('typename')->join(', ') ?: '—' }}
                                                                     </div>
@@ -523,21 +467,19 @@
                                                         @endforeach
                                                     </ul>
                                                 @else
-                                                    <p class="text-xs text-gray-500">
-                                                        No destination items linked to this destination.
-                                                    </p>
+                                                    <p class="text-xs text-gray-500">No destination items linked to this destination.</p>
                                                 @endif
                                             </div>
                                         </div>
                                     @endforeach
                                 </div>
                             @else
-                                <p class="text-sm text-gray-500">
-                                    No destinations are currently linked to this place.
-                                </p>
+                                <p class="text-sm text-gray-500">No destinations are currently linked to this place.</p>
                             @endif
                         </div>
                     </div>
+
+                    
 
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="px-4 py-3 border-b border-gray-200">
