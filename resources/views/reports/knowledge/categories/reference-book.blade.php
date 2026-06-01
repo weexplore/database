@@ -224,6 +224,16 @@
                                                     </div>
                                                 </div>
                                             @endif
+                                            @if($knowledgeItem->detailednotes)
+                                                <section>
+                                                    <h3 class="text-base font-semibold text-slate-900">Detailed Notes</h3>
+                                                    <div class="mt-2 text-sm leading-6 text-slate-700 markdown-content">
+                                                        @include('partials.markdown.rendered-block', [
+                                                            'content' => $knowledgeItem->detailednotes,
+                                                        ])
+                                                    </div>
+                                                </section>
+                                            @endif
 
                                             @if($knowledgeItem->significance)
                                                 <div class="rounded-lg border border-gray-200 p-4">
@@ -577,45 +587,91 @@
                                         @endif
 
                                         @if($knowledgeItem->sources->isNotEmpty())
-                                            <div class="rounded-lg border border-gray-200 p-4 space-y-3">
-                                                <h5 class="text-sm font-semibold text-gray-900">Knowledge Sources</h5>
+                                            <section>
+                                                <h3 class="text-base font-semibold text-slate-900">Sources</h3>
+                                                <div class="mt-3 space-y-3">
+                                                    @foreach($knowledgeItem->sources as $source)
+                                                        @php
+                                                            $sourceTitle = $source->title
+                                                                ?? $source->sourcetitle
+                                                                ?? $source->pagetitle
+                                                                ?? 'Source';
 
-                                                @foreach($knowledgeItem->sources as $source)
-                                                    <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
-                                                        <div class="flex flex-wrap gap-2 text-xs mb-2">
-                                                            @if($source->sourcetype)
-                                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                                                                    {{ \App\Models\KnowledgeSource::TYPE_OPTIONS[$source->sourcetype] ?? $source->sourcetype }}
-                                                                </span>
-                                                            @endif
+                                                            $sourceUrl = $source->url
+                                                                ?? $source->sourceurl
+                                                                ?? $source->canonicalurl
+                                                                ?? null;
 
-                                                            @if($source->retrievedon)
-                                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                                                    Retrieved: {{ $source->retrievedon->format('d M Y') }}
-                                                                </span>
-                                                            @endif
+                                                            $importedSummary = $source->importedsummary
+                                                                ?? $source->summary
+                                                                ?? null;
 
-                                                            @if($source->reviewedon)
-                                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                                                    Reviewed: {{ $source->reviewedon->format('d M Y') }}
-                                                                </span>
-                                                            @endif
-                                                        </div>
+                                                            $importedNotes = $source->importednotes
+                                                                ?? $source->notes
+                                                                ?? null;
+                                                        @endphp
 
-                                                        @if($source->sourcetitle)
-                                                            <div class="text-sm font-medium text-gray-800">
-                                                                {{ $source->sourcetitle }}
+                                                        @if(
+                                                            filled($sourceTitle) ||
+                                                            filled($sourceUrl) ||
+                                                            filled($importedSummary) ||
+                                                            filled($importedNotes) ||
+                                                            filled($source->sourcepublisher)
+                                                        )
+                                                            <div class="rounded-lg border border-slate-200 px-4 py-3 space-y-3">
+                                                                <div class="text-sm font-medium text-slate-900">
+                                                                    {{ $sourceTitle }}
+                                                                </div>
+
+                                                                @if(filled($sourceUrl))
+                                                                    <div>
+                                                                        <div class="text-xs font-medium text-slate-500 mb-1">URL</div>
+                                                                        <div class="text-sm break-all">
+                                                                            <a href="{{ $sourceUrl }}"
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            class="text-blue-600 hover:text-blue-800 hover:underline">
+                                                                                {{ $sourceUrl }}
+                                                                            </a>
+                                                                        </div>
+                                                                    </div>
+                                                                @endif
+
+                                                                @if(filled($source->sourcepublisher))
+                                                                    <div>
+                                                                        <div class="text-xs font-medium text-slate-500 mb-1">Publisher</div>
+                                                                        <div class="text-sm text-slate-700">
+                                                                            {{ $source->sourcepublisher }}
+                                                                        </div>
+                                                                    </div>
+                                                                @endif
+
+                                                                @if(filled($importedSummary))
+                                                                    <div>
+                                                                        <div class="text-xs font-medium text-slate-500 mb-1">Imported Summary</div>
+                                                                        <div class="text-sm text-slate-700 markdown-content">
+                                                                            @include('partials.markdown.rendered-block', [
+                                                                                'content' => $importedSummary,
+                                                                            ])
+                                                                        </div>
+                                                                    </div>
+                                                                @endif
+
+                                                                @if(filled($importedNotes))
+                                                                    <div>
+                                                                        <div class="text-xs font-medium text-slate-500 mb-1">Imported Notes</div>
+                                                                        <div class="text-sm text-slate-700 markdown-content">
+                                                                            @include('partials.markdown.rendered-block', [
+                                                                                'content' => $importedNotes,
+                                                                            ])
+                                                                        </div>
+                                                                    </div>
+                                                                @endif
                                                             </div>
                                                         @endif
-
-                                                        @if($source->sourcepublisher)
-                                                            <div class="mt-1 text-sm text-gray-600">
-                                                                {{ $source->sourcepublisher }}
-                                                            </div>
-                                                        @endif
-                                                    </div>
-                                                @endforeach
-                                            </div>
+                                                    @endforeach
+                                                </div>
+                                            </section>
                                         @endif
                                     </div>
 

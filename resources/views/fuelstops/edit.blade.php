@@ -37,6 +37,7 @@
                             @include('fuelstops._form', [
                                 'fuelStop' => $fuelStop,
                                 'places' => $places,
+                                'destinations' => $destinations,
                                 'fuelTypes' => $fuelTypes,
                             ])
 
@@ -534,4 +535,72 @@
             });
         })();
     </script>
+    <script>
+    function setupFuelStopDestinationFilter() {
+        const placeSelect = document.getElementById('placeid');
+        const destinationSelect = document.getElementById('destinationid');
+
+        if (!placeSelect || !destinationSelect) {
+            return;
+        }
+
+        const originalOptions = Array.from(destinationSelect.options).map((option) => ({
+            value: option.value,
+            text: option.text,
+            placeId: option.dataset.placeId || '',
+            selected: option.selected,
+        }));
+
+        function rebuildDestinationOptions() {
+            const selectedPlaceId = placeSelect.value;
+            const currentValue = destinationSelect.value || destinationSelect.dataset.selected || '';
+
+            destinationSelect.innerHTML = '';
+
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = 'Select destination';
+            destinationSelect.appendChild(placeholder);
+
+            originalOptions.forEach((option) => {
+                if (option.value === '') {
+                    return;
+                }
+
+                if (selectedPlaceId !== '' && option.placeId !== selectedPlaceId) {
+                    return;
+                }
+
+                const el = document.createElement('option');
+                el.value = option.value;
+                el.textContent = option.text;
+                el.dataset.placeId = option.placeId;
+
+                if (String(option.value) === String(currentValue)) {
+                    el.selected = true;
+                }
+
+                destinationSelect.appendChild(el);
+            });
+
+            const stillExists = Array.from(destinationSelect.options).some(
+                (option) => option.value === currentValue
+            );
+
+            if (!stillExists) {
+                destinationSelect.value = '';
+                destinationSelect.dataset.selected = '';
+            }
+        }
+
+        placeSelect.addEventListener('change', function () {
+            destinationSelect.dataset.selected = '';
+            rebuildDestinationOptions();
+        });
+
+        rebuildDestinationOptions();
+    }
+
+    window.addEventListener('load', setupFuelStopDestinationFilter);
+</script>
 </x-app-layout>

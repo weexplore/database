@@ -4,6 +4,7 @@
             'placeid',
             'destinationtype',
             'featured',
+            'visited',
             'search',
             'page',
         ])));
@@ -133,7 +134,7 @@
                                     </select>
                                 </div>
 
-                                <div class="flex items-end">
+                                <div class="flex items-end gap-4">
                                     <label class="inline-flex items-center gap-2">
                                         <input type="hidden" name="isfeatured" value="0">
                                         <input type="checkbox"
@@ -142,6 +143,15 @@
                                                class="rounded border-gray-300 text-blue-600 shadow-sm"
                                                @checked(old('isfeatured', $destination->isfeatured))>
                                         <span class="text-sm text-gray-700">Featured destination</span>
+                                    </label>
+                                    <label class="inline-flex items-center gap-2">
+                                        <input type="hidden" name="hasvisited" value="0">
+                                        <input type="checkbox"
+                                            name="hasvisited"
+                                            value="1"
+                                            class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                            @checked(old('hasvisited', $destination->hasvisited))>
+                                        <span class="text-sm text-gray-700">Visited destination</span>
                                     </label>
                                 </div>
                             </div>

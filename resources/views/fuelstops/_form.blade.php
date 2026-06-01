@@ -22,6 +22,27 @@
         </div>
 
         <div>
+            <label for="destinationid" class="block text-sm font-medium text-gray-700 mb-1">Destination</label>
+            <select
+                name="destinationid"
+                id="destinationid"
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                data-selected="{{ old('destinationid', $fuelStop->destinationid) }}"
+            >
+                <option value="">Select destination</option>
+                @foreach ($destinations as $destination)
+                    <option
+                        value="{{ $destination->id }}"
+                        data-place-id="{{ $destination->placeid }}"
+                        @selected(old('destinationid', $fuelStop->destinationid) == $destination->id)
+                    >
+                        {{ $destination->destinationname }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+
+        <div>
             <label for="stopname" class="block text-sm font-medium text-gray-700 mb-1">Stop Name</label>
             <input
                 type="text"

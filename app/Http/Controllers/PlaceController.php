@@ -489,7 +489,7 @@ public function update(Request $request, Place $place)
 
     $returnTo = $request->input('return_to');
 
-    if ($request->boolean('create_destination_after_save')) {
+    if ($request->boolean('createdestinationaftersave')) {
         return redirect()->route('places.destinations.create-from-place', [
             'place' => $place,
             'return_to' => route('places.edit', [
@@ -594,7 +594,9 @@ public function regionsForCountryState(Request $request): JsonResponse
             'region',
             'destinations' => fn ($query) => $query
                 ->with([
-                    'items' => fn ($itemQuery) => $itemQuery->orderBy('itemname'),
+                    'items' => fn ($itemQuery) => $itemQuery
+                        ->with('itemTypes')
+                        ->orderBy('itemname'),
                 ])
                 ->orderBy('destinationname'),
             'fuelStops' => fn ($query) => $query->orderBy('stopname'),
@@ -642,6 +644,41 @@ public function regionsForCountryState(Request $request): JsonResponse
     ]);
 }
 
+public function referenceBookForPlace(Request $request, Place $place)
+{
+    $place->load([
+        'country',
+        'state',
+        'region',
+        'destinations' => fn ($query) => $query
+            ->with([
+                'items' => fn ($itemQuery) => $itemQuery
+                    ->with('itemTypes')
+                    ->orderBy('itemname'),
+            ])
+            ->orderBy('destinationname'),
+        'fuelStops' => fn ($query) => $query->orderBy('stopname'),
+        'tripStays' => fn ($query) => $query
+            ->with('trip')
+            ->orderByDesc('checkindate')
+            ->orderByDesc('id'),
+    ]);
+
+    return view('reports.places.reference-book', [
+        'places' => collect([$place]),
+        'filters' => [
+            'search' => null,
+            'country_id' => $place->countryid,
+            'state_id' => $place->stateid,
+            'region_id' => $place->regionid,
+            'placetype' => $place->placetype,
+            'status' => $place->isactive ? '1' : '0',
+        ],
+        'returnTo' => $request->input('return_to', route('places.edit', [
+            'place' => $place,
+        ])),
+    ]);
+}
 private function normaliseText(?string $value): ?string
 {
     $value = trim((string) $value);

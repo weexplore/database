@@ -147,287 +147,288 @@
                         </div>
 
                         {{-- Linked destinations --}}
-                        <div class="bg-white shadow-sm sm:rounded-lg">
-                            <div class="px-6 py-4 border-b border-gray-200">
-                                <h3 class="text-sm font-semibold text-gray-900">
-                                    Linked destinations
-                                </h3>
-                                <p class="mt-1 text-xs text-gray-500">
-                                    {{ $place->destinations->count() }} linked destination{{ $place->destinations->count() === 1 ? '' : 's' }}
-                                </p>
+                        @if($place->destinations->isNotEmpty())
+    <section>
+        <h3 class="text-base font-semibold text-slate-900">Destinations</h3>
+
+        <div class="mt-3 space-y-5">
+            @foreach($place->destinations as $destination)
+                <div class="rounded-lg border border-slate-200 overflow-hidden">
+                    <div class="border-b border-slate-200 bg-slate-50 px-4 py-4">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <div class="text-sm font-semibold text-slate-900">
+                                    {{ $destination->destinationname ?: 'Unnamed destination' }}
+                                </div>
+
+                                <div class="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
+                                    @if($destination->place)
+                                        <span class="rounded-full bg-slate-100 px-2.5 py-1">
+                                            Linked Place: {{ $destination->place->placename }}
+                                        </span>
+                                    @endif
+
+                                    @if($destination->destinationtype)
+                                        <span class="rounded-full bg-blue-50 px-2.5 py-1 text-blue-700 border border-blue-200">
+                                            Type: {{ ucfirst($destination->destinationtype) }}
+                                        </span>
+                                    @endif
+
+                                    @if($destination->bestseason)
+                                        <span class="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700 border border-sky-200">
+                                            Best Season: {{ $destination->bestseason }}
+                                        </span>
+                                    @endif
+
+                                    @if($destination->revisitinterestlevel)
+                                        <span class="rounded-full bg-purple-50 px-2.5 py-1 text-purple-700 border border-purple-200">
+                                            Revisit Interest:
+                                            {{ [
+                                                'very_likely' => 'Very Likely',
+                                                'likely' => 'Likely',
+                                                'neutral' => 'Neutral',
+                                                'unlikely' => 'Unlikely',
+                                                'very_unlikely' => 'Very Unlikely',
+                                            ][$destination->revisitinterestlevel] ?? ucfirst(str_replace('_', ' ', $destination->revisitinterestlevel)) }}
+                                        </span>
+                                    @endif
+
+                                    <span class="rounded-full {{ !empty($destination->isfeatured) ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-slate-100 text-slate-600 border border-slate-200' }} px-2.5 py-1">
+                                        Featured: {{ !empty($destination->isfeatured) ? 'Yes' : 'No' }}
+                                    </span>
+
+                                    <span class="rounded-full {{ !empty($destination->hasvisited) ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200' }} px-2.5 py-1">
+                                        Has Visited: {{ !empty($destination->hasvisited) ? 'Yes' : 'No' }}
+                                    </span>
+                                </div>
                             </div>
 
-                            <div class="px-6 py-4">
-                                @if ($place->destinations->isEmpty())
-                                    <p class="text-sm text-gray-500">
-                                        No destinations are linked to this place.
-                                    </p>
-                                @else
-                                    <div class="space-y-4">
-                                        @foreach ($place->destinations as $destination)
-                                            <div class="border border-gray-200 rounded-lg overflow-hidden">
-                                                <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-start justify-between gap-4">
-                                                    <div>
-                                                        <div class="text-sm font-semibold text-gray-900">
-                                                            {{ $destination->destinationname }}
-                                                        </div>
-                                                        <div class="mt-1 text-xs text-gray-500">
-                                                            Type: {{ $destination->destinationtype ?: '—' }}
-                                                            @if($destination->bestseason)
-                                                                • Best season: {{ $destination->bestseason }}
-                                                            @endif
-                                                            @if(!is_null($destination->revisitinterestlevel))
-                                                                • Revisit interest: {{ $destination->revisitinterestlevel }}/10
-                                                            @endif
-                                                        </div>
-                                                    </div>
+                            <div class="shrink-0 text-xs text-slate-500">
+                                {{ $destination->items->count() }} item{{ $destination->items->count() === 1 ? '' : 's' }}
+                            </div>
+                        </div>
+                    </div>
 
-                                                    <a href="{{ route('destinations.edit', ['destination' => $destination, 'return_to' => url()->full()]) }}"
-                                                       class="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-xs">
-                                                        Edit Destination
-                                                    </a>
-                                                </div>
+                    <div class="px-4 py-4 space-y-5">
+                        @if(filled($destination->overview))
+                            <div>
+                                <div class="text-xs font-medium text-slate-500 mb-1">Overview</div>
+                                <div class="text-sm text-slate-700 markdown-content">
+                                    @include('partials.markdown.rendered-block', [
+                                        'content' => $destination->overview,
+                                    ])
+                                </div>
+                            </div>
+                        @endif
 
-                                                <div class="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
-                                                    <div>
-                                                        <div class="text-xs uppercase tracking-wide text-gray-500">Overview</div>
-                                                        <div class="mt-1 text-gray-800 whitespace-pre-line">{{ $destination->overview ?: '—' }}</div>
-                                                    </div>
+                        @if(filled($destination->travelnotes))
+                            <div>
+                                <div class="text-xs font-medium text-slate-500 mb-1">Travel Notes</div>
+                                <div class="text-sm text-slate-700 markdown-content">
+                                    @include('partials.markdown.rendered-block', [
+                                        'content' => $destination->travelnotes,
+                                    ])
+                                </div>
+                            </div>
+                        @endif
 
-                                                    <div>
-                                                        <div class="text-xs uppercase tracking-wide text-gray-500">Travel notes</div>
-                                                        <div class="mt-1 text-gray-800 whitespace-pre-line">{{ $destination->travelnotes ?: '—' }}</div>
-                                                    </div>
+                        @if(filled($destination->suitability))
+                            <div>
+                                <div class="text-xs font-medium text-slate-500 mb-1">Suitability</div>
+                                <div class="text-sm text-slate-700 markdown-content">
+                                    @include('partials.markdown.rendered-block', [
+                                        'content' => $destination->suitability,
+                                    ])
+                                </div>
+                            </div>
+                        @endif
 
-                                                    <div>
-                                                        <div class="text-xs uppercase tracking-wide text-gray-500">Suitability</div>
-                                                        <div class="mt-1 text-gray-800 whitespace-pre-line">{{ $destination->suitability ?: '—' }}</div>
-                                                    </div>
+                        @if(filled($destination->accessnotes))
+                            <div>
+                                <div class="text-xs font-medium text-slate-500 mb-1">Access Notes</div>
+                                <div class="text-sm text-slate-700 markdown-content">
+                                    @include('partials.markdown.rendered-block', [
+                                        'content' => $destination->accessnotes,
+                                    ])
+                                </div>
+                            </div>
+                        @endif
 
-                                                    <div>
-                                                        <div class="text-xs uppercase tracking-wide text-gray-500">Access notes</div>
-                                                        <div class="mt-1 text-gray-800 whitespace-pre-line">{{ $destination->accessnotes ?: '—' }}</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @endforeach
+                        @if(filled($destination->personalcommentary))
+                            <div>
+                                <div class="text-xs font-medium text-slate-500 mb-1">Personal Commentary</div>
+                                <div class="text-sm text-slate-700 markdown-content">
+                                    @include('partials.markdown.rendered-block', [
+                                        'content' => $destination->personalcommentary,
+                                    ])
+                                </div>
+                            </div>
+                        @endif
+
+                        <div class="border-t border-slate-200 pt-4">
+                            <div class="text-xs font-medium text-slate-500 mb-2">Destination Items</div>
+
+<div class="border-t border-slate-200 pt-4">
+    <div class="text-xs font-medium text-slate-500 mb-2">Destination Items</div>
+
+    @if($destination->items->isNotEmpty())
+        <div class="space-y-4">
+            @foreach($destination->items as $item)
+                <div class="rounded-lg border border-slate-200 overflow-hidden bg-white">
+                    <div class="border-b border-slate-200 bg-slate-50 px-4 py-4">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <div class="text-sm font-semibold text-slate-900">
+                                    {{ $item->itemname ?: 'Unnamed item' }}
+                                </div>
+
+                                <div class="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
+                                    @if($item->place)
+                                        <span class="rounded-full bg-slate-100 px-2.5 py-1 border border-slate-200">
+                                            Linked Place: {{ $item->place->placename }}
+                                        </span>
+                                    @endif
+
+                                    <span class="rounded-full bg-slate-100 px-2.5 py-1 border border-slate-200">
+                                        Destination: {{ $destination->destinationname ?: 'Unnamed destination' }}
+                                    </span>
+
+                                    @if($item->itemTypes->isNotEmpty())
+                                        <span class="rounded-full bg-blue-50 px-2.5 py-1 text-blue-700 border border-blue-200">
+                                            Item Types: {{ $item->itemTypes->pluck('typename')->filter()->join(', ') }}
+                                        </span>
+                                    @endif
+
+                                    <span class="rounded-full {{ !empty($item->bookingrequired) ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200' }} px-2.5 py-1 border">
+                                        Booking Required: {{ !empty($item->bookingrequired) ? 'Yes' : 'No' }}
+                                    </span>
+
+                                    <span class="rounded-full {{ !empty($item->isactive) ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200' }} px-2.5 py-1 border">
+                                        Active: {{ !empty($item->isactive) ? 'Yes' : 'No' }}
+                                    </span>
+                                </div>
+                                @if(filled($item->shortdescription))
+                                    <div>
+                                        <div class="text-xs font-medium text-slate-500 mb-1">Short Description</div>
+                                        <div class="text-sm text-slate-700 markdown-content">
+                                            @include('partials.markdown.rendered-block', [
+                                                'content' => $item->shortdescription,
+                                            ])
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if(filled($item->notes))
+                                    <div>
+                                        <div class="text-xs font-medium text-slate-500 mb-1">Notes</div>
+                                        <div class="text-sm text-slate-700 markdown-content">
+                                            @include('partials.markdown.rendered-block', [
+                                                'content' => $item->notes,
+                                            ])
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if(filled($item->caravanaccessnotes))
+                                    <div>
+                                        <div class="text-xs font-medium text-slate-500 mb-1">Caravan Access Notes</div>
+                                        <div class="text-sm text-slate-700 markdown-content">
+                                            @include('partials.markdown.rendered-block', [
+                                                'content' => $item->caravanaccessnotes,
+                                            ])
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if(filled($item->disabilityaccessnotes))
+                                    <div>
+                                        <div class="text-xs font-medium text-slate-500 mb-1">Disability Access Notes</div>
+                                        <div class="text-sm text-slate-700 markdown-content">
+                                            @include('partials.markdown.rendered-block', [
+                                                'content' => $item->disabilityaccessnotes,
+                                            ])
+                                        </div>
                                     </div>
                                 @endif
                             </div>
                         </div>
+                    </div>
 
-                        {{-- Destination items --}}
-<div class="bg-white shadow-sm sm:rounded-lg">
-    <div class="px-6 py-4 border-b border-gray-200">
-        <h3 class="text-sm font-semibold text-gray-900">Destination items</h3>
-        <p class="mt-1 text-xs text-gray-500">
-            {{ $destinationItems->count() }} item{{ $destinationItems->count() === 1 ? '' : 's' }} across linked destinations
-        </p>
-    </div>
+                    <div class="px-4 py-4 space-y-5">
+                        @if(!is_null($item->latitude) || !is_null($item->longitude))
+                            <div>
+                                <div class="text-xs font-medium text-slate-500 mb-2">Map</div>
 
-    <div class="px-6 py-4">
-        @if ($destinationItems->isEmpty())
-            <p class="text-sm text-gray-500">
-                No destination items are linked through this place’s destinations.
-            </p>
-        @else
-            <div class="space-y-4">
-                @foreach ($place->destinations as $destination)
-                    @if ($destination->items->isNotEmpty())
-                        <div class="border border-gray-200 rounded-lg overflow-hidden">
-                            <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                                <div class="text-sm font-semibold text-gray-900">
-                                    {{ $destination->destinationname }}
+                                <div class="rounded-lg border border-slate-200 overflow-hidden">
+                                    <iframe
+                                        width="100%"
+                                        height="260"
+                                        style="border:0;"
+                                        loading="lazy"
+                                        referrerpolicy="no-referrer-when-downgrade"
+                                        src="https://www.google.com/maps?q={{ $item->latitude ?? '' }},{{ $item->longitude ?? '' }}&z=14&output=embed">
+                                    </iframe>
                                 </div>
-                                <div class="mt-1 text-xs text-gray-500">
-                                    {{ $destination->items->count() }} linked item{{ $destination->items->count() === 1 ? '' : 's' }}
+
+                                <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-slate-700">
+                                    <div class="rounded-md border border-slate-200 px-3 py-2">
+                                        <div class="text-xs font-medium text-slate-500 mb-1">Latitude</div>
+                                        <div>{{ $item->latitude ?? '—' }}</div>
+                                    </div>
+
+                                    <div class="rounded-md border border-slate-200 px-3 py-2">
+                                        <div class="text-xs font-medium text-slate-500 mb-1">Longitude</div>
+                                        <div>{{ $item->longitude ?? '—' }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-slate-700">
+                            <div class="rounded-md border border-slate-200 px-3 py-2">
+                                <div class="text-xs font-medium text-slate-500 mb-1">Estimated Cost Per Person</div>
+                                <div>
+                                    {{ $item->estimatedcostperperson !== null && $item->estimatedcostperperson !== '' ? number_format((float) $item->estimatedcostperperson, 2) : '—' }}
                                 </div>
                             </div>
 
-                            <div class="p-4 space-y-4">
-                                @foreach ($destination->items as $item)
-                                    @php
-                                        $itemTypeLabel = \App\Models\DestinationItem::itemTypeOptions()[$item->itemtype] ?? ($item->itemtype ?: '—');
+                            <div class="rounded-md border border-slate-200 px-3 py-2">
+                                <div class="text-xs font-medium text-slate-500 mb-1">Estimated Total Cost</div>
+                                <div>
+                                    {{ $item->estimatedtotalcost !== null && $item->estimatedtotalcost !== '' ? number_format((float) $item->estimatedtotalcost, 2) : '—' }}
+                                </div>
+                            </div>
 
-                                        $addressParts = array_filter([
-                                            $item->addressline1,
-                                            $item->addressline2,
-                                            $item->addressline3,
-                                        ], fn ($value) => filled($value));
+                            <div class="rounded-md border border-slate-200 px-3 py-2">
+                                <div class="text-xs font-medium text-slate-500 mb-1">Recommended Stay Minutes</div>
+                                <div>{{ $item->recommendedstayminutes ?? '—' }}</div>
+                            </div>
 
-                                        $hasAddress = !empty($addressParts) || filled($item->postcode);
-                                        $hasCoords = !is_null($item->latitude) && !is_null($item->longitude);
-                                    @endphp
-
-                                    <div class="border border-gray-200 rounded-lg overflow-hidden">
-                                        <div class="px-4 py-3 bg-white border-b border-gray-200 flex items-start justify-between gap-4">
-                                            <div>
-                                                <div class="text-sm font-semibold text-gray-900">
-                                                    {{ $item->itemname ?: 'Destination item' }}
-                                                </div>
-                                                <div class="mt-1 text-xs text-gray-500">
-                                                    {{ $itemTypeLabel }}
-                                                    @if (!is_null($item->isactive))
-                                                        • {{ $item->isactive ? 'Active' : 'Inactive' }}
-                                                    @endif
-                                                    @if ($item->bookingrequired)
-                                                        • Booking required
-                                                    @endif
-                                                    @if (!is_null($item->recommendedstayminutes))
-                                                        • Recommended stay {{ $item->recommendedstayminutes }} mins
-                                                    @endif
-                                                </div>
-                                            </div>
-
-                                            <a href="{{ route('destination-items.edit', [
-                                                    'destinationItem' => $item,
-                                                    'return_to' => url()->full(),
-                                                ]) }}"
-                                               class="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-xs">
-                                                Edit Item
-                                            </a>
-                                        </div>
-
-                                        <div class="p-4 space-y-4 text-sm">
-                                            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                                                <div class="space-y-4">
-                                                    <div>
-                                                        <div class="text-xs uppercase tracking-wide text-gray-500">Short description</div>
-                                                        <div class="mt-1 text-gray-800 whitespace-pre-line">{{ $item->shortdescription ?: '—' }}</div>
-                                                    </div>
-
-                                                    <div>
-                                                        <div class="text-xs uppercase tracking-wide text-gray-500">Notes</div>
-                                                        <div class="mt-1 text-gray-800 whitespace-pre-line">{{ $item->notes ?: '—' }}</div>
-                                                    </div>
-
-                                                    <div>
-                                                        <div class="text-xs uppercase tracking-wide text-gray-500">Caravan access notes</div>
-                                                        <div class="mt-1 text-gray-800 whitespace-pre-line">{{ $item->caravanaccessnotes ?: '—' }}</div>
-                                                    </div>
-                                                </div>
-
-                                                <div class="space-y-4">
-                                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <div>
-                                                            <div class="text-xs uppercase tracking-wide text-gray-500">Estimated cost per person</div>
-                                                            <div class="mt-1 text-gray-900">
-                                                                {{ !is_null($item->estimatedcostperperson) ? '$' . number_format((float) $item->estimatedcostperperson, 2) : '—' }}
-                                                            </div>
-                                                        </div>
-
-                                                        <div>
-                                                            <div class="text-xs uppercase tracking-wide text-gray-500">Estimated total cost</div>
-                                                            <div class="mt-1 text-gray-900">
-                                                                {{ !is_null($item->estimatedtotalcost) ? '$' . number_format((float) $item->estimatedtotalcost, 2) : '—' }}
-                                                            </div>
-                                                        </div>
-
-                                                        <div>
-                                                            <div class="text-xs uppercase tracking-wide text-gray-500">Booking required</div>
-                                                            <div class="mt-1 text-gray-900">{{ $item->bookingrequired ? 'Yes' : 'No' }}</div>
-                                                        </div>
-
-                                                        <div>
-                                                            <div class="text-xs uppercase tracking-wide text-gray-500">Sort order</div>
-                                                            <div class="mt-1 text-gray-900">{{ !is_null($item->sortorder) ? $item->sortorder : '—' }}</div>
-                                                        </div>
-
-                                                        <div>
-                                                            <div class="text-xs uppercase tracking-wide text-gray-500">Linked place</div>
-                                                            <div class="mt-1 text-gray-900">
-                                                                {{ $item->place?->placename ?: '—' }}
-                                                            </div>
-                                                        </div>
-
-                                                        <div>
-                                                            <div class="text-xs uppercase tracking-wide text-gray-500">Coordinates</div>
-                                                            <div class="mt-1 text-gray-900">
-                                                                {{ $hasCoords ? $item->latitude . ', ' . $item->longitude : '—' }}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div>
-                                                        <div class="text-xs uppercase tracking-wide text-gray-500">Address</div>
-                                                        <div class="mt-1 text-gray-800 whitespace-pre-line">
-                                                            @if ($hasAddress)
-                                                                {{ implode("\n", $addressParts) }}@if(filled($item->postcode))
-{{ !empty($addressParts) ? "\n" : '' }}{{ $item->postcode }}
-                                                                @endif
-                                                            @else
-                                                                —
-                                                            @endif
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="grid grid-cols-1 gap-4">
-                                                        <div>
-                                                            <div class="text-xs uppercase tracking-wide text-gray-500">Telephone</div>
-                                                            <div class="mt-1 text-gray-900">
-                                                                {{ $item->telephone ?: '—' }}
-                                                            </div>
-                                                        </div>
-
-                                                        <div>
-                                                            <div class="text-xs uppercase tracking-wide text-gray-500">Website</div>
-                                                            <div class="mt-1">
-                                                                @if ($item->website)
-                                                                    <a href="{{ $item->website }}"
-                                                                       target="_blank"
-                                                                       rel="noopener noreferrer"
-                                                                       class="text-blue-600 hover:text-blue-800 break-all">
-                                                                        {{ $item->website }}
-                                                                    </a>
-                                                                @else
-                                                                    <span class="text-gray-900">—</span>
-                                                                @endif
-                                                            </div>
-                                                        </div>
-
-                                                        <div>
-                                                            <div class="text-xs uppercase tracking-wide text-gray-500">Internet search</div>
-                                                            <div class="mt-1">
-                                                                @if ($item->internetsearch)
-                                                                    <a href="{{ $item->internetsearch }}"
-                                                                       target="_blank"
-                                                                       rel="noopener noreferrer"
-                                                                       class="text-blue-600 hover:text-blue-800 break-all">
-                                                                        {{ $item->internetsearch }}
-                                                                    </a>
-                                                                @else
-                                                                    <span class="text-gray-900">—</span>
-                                                                @endif
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            @if ($hasCoords)
-                                                <div class="destination-item-map-wrap">
-                                                    <div id="destination-item-map-{{ $item->id }}"
-                                                         class="destination-item-map rounded-lg border border-gray-300"
-                                                         data-lat="{{ $item->latitude }}"
-                                                         data-lng="{{ $item->longitude }}"
-                                                         data-name="{{ $item->itemname ?: 'Destination item' }}"></div>
-                                                </div>
-                                            @else
-                                                <div class="text-xs text-gray-500 italic">
-                                                    No map coordinates recorded for this destination item.
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                @endforeach
+                            <div class="rounded-md border border-slate-200 px-3 py-2">
+                                <div class="text-xs font-medium text-slate-500 mb-1">Sort Order</div>
+                                <div>{{ $item->sortorder ?? '—' }}</div>
                             </div>
                         </div>
-                    @endif
-                @endforeach
-            </div>
-        @endif
-    </div>
+
+                        
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @else
+        <p class="text-sm text-slate-500">
+            No destination items linked to this destination.
+        </p>
+    @endif
 </div>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </section>
+@endif
+
 
                         {{-- Trip stays and travel legs --}}
                         <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class FuelStop extends Model
 {
@@ -12,29 +13,30 @@ class FuelStop extends Model
     public const CREATED_AT = 'createdat';
     public const UPDATED_AT = 'updatedat';
 
-protected $fillable = [
-    'placeid',
-    'addressline1',
-    'addressline2',
-    'addressline3',
-    'postcode',
-    'latitude',
-    'longitude',
-    'website',
-    'telephone',
-    'internetsearch',
-    'stopname',
-    'brandname',
-    'fueltypesavailable',
-    'hashighflowdiesel',
-    'hasadblue',
-    'hascarwash',
-    'hasairwater',
-    'caravanaccessnotes',
-    'openingnotes',
-    'generalnotes',
-    'isactive',
-];
+    protected $fillable = [
+        'placeid',
+        'destinationid',
+        'addressline1',
+        'addressline2',
+        'addressline3',
+        'postcode',
+        'latitude',
+        'longitude',
+        'website',
+        'telephone',
+        'internetsearch',
+        'stopname',
+        'brandname',
+        'fueltypesavailable',
+        'hashighflowdiesel',
+        'hasadblue',
+        'hascarwash',
+        'hasairwater',
+        'caravanaccessnotes',
+        'openingnotes',
+        'generalnotes',
+        'isactive',
+    ];
 
     protected $casts = [
         'hashighflowdiesel' => 'boolean',
@@ -46,9 +48,14 @@ protected $fillable = [
         'updatedat' => 'datetime',
     ];
 
-    public function place()
+    public function place(): BelongsTo
     {
         return $this->belongsTo(Place::class, 'placeid');
+    }
+
+    public function destination(): BelongsTo
+    {
+        return $this->belongsTo(Destination::class, 'destinationid');
     }
 
     public function fuelPriceObservations(): HasMany

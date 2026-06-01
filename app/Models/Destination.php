@@ -29,12 +29,14 @@ class Destination extends Model
         'accessnotes',
         'personalcommentary',
         'revisitinterestlevel',
+        'hasvisited',
         'isfeatured',
     ];
 
     protected $casts = [
        'id' => 'integer',
         'placeid' => 'integer',
+        'hasvisited' => 'boolean',
         'isfeatured' => 'boolean',
         'createdat' => 'datetime',
         'updatedat' => 'datetime',

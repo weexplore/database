@@ -23,6 +23,13 @@
                 </p>
             </div>
             <div>
+                <a href="{{ route('reports.places.reference-book.place', [
+                        'place' => $place,
+                        'return_to' => url()->full(),
+                    ]) }}"
+                class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                    Reference Book Report
+                </a>
                 <a href="{{ route('places.nearby', [
                         'place' => $place->id,
                         'radius_km' => 50,
@@ -370,18 +377,24 @@
                                 />
                             </div>
 
-                            <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                                <a href="{{ $returnTo }}"
-                                   class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
-                                    Cancel
-                                </a>
+<div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+    <a href="{{ $returnTo }}"
+       class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
+        Cancel
+    </a>
 
-                                <button type="submit"
-                                        onclick="document.getElementById('create_destination_after_save').value = '0';"
-                                        class="inline-flex items-center px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-                                    Save Place
-                                </button>
-                            </div>
+    <button type="submit"
+            class="inline-flex items-center px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+        Save Place
+    </button>
+
+    <button type="submit"
+            name="createdestinationaftersave"
+            value="1"
+            class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+        Save and Add Destination
+    </button>
+</div>
                         </form>
                     </div>
 
@@ -422,11 +435,14 @@
                                     · {{ $destinationItems->count() }} destination item{{ $destinationItems->count() === 1 ? '' : 's' }}
                                 </p>
                             </div>
+                            
 
                             <div class="flex items-center gap-2">
                                 <button type="submit"
                                         form="place-edit-form"
-                                        onclick="document.getElementById('createdestinationaftersave').value = 1"
+                                        formnovalidate
+                                        name="createdestinationaftersave"
+                                        value="1"
                                         class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">
                                     Add destination
                                 </button>

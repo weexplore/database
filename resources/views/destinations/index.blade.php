@@ -16,7 +16,7 @@
     <form method="GET"
           action="{{ route('destinations.index') }}"
           id="destinations-filter-form"
-          class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          class="grid grid-cols-1 md:grid-cols-5 gap-4">
 
         <div>
             <label for="search" class="block text-sm font-medium text-gray-700 mb-1">
@@ -65,6 +65,19 @@
         </div>
 
         <div>
+            <label for="visited" class="block text-sm font-medium text-gray-700 mb-1">
+                Visited
+            </label>
+            <select name="visited"
+                    id="visited"
+                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                <option value="">All</option>
+                <option value="1" @selected(request('visited') === '1')>Visited</option>
+                <option value="0" @selected(request('visited') === '0')>Not Visited</option>
+            </select>
+        </div>
+
+        <div>
             <label for="featured" class="block text-sm font-medium text-gray-700 mb-1">
                 Featured
             </label>
@@ -89,9 +102,9 @@
                 Reset
             </a>
 
-            <span class="ml-auto text-xs text-gray-500">
-                {{ $destinations->total() }} destinations
-            </span>
+<span class="ml-auto text-xs text-gray-500">
+    {{ number_format($totalDestinations) }} destinations
+</span>
         </div>
     </form>
 </div>
@@ -104,6 +117,7 @@
                     <input type="hidden" name="return_to" value="{{ url()->full() }}">
                     <input type="hidden" name="placeid" value="{{ request('placeid') }}">
                     <input type="hidden" name="destinationtype" value="{{ request('destinationtype') }}">
+                    <input type="hidden" name="visited" value="{{ request('visited') }}">
                     <input type="hidden" name="featured" value="{{ request('featured') }}">
                     <input type="hidden" name="search" value="{{ request('search') }}">
                     <input type="hidden" name="page" value="{{ request('page') }}">
@@ -127,6 +141,9 @@
                                     </th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                                         Revisit
+                                    </th>
+                                    <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">
+                                        Visited
                                     </th>
                                     <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">
                                         Featured
@@ -161,18 +178,13 @@
                                             >
                                         </td>
 
-                                        <td class="px-3 py-2">
-                                            <select name="existing[{{ $destination->id }}][placeid]"
-                                                    class="w-56 rounded-md border-gray-300 shadow-sm text-sm">
-                                                <option value="">None</option>
-                                                @foreach($places as $place)
-                                                    <option value="{{ $place->id }}"
-                                                        @selected((string) old("existing.{$destination->id}.placeid", $destination->placeid) === (string) $place->id)>
-                                                        {{ $place->placename }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </td>
+<td class="px-3 py-2 text-sm text-gray-700">
+    {{ $destination->place?->placename ?? '—' }}
+
+    <input type="hidden"
+           name="existing[{{ $destination->id }}][placeid]"
+           value="{{ old("existing.{$destination->id}.placeid", $destination->placeid) }}">
+</td>
 
                                         <td class="px-3 py-2">
                                             <select name="existing[{{ $destination->id }}][destinationtype]"
@@ -216,6 +228,15 @@
                                         </td>
 
                                         <td class="px-3 py-2 text-center">
+                                            <input type="hidden" name="existing[{{ $destination->id }}][hasvisited]" value="0">
+                                            <input type="checkbox"
+                                                name="existing[{{ $destination->id }}][hasvisited]"
+                                                value="1"
+                                                class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                                @checked(old("existing.{$destination->id}.hasvisited", $destination->hasvisited))>
+                                        </td>
+
+                                        <td class="px-3 py-2 text-center">
                                             <input type="hidden" name="existing[{{ $destination->id }}][isfeatured]" value="0">
                                             <input type="checkbox"
                                                    name="existing[{{ $destination->id }}][isfeatured]"
@@ -240,7 +261,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="px-3 py-6 text-center text-sm text-gray-500">
+                                        <td colspan="9" class="px-3 py-6 text-center text-sm text-gray-500">
                                             No destinations found.
                                         </td>
                                     </tr>
@@ -302,6 +323,14 @@
                                             @endforeach
                                         </select>
                                     </td>
+                                    <td class="px-3 py-2 text-center">
+                                        <input type="hidden" name="new[hasvisited]" value="0">
+                                        <input type="checkbox"
+                                            name="new[hasvisited]"
+                                            value="1"
+                                            class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                            @checked(old('new.hasvisited', false))>
+                                    </td>
 
                                     <td class="px-3 py-2 text-center">
                                         <input type="hidden" name="new[isfeatured]" value="0">
@@ -335,7 +364,7 @@
 
                 @include('partials.admin.compact-delete-form', [
                     'formId' => 'delete-destination-form',
-                    'query' => request()->only(['placeid', 'destinationtype', 'featured', 'search', 'page']),
+                    'query' => request()->only(['placeid', 'destinationtype', 'featured', 'visited', 'search', 'page']),
                 ])
             </div>
             

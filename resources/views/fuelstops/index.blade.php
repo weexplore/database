@@ -46,6 +46,27 @@
                     </div>
 
                     <div>
+                        <label for="destination_id" class="block text-sm font-medium text-gray-700">Destination</label>
+                        <select
+                            name="destination_id"
+                            id="destination_id"
+                            class="mt-1 w-full rounded-md border-gray-300 shadow-sm"
+                            data-selected="{{ request('destination_id') }}"
+                        >
+                            <option value="">All destinations</option>
+                            @foreach ($destinations as $destination)
+                                <option
+                                    value="{{ $destination->id }}"
+                                    data-place-id="{{ $destination->placeid }}"
+                                    @selected((string) request('destination_id') === (string) $destination->id)
+                                >
+                                    {{ $destination->destinationname }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
                         <label for="brand" class="block text-sm font-medium text-gray-700">Brand</label>
                         <input
                             type="text"
@@ -102,6 +123,7 @@
                                 @include('fuelstops._form', [
                                     'fuelStop' => $newFuelStop,
                                     'places' => $places,
+                                    'destinations' => $destinations,
                                     'fuelTypes' => $fuelTypes,
                                 ])
 
@@ -125,6 +147,7 @@
                             <tr>
                                 <th class="px-4 py-3 text-left font-semibold text-gray-700">Stop</th>
                                 <th class="px-4 py-3 text-left font-semibold text-gray-700">Place</th>
+                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Destination</th>
                                 <th class="px-4 py-3 text-left font-semibold text-gray-700">Brand</th>
                                 <th class="px-4 py-3 text-left font-semibold text-gray-700">Fuel Types</th>
                                 <th class="px-4 py-3 text-left font-semibold text-gray-700">Facilities</th>
@@ -147,6 +170,9 @@
 
                                     <td class="px-4 py-3 align-top text-gray-700">
                                         {{ $fuelStop->place?->placename ?? '—' }}
+                                    </td>
+                                    <td class="px-4 py-3 align-top text-gray-700">
+                                        {{ $fuelStop->destination?->destinationname ?? '—' }}
                                     </td>
 
                                     <td class="px-4 py-3 align-top text-gray-700">
@@ -251,6 +277,75 @@
                 src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
                 integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
                 crossorigin=""></script>
+
+        <script>
+    function setupFuelStopDestinationFilter() {
+        const placeSelect = document.getElementById('placeid');
+        const destinationSelect = document.getElementById('destinationid');
+
+        if (!placeSelect || !destinationSelect) {
+            return;
+        }
+
+        const originalOptions = Array.from(destinationSelect.options).map((option) => ({
+            value: option.value,
+            text: option.text,
+            placeId: option.dataset.placeId || '',
+            selected: option.selected,
+        }));
+
+        function rebuildDestinationOptions() {
+            const selectedPlaceId = placeSelect.value;
+            const currentValue = destinationSelect.value || destinationSelect.dataset.selected || '';
+
+            destinationSelect.innerHTML = '';
+
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = 'Select destination';
+            destinationSelect.appendChild(placeholder);
+
+            originalOptions.forEach((option) => {
+                if (option.value === '') {
+                    return;
+                }
+
+                if (selectedPlaceId !== '' && option.placeId !== selectedPlaceId) {
+                    return;
+                }
+
+                const el = document.createElement('option');
+                el.value = option.value;
+                el.textContent = option.text;
+                el.dataset.placeId = option.placeId;
+
+                if (String(option.value) === String(currentValue)) {
+                    el.selected = true;
+                }
+
+                destinationSelect.appendChild(el);
+            });
+
+            const stillExists = Array.from(destinationSelect.options).some(
+                (option) => option.value === currentValue
+            );
+
+            if (!stillExists) {
+                destinationSelect.value = '';
+                destinationSelect.dataset.selected = '';
+            }
+        }
+
+        placeSelect.addEventListener('change', function () {
+            destinationSelect.dataset.selected = '';
+            rebuildDestinationOptions();
+        });
+
+        rebuildDestinationOptions();
+    }
+
+    window.addEventListener('load', setupFuelStopDestinationFilter);
+</script>
 
         <script>
             window.addEventListener('load', function () {

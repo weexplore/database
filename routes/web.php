@@ -205,6 +205,8 @@ Route::prefix('destination-items')->name('destination-items.')->group(function (
 */
 Route::prefix('reports')->name('reports.')->group(function () {
     Route::get('places/reference-book', [PlaceController::class, 'referenceBook'])->name('places.reference-book');
+    Route::get('places/{place}/reference-book', [PlaceController::class, 'referenceBookForPlace'])
+    ->name('places.reference-book.place');
 
     Route::get('knowledge/categories/reference-book', [KnowledgeReportController::class, 'categoryReferenceBook'])
         ->name('knowledge.categories.reference-book');
