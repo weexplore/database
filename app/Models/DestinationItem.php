@@ -98,6 +98,7 @@ class DestinationItem extends Model
             'information' => 'Information',
             'vehicle-repair' => 'Vehicle Repair',
             'rest-area' => 'Rest Area',
+            'photography' => 'Photography',
             'silo-art' => 'Silo Art',
             'street-art' => 'Street Art',
             'family-friends' => 'Family-Friends',
