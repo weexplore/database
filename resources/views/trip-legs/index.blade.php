@@ -255,11 +255,12 @@
                                         </td>
 
                                         <td class="px-4 py-3 align-top">
-                                            <div class="flex items-center justify-end gap-2">
+                                            <div class="flex items-center justify-end gap-2">                                             
                                                 <a href="{{ route('trips.legs.edit', ['trip' => $trip, 'tripLeg' => $leg]) }}"
                                                    class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs">
                                                     Edit
                                                 </a>
+
 
                                                 <form method="POST"
                                                       action="{{ route('trips.legs.destroy', ['trip' => $trip, 'tripLeg' => $leg]) }}"

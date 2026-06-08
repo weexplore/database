@@ -91,4 +91,13 @@ class Booking extends Model
         return $this->hasMany(Attachment::class, 'linkedid')
             ->where('linkedtype', 'booking');
     }
+
+public function tripStay()
+{
+    return $this->belongsTo(TripStay::class, 'tripstayid');
+}
+public function sourceSuggestions()
+{
+    return $this->hasMany(TripLegSuggestion::class, 'converted_to_booking_id');
+}
 }

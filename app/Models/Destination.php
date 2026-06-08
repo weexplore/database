@@ -98,4 +98,8 @@ class Destination extends Model
         return $this->hasMany(Attachment::class, 'linkedid')
             ->where('linkedtype', 'destination');
     }
+    public function tripLegSuggestions()
+    {
+        return $this->hasMany(TripLegSuggestion::class);
+    }
 }

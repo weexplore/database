@@ -64,6 +64,10 @@
                                 <dd class="text-gray-900">{{ $summary['route_anchors'] }}</dd>
                             </div>
                             <div class="flex justify-between gap-4">
+                                <dt class="text-gray-500">Go via</dt>
+                                <dd class="text-gray-900">{{ $summary['go_via'] ?? 0 }}</dd>
+                            </div>
+                            <div class="flex justify-between gap-4">
                                 <dt class="text-gray-500">Overnights</dt>
                                 <dd class="text-gray-900">{{ $summary['overnights'] }}</dd>
                             </div>
@@ -105,7 +109,7 @@
                     <div class="px-6 py-4 border-b border-gray-200">
                         <h3 class="text-sm font-semibold text-gray-900">Planner map</h3>
                         <p class="mt-1 text-xs text-gray-500">
-                            Ordered points are drawn in sequence. Route anchors and overnight points are emphasised to support leg planning.
+                            Ordered points are drawn in sequence. Anchors, go-via points, overnight points, and stay targets are emphasised to support leg planning.
                         </p>
                     </div>
 
@@ -392,34 +396,44 @@
                                                 </td>
 
                                                 <td class="px-3 py-3 align-top">
-                                                    <div class="space-y-1.5 text-xs min-w-[120px]">
+                                                    <div class="space-y-1.5 text-xs min-w-[140px]">
                                                         <label class="flex items-center gap-2">
                                                             <input type="hidden" name="items[{{ $item->id }}][isrouteanchor]" value="0">
                                                             <input type="checkbox"
-                                                                   name="items[{{ $item->id }}][isrouteanchor]"
-                                                                   value="1"
-                                                                   class="rounded border-gray-300 text-blue-600 shadow-sm"
-                                                                   @checked(old("items.{$item->id}.isrouteanchor", $item->isrouteanchor))>
+                                                                name="items[{{ $item->id }}][isrouteanchor]"
+                                                                value="1"
+                                                                class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                                                @checked(old("items.{$item->id}.isrouteanchor", $item->isrouteanchor))>
                                                             <span class="text-gray-700">Anchor</span>
+                                                        </label>
+
+                                                        <label class="flex items-center gap-2">
+                                                            <input type="hidden" name="items[{{ $item->id }}][isgovia]" value="0">
+                                                            <input type="checkbox"
+                                                                name="items[{{ $item->id }}][isgovia]"
+                                                                value="1"
+                                                                class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                                                @checked(old("items.{$item->id}.isgovia", $item->isgovia))>
+                                                            <span class="text-gray-700">Go via</span>
                                                         </label>
 
                                                         <label class="flex items-center gap-2">
                                                             <input type="hidden" name="items[{{ $item->id }}][isovernight]" value="0">
                                                             <input type="checkbox"
-                                                                   name="items[{{ $item->id }}][isovernight]"
-                                                                   value="1"
-                                                                   class="rounded border-gray-300 text-blue-600 shadow-sm"
-                                                                   @checked(old("items.{$item->id}.isovernight", $item->isovernight))>
+                                                                name="items[{{ $item->id }}][isovernight]"
+                                                                value="1"
+                                                                class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                                                @checked(old("items.{$item->id}.isovernight", $item->isovernight))>
                                                             <span class="text-gray-700">Overnight</span>
                                                         </label>
 
                                                         <label class="flex items-center gap-2">
                                                             <input type="hidden" name="items[{{ $item->id }}][isstaytarget]" value="0">
                                                             <input type="checkbox"
-                                                                   name="items[{{ $item->id }}][isstaytarget]"
-                                                                   value="1"
-                                                                   class="rounded border-gray-300 text-blue-600 shadow-sm"
-                                                                   @checked(old("items.{$item->id}.isstaytarget", $item->isstaytarget))>
+                                                                name="items[{{ $item->id }}][isstaytarget]"
+                                                                value="1"
+                                                                class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                                                @checked(old("items.{$item->id}.isstaytarget", $item->isstaytarget))>
                                                             <span class="text-gray-700">Stay target</span>
                                                         </label>
                                                     </div>
@@ -439,10 +453,47 @@
                                                     @endif
                                                 </td>
 
-                                                <td class="px-3 py-3 align-top text-xs text-gray-600 min-w-[120px]">
+                                                <td class="px-3 py-2 text-sm text-slate-700 align-top">
                                                     <div class="space-y-1">
-                                                        <div>Leg: {{ $item->tripLeg?->legnumber ? 'Leg '.$item->tripLeg->legnumber : '—' }}</div>
-                                                        <div>Stay: {{ $item->tripStay?->stayname ?? '—' }}</div>
+                                                        {{-- Leg --}}
+                                                        <div>
+                                                            @if ($item->tripLeg)
+                                                                <span class="font-medium">Leg:</span>
+                                                                <a
+                                                                    href="{{ route('trips.legs.edit', [$trip, $item->tripLeg]) }}"
+                                                                    class="text-sky-700 hover:text-sky-900 underline"
+                                                                >
+                                                                    {{ $item->tripLeg->legnumber ? 'Leg '.$item->tripLeg->legnumber : 'Leg '.$item->tripLeg->id }}
+                                                                </a>
+                                                                <div class="text-xs text-slate-500">
+                                                                    {{ $item->tripLeg->title ?: '—' }}
+                                                                </div>
+                                                            @else
+                                                                <span class="font-medium">Leg:</span> —
+                                                            @endif
+                                                        </div>
+
+                                                        <div>
+                                                        @if ($item->tripStay)
+                                                            <span class="font-medium">Stay:</span>
+                                                            <a
+                                                                href="{{ route('trips.stays.edit', [$trip, $item->tripStay]) }}"
+                                                                class="text-sky-700 hover:text-sky-900 underline"
+                                                            >
+                                                                {{ $item->tripStay->stayname ?: 'Stay '.$item->tripStay->id }}
+                                                            </a>
+                                                            <div class="text-xs text-slate-500">
+                                                                {{ (int) ($item->tripStay->nights ?? 0) }} night{{ (int) ($item->tripStay->nights ?? 0) === 1 ? '' : 's' }}
+                                                            </div>
+                                                        @elseif (!is_null($item->nightsplanned))
+                                                            <span class="font-medium">Stay:</span>
+                                                            <span class="text-slate-700">Planned</span>
+                                                            <div class="text-xs text-slate-500">
+                                                                {{ (int) $item->nightsplanned }} night{{ (int) $item->nightsplanned === 1 ? '' : 's' }}
+                                                            </div>
+                                                        @else
+                                                            <span class="font-medium">Stay:</span> —
+                                                        @endif
                                                     </div>
                                                 </td>
 
@@ -577,9 +628,10 @@
                     bounds.push(latLng);
 
                     let markerColor = '#2563eb';
+                    if (item.isgovia) markerColor = '#0f766e';
                     if (item.isovernight) markerColor = '#16a34a';
-                    if (item.isrouteanchor) markerColor = '#dc2626';
                     if (item.isstaytarget) markerColor = '#7c3aed';
+                    if (item.isrouteanchor) markerColor = '#dc2626';
 
                     const marker = L.circleMarker(latLng, {
                         radius: item.isrouteanchor ? 9 : 7,
@@ -594,6 +646,12 @@
                             <div><strong>${item.sequence_no ?? ''} · ${item.title ?? 'Planning item'}</strong></div>
                             <div>${item.place_name ?? '—'}${item.destination_name ? ' · ' + item.destination_name : ''}</div>
                             <div>${item.planneddate ?? 'No date'}</div>
+                            <div>
+                                ${item.isrouteanchor ? 'Anchor ' : ''}
+                                ${item.isgovia ? 'Go Via ' : ''}
+                                ${item.isovernight ? 'Overnight ' : ''}
+                                ${item.isstaytarget ? 'Stay Target' : ''}
+                            </div>
                         </div>
                     `);
 

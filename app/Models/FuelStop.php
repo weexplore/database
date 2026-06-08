@@ -76,4 +76,8 @@ class FuelStop extends Model
 
         return array_values(array_filter(array_map('trim', explode(',', $this->fueltypesavailable))));
     }
+    public function tripLegSuggestions()
+    {
+        return $this->hasMany(TripLegSuggestion::class, 'fuel_stop_id');
+    }
 }

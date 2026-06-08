@@ -157,10 +157,15 @@ SQL;
                 latitude: (float) $place->latitude,
                 longitude: (float) $place->longitude,
                 radiusKm: $radiusKm,
-                stateId: $place->stateid,
+                stateId: null,
                 placeType: null,
                 activeOnly: true
             )
             ->when($excludeSelf, fn (Builder $q) => $q->where('id', '!=', $place->id));
+    }
+
+    public function tripLegSuggestions()
+    {
+        return $this->hasMany(TripLegSuggestion::class);
     }
 }

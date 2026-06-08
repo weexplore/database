@@ -19,6 +19,7 @@ class TripLeg extends Model
 
     protected $fillable = [
         'tripid',
+        'triplegsearchprofileid',
         'legnumber',
         'startdate',
         'enddate',
@@ -57,9 +58,10 @@ class TripLeg extends Model
         'elevationgainm' => 'decimal:1',
         'elevationlossm' => 'decimal:1',
         'sortorder' => 'integer',
+        'triplegsearchprofileid' => 'integer',
     ];
 
-    public function trip(): BelongsTo
+    public function trip()
     {
         return $this->belongsTo(Trip::class, 'tripid');
     }
@@ -159,5 +161,66 @@ class TripLeg extends Model
     {
         return $this->hasMany(TripLegPoint::class, 'triplegid')
             ->orderBy('sequence_no');
+    }
+    
+    public function tripLegPoints()
+    {
+        return $this->hasMany(TripLegPoint::class, 'triplegid');
+    }
+    public function destination()
+    {
+        return $this->belongsTo(Destination::class);
+    }
+
+    public function tripStays()
+    {
+        return $this->hasMany(TripStay::class, 'triplegid');
+    }
+
+
+    public function tripFuelEstimates()
+    {
+        return $this->hasMany(TripFuelEstimate::class, 'triplegid');
+    }
+
+    public function searchRuns()
+    {
+        return $this->hasMany(TripLegSearchRun::class, 'trip_leg_id')->latest('id');
+    }
+
+    public function suggestions()
+    {
+        return $this->hasMany(TripLegSuggestion::class, 'trip_leg_id')->latest('id');
+    }
+    public function searchProfile()
+    {
+        return $this->belongsTo(\App\Models\TripLegSearchProfile::class, 'triplegsearchprofileid');
+    }
+    protected $appends = [
+        'effective_trip_leg_search_profile_id',
+    ];
+
+    public function tripLegSearchProfile(): BelongsTo
+    {
+        return $this->belongsTo(TripLegSearchProfile::class, 'triplegsearchprofileid');
+    }
+
+    public function getEffectiveTripLegSearchProfileIdAttribute(): ?int
+    {
+        return $this->triplegsearchprofileid
+            ?? $this->trip?->triplegsearchprofileid;
+    }
+
+    public function effectiveTripLegSearchProfile(): ?TripLegSearchProfile
+    {
+        if ($this->relationLoaded('tripLegSearchProfile') && $this->tripLegSearchProfile) {
+            return $this->tripLegSearchProfile;
+        }
+
+        if ($this->triplegsearchprofileid) {
+            return $this->tripLegSearchProfile;
+        }
+
+        return $this->trip?->tripLegSearchProfile;
     }
 }

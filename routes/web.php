@@ -235,6 +235,7 @@ Route::prefix('trips')->name('trips.')->group(function () {
     Route::put('{trip}', [TripController::class, 'update'])->name('update');
     Route::delete('{trip}', [TripController::class, 'destroy'])->name('destroy');
     Route::get('{trip}/book', [TripReportController::class, 'book'])->name('book');
+    Route::put('{trip}/shift-planner-dates', [TripController::class, 'shiftPlannerDatesFromTrip'])->name('shiftPlannerDates');
 
     Route::prefix('{trip}')->group(function () {
         /*
@@ -263,6 +264,8 @@ Route::prefix('trips')->name('trips.')->group(function () {
             Route::get('{tripPlanItem}/edit', [TripPlanItemController::class, 'edit'])->name('edit');
             Route::put('{tripPlanItem}', [TripPlanItemController::class, 'update'])->name('update');
             Route::delete('{tripPlanItem}', [TripPlanItemController::class, 'destroy'])->name('destroy');
+            Route::post('rebuild-from-outputs', [TripPlanItemController::class, 'rebuildFromOutputs'])->name('rebuildFromOutputs');
+            
         });
 
         /*
@@ -275,6 +278,11 @@ Route::prefix('trips')->name('trips.')->group(function () {
             ->parameters(['legs' => 'tripLeg']);
         Route::post('legs/reorder', [TripLegController::class, 'reorder'])
             ->name('legs.reorder');
+        Route::post('legs/{tripLeg}/add-place-point', [TripLegController::class, 'addPlacePoint'])
+            ->name('legs.add-place-point');
+
+        Route::post('legs/{tripLeg}/add-destination-item', [TripLegController::class, 'addDestinationItem'])
+            ->name('legs.add-destination-item');
 
         Route::resource('stays', TripStayController::class)
             ->names('stays')

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Trip extends Model
@@ -33,6 +34,7 @@ class Trip extends Model
         'estimatedtotaldistancekm',
         'actualtotaldistancekm',
         'islocked',
+        'triplegsearchprofileid',
     ];
 
     protected $casts = [
@@ -46,6 +48,7 @@ class Trip extends Model
         'estimatedtotaldistancekm' => 'decimal:1',
         'actualtotaldistancekm' => 'decimal:1',
         'islocked' => 'boolean',
+        'triplegsearchprofileid' => 'integer',
     ];
 
     public function tripTravellerLinks(): HasMany
@@ -131,5 +134,39 @@ class Trip extends Model
         return $this->hasMany(TripVehicle::class, 'tripid')
             ->where('isdefaultforlegs', 1)
             ->orderByRaw('COALESCE(sortorder, 999999), id');
+    }
+    public function tripLegs()
+    {
+        return $this->hasMany(TripLeg::class)->orderBy('legnumber');
+    }
+
+    public function tripLegSearchProfile()
+    {
+        return $this->belongsTo(TripLegSearchProfile::class, 'triplegsearchprofileid');
+    }
+
+    public function tripLegSearchProfiles()
+    {
+        return $this->hasMany(TripLegSearchProfile::class, 'tripid', 'id');
+    }
+
+    public function tripLegSearchRuns()
+    {
+        return $this->hasMany(TripLegSearchRun::class)->latest('id');
+    }
+
+    public function tripLegSuggestions()
+    {
+        return $this->hasMany(TripLegSuggestion::class)->latest('id');
+    }
+    public function searchProfiles()
+    {
+        return $this->hasMany(\App\Models\TripLegSearchProfile::class, 'tripid')
+            ->orderBy('id');
+    }
+
+    public function selectedSearchProfile()
+    {
+        return $this->belongsTo(\App\Models\TripLegSearchProfile::class, 'selectedtriplegsearchprofileid');
     }
 }

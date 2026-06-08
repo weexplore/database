@@ -101,4 +101,14 @@ class TripItem extends Model
     {
         return $this->hasMany(Review::class, 'tripitemid');
     }
+
+public function tripStay()
+{
+    return $this->belongsTo(TripStay::class, 'tripstayid');
+}
+
+public function sourceSuggestions()
+{
+    return $this->hasMany(TripLegSuggestion::class, 'converted_to_trip_item_id');
+}
 }

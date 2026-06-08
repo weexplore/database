@@ -95,4 +95,9 @@ class TripStay extends Model
     {
         return $this->belongsTo(DestinationItem::class, 'destinationitemid');
     }
+    
+    public function sourceSuggestions()
+    {
+        return $this->hasMany(TripLegSuggestion::class, 'converted_to_trip_stay_id');
+    }
 }

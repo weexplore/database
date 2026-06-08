@@ -126,7 +126,13 @@
                                     'selectedId' => $selectedCategory?->id,
                                     'depth' => 0,
                                     'domainId' => $filters['domainid'],
-                                    'expandedIds' => $expandedIds ?? [],
+                                    'expandedIds' => $expandedIds,
+                                    'expandedIdLookup' => $expandedIdLookup,
+                                    'baseFilters' => [
+                                        'search' => $filters['search'],
+                                        'knowledgeitemtypeid' => $filters['knowledgeitemtypeid'],
+                                        'itemstatus' => $filters['itemstatus'],
+                                    ],
                                 ])
                             @else
                                 <div class="px-2 py-4 text-sm text-slate-400">

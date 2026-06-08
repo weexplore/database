@@ -44,7 +44,13 @@ class KnowledgeCategoryController extends Controller
     $editableCategories = collect();
     $items = collect();
     $globalParentOptions = collect();
-    $rowParentOptions = [];
+
+    // Expanded ids from request
+    $expandedIds = collect($request->input('expanded', []))
+        ->map(fn ($id) => (int) $id)
+        ->filter()
+        ->values()
+        ->all();
 
     if ($filters['domainid']) {
         $allCategories = KnowledgeCategory::query()
@@ -53,8 +59,12 @@ class KnowledgeCategoryController extends Controller
             ->orderBy('categoryname')
             ->get();
 
-        $categoryTree = $this->buildTree($allCategories);
+        // Pre-group by parent for efficient tree building
+        $groupedByParent = $allCategories->groupBy('parentcategoryid');
 
+        $categoryTree = $this->buildTreeFromGroups($groupedByParent, null);
+
+        // Choose selected category
         $selectedCategory = $filters['categoryid']
             ? $allCategories->firstWhere('id', $filters['categoryid'])
             : $allCategories->firstWhere('parentcategoryid', null) ?? $allCategories->first();
@@ -62,6 +72,7 @@ class KnowledgeCategoryController extends Controller
         if ($selectedCategory) {
             $filters['categoryid'] = (int) $selectedCategory->id;
 
+            // Items under selected category
             $itemQuery = KnowledgeItem::query()
                 ->where('primarycategoryid', $selectedCategory->id)
                 ->with([
@@ -89,6 +100,7 @@ class KnowledgeCategoryController extends Controller
 
             $items = $itemQuery->get();
 
+            // Immediate children for bulk-edit block
             $editableCategories = $allCategories
                 ->where('parentcategoryid', $selectedCategory->id)
                 ->sortBy([
@@ -106,23 +118,14 @@ class KnowledgeCategoryController extends Controller
                 ->values();
         }
 
-        $globalParentOptions = $this->buildParentOptions($categoryTree);
+        // Flattened parent options for the "Parent category" select
+        $globalParentOptions = $this->buildParentOptionsFromGroups($groupedByParent);
 
-        foreach ($editableCategories as $category) {
-            $excludedIds = $this->collectDescendantIds($allCategories, (int) $category->id);
-            $excludedIds[] = (int) $category->id;
-
-            $rowParentOptions[$category->id] = $this->buildParentOptions($categoryTree, $excludedIds);
-        }
+        // Note: rowParentOptions removed – the index page does not use per-row parent dropdowns
     }
 
-    $expandedIds = collect($request->input('expanded', []))
-        ->map(fn ($id) => (int) $id)
-        ->filter()
-        ->values()
-        ->all();
-
-    if ($selectedCategory) {
+    // Ensure ancestors of selected category are expanded
+    if ($selectedCategory && $allCategories->isNotEmpty()) {
         $ancestorIds = [];
         $current = $selectedCategory;
 
@@ -134,18 +137,24 @@ class KnowledgeCategoryController extends Controller
         $expandedIds = array_values(array_unique(array_merge($expandedIds, $ancestorIds)));
     }
 
+    // Build a lookup array for quick checks in Blade
+    $expandedIdLookup = [];
+    foreach ($expandedIds as $id) {
+        $expandedIdLookup[(int) $id] = true;
+    }
+
     $itemTypes = KnowledgeItemType::query()
         ->where('isactive', 1)
         ->orderBy('sortorder')
         ->orderBy('typename')
         ->get();
-        $parentOptions = collect();
 
+    $parentOptions = collect();
     if (!empty($filters['domainid'])) {
-        $parentOptions = KnowledgeCategory::query()
-            ->where('domainid', $filters['domainid'])
-            ->orderBy('categoryname')
-            ->get()
+        $parentOptions = $allCategories
+            ->sortBy([
+                ['categoryname', 'asc'],
+            ])
             ->map(function ($category) {
                 return [
                     'id' => $category->id,
@@ -154,8 +163,6 @@ class KnowledgeCategoryController extends Controller
             })
             ->values();
     }
-
-        
 
     $itemStatuses = KnowledgeItem::query()
         ->whereNotNull('itemstatus')
@@ -176,7 +183,7 @@ class KnowledgeCategoryController extends Controller
         'itemTypes' => $itemTypes,
         'itemStatuses' => $itemStatuses,
         'globalParentOptions' => $globalParentOptions,
-        'rowParentOptions' => $rowParentOptions,
+        // rowParentOptions removed
         'categoryTypeOptions' => [
             'folder' => 'Folder',
             'theme' => 'Theme',
@@ -185,6 +192,7 @@ class KnowledgeCategoryController extends Controller
             'stream' => 'Stream',
         ],
         'expandedIds' => $expandedIds,
+        'expandedIdLookup' => $expandedIdLookup,
         'itemStatusOptions' => [
             'active' => 'Active',
             'draft' => 'Draft',
@@ -368,8 +376,10 @@ public function bulkSave(Request $request): RedirectResponse
                 ->orderBy('categoryname')
                 ->get();
 
-            $categoryTree = $this->buildTree($categories);
-            $parentOptions = $this->buildParentOptions($categoryTree);
+            $groupedByParent = $categories->groupBy('parentcategoryid');
+
+            $categoryTree = $this->buildTreeFromGroups($groupedByParent, null);
+            $parentOptions = $this->buildParentOptionsFromGroups($groupedByParent);
         }
 
         return view('knowledge-categories.create', [
@@ -556,38 +566,52 @@ public function bulkSave(Request $request): RedirectResponse
         ->with('success', 'Knowledge category saved.');
 }
 
-    protected function buildTree(Collection $categories, $parentId = null): Collection
-    {
-        return $categories
-            ->where('parentcategoryid', $parentId)
-            ->map(function ($category) use ($categories) {
-                $category->children = $this->buildTree($categories, $category->id);
-                return $category;
-            })
-            ->values();
-    }
+    /**
+ * Build a nested tree using a grouped-by-parent map.
+ *
+ * @param \Illuminate\Support\Collection $groupedByParent  // key: parentcategoryid, value: Collection<KnowledgeCategory>
+ * @param int|null $parentId
+ * @return \Illuminate\Support\Collection
+ */
+protected function buildTreeFromGroups(Collection $groupedByParent, $parentId = null): Collection
+{
+    $children = $groupedByParent->get($parentId, collect());
 
-    protected function buildParentOptions(Collection $nodes, array $excludedIds = [], int $depth = 0): Collection
-    {
-        $options = collect();
+    return $children->map(function ($category) use ($groupedByParent) {
+        $category->children = $this->buildTreeFromGroups($groupedByParent, $category->id);
+        return $category;
+    })->values();
+}
 
-        foreach ($nodes as $node) {
-            if (!in_array((int) $node->id, $excludedIds, true)) {
-                $options->push([
-                    'id' => $node->id,
-                    'label' => str_repeat('— ', $depth) . $node->categoryname,
-                ]);
-            }
+/**
+ * Build flattened parent options using the grouped tree once.
+ */
+protected function buildParentOptionsFromGroups(Collection $groupedByParent, array $excludedIds = [], int $depth = 0): Collection
+{
+    $options = collect();
 
-            if ($node->children->isNotEmpty()) {
-                $options = $options->merge(
-                    $this->buildParentOptions($node->children, $excludedIds, $depth + 1)
-                );
-            }
+    $roots = $groupedByParent->get(null, collect());
+
+    $stack = $roots->map(fn ($node) => [$node, $depth])->all();
+
+    while (!empty($stack)) {
+        [$node, $level] = array_shift($stack);
+
+        if (!in_array((int) $node->id, $excludedIds, true)) {
+            $options->push([
+                'id' => $node->id,
+                'label' => str_repeat('— ', $level) . $node->categoryname,
+            ]);
         }
 
-        return $options->values();
+        $children = $groupedByParent->get($node->id, collect());
+        foreach ($children->reverse() as $child) {
+            $stack[] = [$child, $level + 1];
+        }
     }
+
+    return $options->values();
+}
 
     protected function collectDescendantIds(Collection $categories, int $categoryId): array
     {

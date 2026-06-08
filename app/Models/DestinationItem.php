@@ -155,4 +155,8 @@ class DestinationItem extends Model
             ->where('linkedtype', 'destination_item');
 
     }
+    public function tripLegSuggestions()
+    {
+        return $this->hasMany(TripLegSuggestion::class, 'destination_item_id');
+    }
 }

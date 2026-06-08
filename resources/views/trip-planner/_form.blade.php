@@ -312,6 +312,16 @@
                 </label>
 
                 <label class="flex items-center gap-3">
+                    <input type="hidden" name="isgovia" value="0">
+                    <input type="checkbox"
+                        name="isgovia"
+                        value="1"
+                        class="rounded border-gray-300 text-blue-600 shadow-sm"
+                        @checked((bool) old('isgovia', $tripPlanItem->isgovia))>
+                    <span class="text-sm text-gray-700">Go via</span>
+                </label>
+
+                <label class="flex items-center gap-3">
                     <input type="hidden" name="isovernight" value="0">
                     <input type="checkbox"
                            name="isovernight"

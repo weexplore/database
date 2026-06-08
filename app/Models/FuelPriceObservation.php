@@ -77,4 +77,9 @@ class FuelPriceObservation extends Model
     {
         return $this->belongsTo(Trip::class, 'tripid');
     }
+
+    public function tripFuelEstimates(): HasMany
+    {
+        return $this->hasMany(TripFuelEstimate::class, 'sourceobservationid');
+    }
 }

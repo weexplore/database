@@ -190,6 +190,38 @@
                                        max="20">
                             </div>
 
+                            <div>
+                            <label for="triplegsearchprofileid" class="block text-sm font-medium text-gray-700 mb-1">
+                                Default Leg Search Profile
+                            </label>
+                            <select
+                                name="triplegsearchprofileid"
+                                id="triplegsearchprofileid"
+                                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                            >
+                                <option value="">Standard / none</option>
+                                @foreach ($tripLegSearchProfiles as $profile)
+                                    <option
+                                        value="{{ $profile->id }}"
+                                        @selected((string) old('triplegsearchprofileid', $trip->triplegsearchprofileid) === (string) $profile->id)
+                                    >
+                                        {{ $profile->profilename }}
+                                        @if(!empty($profile->profiletype))
+                                            — {{ ucfirst($profile->profiletype) }}
+                                        @endif
+                                        @if((int) $profile->tripid === (int) $trip->id)
+                                            — Trip
+                                        @else
+                                            — Shared
+                                        @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="mt-1 text-xs text-gray-500">
+                                Used as the default route-discovery/search profile for trip legs unless a leg overrides it.
+                            </p>
+                        </div>
+
                             <div class="flex items-end">
                                 <label class="inline-flex items-center gap-2">
                                     <input type="hidden" name="islocked" value="0">
@@ -202,6 +234,7 @@
                                 </label>
                             </div>
                         </div>
+                        
                     </div>
                 </div>
 
@@ -662,34 +695,95 @@
                 </div>
             </form>
 
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-red-200">
-                <div class="px-4 py-3 border-b border-red-200 bg-red-50">
-                    <h3 class="text-sm font-semibold text-red-800">Delete Trip</h3>
-                    <p class="mt-1 text-xs text-red-700">
-                        This permanently removes this trip record.
-                    </p>
+            <div class="{{ $activeTab === 'workflow' ? 'block' : 'hidden' }}">
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="px-4 py-3 border-b border-gray-200">
+                        <h3 class="text-sm font-semibold text-gray-900">Shift Planner Dates</h3>
+                        <p class="mt-1 text-xs text-gray-600">
+                            Use the Trip Start Date as the master start point and shift all planner dates by the same offset.
+                            This is only intended for trips still in Planned status.
+                        </p>
+                    </div>
+
+                    <div class="p-4">
+                        <form method="POST"
+                            action="{{ route('trips.shiftPlannerDates', ['trip' => $trip->id]) }}"
+                            onsubmit="return confirm('Shift all planner dates to align with the Trip Start Date?');"
+                            class="space-y-4">
+                            @csrf
+                            @method('PUT')
+
+                            <input type="hidden" name="tab" value="workflow">
+
+                            <label class="flex items-start gap-3">
+                                <input type="checkbox"
+                                    name="regenerate_outputs"
+                                    value="1"
+                                    class="mt-1 rounded border-gray-300 text-blue-600 shadow-sm">
+                                <span class="text-sm text-gray-700">
+                                    Also regenerate legs, stays, items and leg points from the updated planner dates.
+                                </span>
+                            </label>
+
+                            <div class="flex items-center justify-end">
+                                <button type="submit"
+                                        class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                                    Shift Planner Dates from Trip Start
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
+                <div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-4 border border-amber-200">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900">Planner rebuild</h3>
+                        <p class="mt-1 text-sm text-gray-600">
+                            Delete existing planning items for this trip and rebuild them from Trip Legs, Leg Points, Trip Stays, and Trip Items.
+                        </p>
+                    </div>
 
-                <div class="p-4">
                     <form method="POST"
-                          action="{{ route('trips.destroy', $trip) }}"
-                          onsubmit="return confirm('Delete this trip? This cannot be undone.');">
+                        action="{{ route('trips.planner.rebuildFromOutputs', $trip) }}"
+                        onsubmit="return confirm('Rebuild the planner for this trip? Existing planning items will be deleted and replaced with rebuilt entries. This cannot be undone.');">
                         @csrf
-                        @method('DELETE')
 
-                        @if (!empty($returnTo))
-                            <input type="hidden" name="return_to" value="{{ $returnTo }}">
-                        @endif
-
-                        <div class="flex items-center justify-end">
-                            <button type="submit"
-                                    class="inline-flex items-center px-4 py-2 border border-red-300 rounded-md text-xs font-semibold text-red-700 bg-white uppercase tracking-widest hover:bg-red-50">
-                                Delete Trip
-                            </button>
-                        </div>
+                        <button type="submit"
+                                class="inline-flex items-center px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 text-sm">
+                            Rebuild Planner from Outputs
+                        </button>
                     </form>
                 </div>
-            </div>
+
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-red-200">
+                    <div class="px-4 py-3 border-b border-red-200 bg-red-50">
+                        <h3 class="text-sm font-semibold text-red-800">Delete Trip</h3>
+                        <p class="mt-1 text-xs text-red-700">
+                            This permanently removes this trip record.
+                        </p>
+                    </div>
+
+                    <div class="p-4">
+                        <form method="POST"
+                            action="{{ route('trips.destroy', $trip) }}"
+                            onsubmit="return confirm('Delete this trip? This cannot be undone.');">
+                            @csrf
+                            @method('DELETE')
+
+                            @if (!empty($returnTo))
+                                <input type="hidden" name="return_to" value="{{ $returnTo }}">
+                            @endif
+
+                            <div class="flex items-center justify-end">
+                                <button type="submit"
+                                        class="inline-flex items-center px-4 py-2 border border-red-300 rounded-md text-xs font-semibold text-red-700 bg-white uppercase tracking-widest hover:bg-red-50">
+                                    Delete Trip
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>    
+
+            </div>      
         </div>
     </div>
 
