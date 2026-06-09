@@ -211,7 +211,7 @@ public function bulkSave(Request $request): RedirectResponse
         'existing' => ['nullable', 'array'],
         'existing.*.categoryname' => ['required', 'string', 'max:200'],
         'existing.*.parentcategoryid' => ['nullable', 'integer', Rule::exists('knowledgecategories', 'id')],
-        'existing.*.categorytype' => ['nullable', 'string', Rule::in($categoryTypeOptions)],
+        'existing.*.categorytype' => ['required', 'string', Rule::in($categoryTypeOptions)],
         'existing.*.sortorder' => ['nullable', 'integer', 'min:0'],
         'existing.*.nextreviewdate' => ['nullable', 'date'],
         'existing.*.isactive' => ['nullable', 'boolean'],
@@ -220,7 +220,7 @@ public function bulkSave(Request $request): RedirectResponse
         'new' => ['nullable', 'array'],
         'new.categoryname' => ['nullable', 'string', 'max:200'],
         'new.parentcategoryid' => ['nullable', 'integer', Rule::exists('knowledgecategories', 'id')],
-        'new.categorytype' => ['nullable', 'string', Rule::in($categoryTypeOptions)],
+        'new.categorytype' => ['required_with:new.categoryname', 'string', Rule::in($categoryTypeOptions)],
         'new.sortorder' => ['nullable', 'integer', 'min:0'],
         'new.nextreviewdate' => ['nullable', 'date'],
         'new.isactive' => ['nullable', 'boolean'],
@@ -231,6 +231,11 @@ public function bulkSave(Request $request): RedirectResponse
         'search' => ['nullable', 'string'],
         'knowledgeitemtypeid' => ['nullable', 'integer'],
         'itemstatus' => ['nullable', 'string'],
+    ], [
+        'existing.*.categorytype.required' => 'Please select a category type.',
+        'existing.*.categorytype.in' => 'Please select a valid category type.',
+        'new.categorytype.required_with' => 'Please select a category type for the new category.',
+        'new.categorytype.in' => 'Please select a valid category type for the new category.',
     ]);
 
     $allCategories = KnowledgeCategory::query()
@@ -291,7 +296,7 @@ public function bulkSave(Request $request): RedirectResponse
             $category->update([
                 'categoryname' => trim((string) $row['categoryname']),
                 'parentcategoryid' => $parentId,
-                'categorytype' => $row['categorytype'] ?? null,
+                'categorytype' => $row['categorytype'],
                 'sortorder' => $row['sortorder'] ?? 0,
                 'nextreviewdate' => $row['nextreviewdate'] ?? null,
                 'isactive' => (bool) ($row['isactive'] ?? false),
@@ -300,7 +305,8 @@ public function bulkSave(Request $request): RedirectResponse
         }
 
         $new = $validated['new'] ?? [];
-        $hasNewRow = trim((string) ($new['categoryname'] ?? '')) !== '';
+        $newCategoryName = trim((string) ($new['categoryname'] ?? ''));
+        $hasNewRow = $newCategoryName !== '';
 
         if ($hasNewRow) {
             $parentId = !empty($new['parentcategoryid']) ? (int) $new['parentcategoryid'] : null;
@@ -317,7 +323,7 @@ public function bulkSave(Request $request): RedirectResponse
 
             $duplicateQuery = KnowledgeCategory::query()
                 ->where('domainid', $validated['domainid'])
-                ->where('categoryname', trim((string) $new['categoryname']));
+                ->where('categoryname', $newCategoryName);
 
             if ($parentId) {
                 $duplicateQuery->where('parentcategoryid', $parentId);
@@ -331,16 +337,29 @@ public function bulkSave(Request $request): RedirectResponse
                 ]);
             }
 
+            $slug = Str::slug($newCategoryName);
+
+            $slugExists = KnowledgeCategory::query()
+                ->where('domainid', $validated['domainid'])
+                ->where('slug', $slug)
+                ->exists();
+
+            if ($slugExists) {
+                throw ValidationException::withMessages([
+                    'new.categoryname' => 'The generated slug already exists in this domain. Please use a different category name.',
+                ]);
+            }
+
             KnowledgeCategory::create([
                 'domainid' => $validated['domainid'],
-                'categoryname' => trim((string) $new['categoryname']),
+                'categoryname' => $newCategoryName,
                 'parentcategoryid' => $parentId,
-                'categorytype' => $new['categorytype'] ?? null,
+                'categorytype' => $new['categorytype'],
                 'sortorder' => $new['sortorder'] ?? 0,
                 'nextreviewdate' => $new['nextreviewdate'] ?? null,
                 'isactive' => array_key_exists('isactive', $new) ? (bool) $new['isactive'] : true,
                 'isfeatured' => (bool) ($new['isfeatured'] ?? false),
-                'slug' => Str::slug(trim((string) $new['categoryname'])),
+                'slug' => $slug,
             ]);
         }
     });
@@ -399,9 +418,21 @@ public function bulkSave(Request $request): RedirectResponse
     }
 
     public function store(Request $request): RedirectResponse
-    {
+{
+    $categoryTypeOptions = ['folder', 'theme', 'subtheme', 'topic', 'stream'];
 
-        $categoryNameUnique = Rule::unique('knowledgecategories', 'categoryname')
+    $request->merge([
+        'categoryname' => trim((string) $request->input('categoryname', '')),
+        'slug' => trim((string) $request->input('slug', '')),
+    ]);
+
+    if ($request->input('slug') === '') {
+        $request->merge([
+            'slug' => Str::slug($request->input('categoryname')),
+        ]);
+    }
+
+    $categoryNameUnique = Rule::unique('knowledgecategories', 'categoryname')
         ->where(function ($q) use ($request) {
             $q->where('domainid', $request->integer('domainid'));
 
@@ -411,70 +442,82 @@ public function bulkSave(Request $request): RedirectResponse
                 $q->whereNull('parentcategoryid');
             }
         });
-        $validated = $request->validate([
-            'domainid' => ['required', 'integer', Rule::exists('knowledgedomains', 'id')],
-            'parentcategoryid' => ['nullable', 'integer', Rule::exists('knowledgecategories', 'id')],
-            'categoryname' => [
-                'required',
-                'string',
-                'max:200',
-                $categoryNameUnique,
-            ],
-            'categorytype' => ['nullable', 'string', 'max:50'],
-            'slug' => [
-                'nullable',
-                'string',
-                'max:220',
-                Rule::unique('knowledgecategories', 'slug')
-                    ->where(fn ($q) => $q->where('domainid', $request->integer('domainid'))),
-            ],
-            'description' => ['nullable', 'string'],
-            'sortorder' => ['nullable', 'integer', 'min:0'],
-            'nextreviewdate' => ['nullable', 'date'],
-            'isfeatured' => ['nullable', 'boolean'],
-            'isactive' => ['nullable', 'boolean'],
-        ]);
 
-        if (!empty($validated['parentcategoryid'])) {
-            $parent = KnowledgeCategory::findOrFail($validated['parentcategoryid']);
+    $validated = $request->validate([
+        'domainid' => ['required', 'integer', Rule::exists('knowledgedomains', 'id')],
+        'parentcategoryid' => ['nullable', 'integer', Rule::exists('knowledgecategories', 'id')],
+        'categoryname' => [
+            'required',
+            'string',
+            'max:200',
+            $categoryNameUnique,
+        ],
+        'categorytype' => ['required', 'string', Rule::in($categoryTypeOptions)],
+        'slug' => [
+            'required',
+            'string',
+            'max:220',
+            Rule::unique('knowledgecategories', 'slug')
+                ->where(fn ($q) => $q->where('domainid', $request->integer('domainid'))),
+        ],
+        'description' => ['nullable', 'string'],
+        'sortorder' => ['nullable', 'integer', 'min:0'],
+        'nextreviewdate' => ['nullable', 'date'],
+        'isfeatured' => ['nullable', 'boolean'],
+        'isactive' => ['nullable', 'boolean'],
+    ], [
+        'categorytype.required' => 'Please select a category type.',
+        'categorytype.in' => 'Please select a valid category type.',
+        'slug.unique' => 'Slug must be unique within the selected domain.',
+    ]);
 
-            if ((int) $parent->domainid !== (int) $validated['domainid']) {
-                return back()
-                    ->withInput()
-                    ->withErrors(['parentcategoryid' => 'Parent category must be in the same domain.']);
-            }
+    if (!empty($validated['parentcategoryid'])) {
+        $parent = KnowledgeCategory::findOrFail($validated['parentcategoryid']);
+
+        if ((int) $parent->domainid !== (int) $validated['domainid']) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'parentcategoryid' => 'Parent category must be in the same domain.',
+                ]);
         }
-
-        $slug = trim((string) ($validated['slug'] ?? ''));
-        if ($slug === '') {
-            $slug = Str::slug($validated['categoryname']);
-        }
-
-        $category = KnowledgeCategory::create([
-            'domainid' => $validated['domainid'],
-            'parentcategoryid' => $validated['parentcategoryid'] ?? null,
-            'categoryname' => trim($validated['categoryname']),
-            'categorytype' => $validated['categorytype'] ?? null,
-            'slug' => $slug !== '' ? $slug : null,
-            'description' => $validated['description'] ?? null,
-            'sortorder' => $validated['sortorder'] ?? 0,
-            'isfeatured' => (bool) ($validated['isfeatured'] ?? false),
-            'isactive' => (bool) ($validated['isactive'] ?? true),
-            'nextreviewdate' => $validated['nextreviewdate'] ?? null,
-        ]);
-
-        return redirect()->route('knowledge-categories.index', [
-            'domainid' => $validated['domainid'],
-            'categoryid' => $category->id,
-        ])->with('success', 'Category added successfully.');
     }
+
+    $category = KnowledgeCategory::create([
+        'domainid' => $validated['domainid'],
+        'parentcategoryid' => $validated['parentcategoryid'] ?? null,
+        'categoryname' => $validated['categoryname'],
+        'categorytype' => $validated['categorytype'],
+        'slug' => $validated['slug'],
+        'description' => $validated['description'] ?? null,
+        'sortorder' => $validated['sortorder'] ?? 0,
+        'isfeatured' => (bool) ($validated['isfeatured'] ?? false),
+        'isactive' => array_key_exists('isactive', $validated)
+            ? (bool) $validated['isactive']
+            : true,
+        'nextreviewdate' => $validated['nextreviewdate'] ?? null,
+    ]);
+
+    return redirect()->route('knowledge-categories.index', [
+        'domainid' => $validated['domainid'],
+        'categoryid' => $category->id,
+    ])->with('success', 'Category added successfully.');
+}
 
     public function update(Request $request, KnowledgeCategory $knowledgeCategory): RedirectResponse
 {
+    $categoryTypeOptions = ['folder', 'theme', 'subtheme', 'topic', 'stream'];
+
     $request->merge([
-        'slug' => trim((string) $request->input('slug', '')),
         'categoryname' => trim((string) $request->input('categoryname', '')),
+        'slug' => trim((string) $request->input('slug', '')),
     ]);
+
+    if ($request->input('slug') === '') {
+        $request->merge([
+            'slug' => Str::slug($request->input('categoryname')),
+        ]);
+    }
 
     $categoryNameUnique = Rule::unique('knowledgecategories', 'categoryname')
         ->ignore($knowledgeCategory->id, 'id')
@@ -497,25 +540,32 @@ public function bulkSave(Request $request): RedirectResponse
             'max:200',
             $categoryNameUnique,
         ],
-        'categorytype' => ['nullable', 'string', 'max:50'],
+        'categorytype' => ['required', 'string', Rule::in($categoryTypeOptions)],
         'slug' => [
-            'nullable',
+            'required',
             'string',
             'max:220',
             Rule::unique('knowledgecategories', 'slug')
                 ->where(fn ($q) => $q->where('domainid', $request->integer('domainid')))
-                ->ignore($knowledgeCategory->id ?? null, 'id'),
+                ->ignore($knowledgeCategory->id, 'id'),
         ],
         'description' => ['nullable', 'string'],
         'sortorder' => ['nullable', 'integer', 'min:0'],
+        'nextreviewdate' => ['nullable', 'date'],
         'isfeatured' => ['nullable', 'boolean'],
         'isactive' => ['nullable', 'boolean'],
+    ], [
+        'categorytype.required' => 'Please select a category type.',
+        'categorytype.in' => 'Please select a valid category type.',
+        'slug.unique' => 'Slug must be unique within the selected domain.',
     ]);
 
     if ((int) ($validated['parentcategoryid'] ?? 0) === (int) $knowledgeCategory->id) {
-        return back()->withErrors([
-            'parentcategoryid' => 'A category cannot be its own parent.',
-        ])->withInput();
+        return back()
+            ->withErrors([
+                'parentcategoryid' => 'A category cannot be its own parent.',
+            ])
+            ->withInput();
     }
 
     if (!empty($validated['parentcategoryid'])) {
@@ -524,7 +574,9 @@ public function bulkSave(Request $request): RedirectResponse
         if ((int) $parent->domainid !== (int) $validated['domainid']) {
             return back()
                 ->withInput()
-                ->withErrors(['parentcategoryid' => 'Parent category must be in the same domain.']);
+                ->withErrors([
+                    'parentcategoryid' => 'Parent category must be in the same domain.',
+                ]);
         }
 
         $descendantIds = $this->collectDescendantIds(
@@ -537,25 +589,25 @@ public function bulkSave(Request $request): RedirectResponse
         if (in_array((int) $validated['parentcategoryid'], $descendantIds, true)) {
             return back()
                 ->withInput()
-                ->withErrors(['parentcategoryid' => 'A category cannot be moved under one of its descendants.']);
+                ->withErrors([
+                    'parentcategoryid' => 'A category cannot be moved under one of its descendants.',
+                ]);
         }
-    }
-
-    $slug = $validated['slug'];
-    if ($slug === '') {
-        $slug = Str::slug($validated['categoryname']);
     }
 
     $knowledgeCategory->update([
         'domainid' => $validated['domainid'],
         'parentcategoryid' => $validated['parentcategoryid'] ?? null,
         'categoryname' => $validated['categoryname'],
-        'categorytype' => $validated['categorytype'] ?? null,
-        'slug' => $slug !== '' ? $slug : null,
+        'categorytype' => $validated['categorytype'],
+        'slug' => $validated['slug'],
         'description' => $validated['description'] ?? null,
         'sortorder' => $validated['sortorder'] ?? 0,
         'isfeatured' => (bool) ($validated['isfeatured'] ?? false),
-        'isactive' => (bool) ($validated['isactive'] ?? true),
+        'isactive' => array_key_exists('isactive', $validated)
+            ? (bool) $validated['isactive']
+            : true,
+        'nextreviewdate' => $validated['nextreviewdate'] ?? null,
     ]);
 
     return redirect()
