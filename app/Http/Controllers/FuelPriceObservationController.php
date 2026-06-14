@@ -12,15 +12,8 @@ class FuelPriceObservationController extends Controller
 {
     public function index(Request $request)
     {
-        $fuelTypes = config('fuel.fuel_types');
-
-        $priceSources = [
-            'actual_purchase' => 'Actual Purchase',
-            'signboard' => 'Signboard',
-            'website' => 'Website',
-            'imported' => 'Imported',
-            'estimate' => 'Estimate',
-        ];
+        $fuelTypes = FuelPriceObservation::fuelTypeOptions();
+        $priceSources = FuelPriceObservation::priceSourceOptions();
 
         $fuelStops = FuelStop::orderBy('stopname')->get();
 

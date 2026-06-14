@@ -1,12 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                    Generate Legs & Stays - {{ $trip->tripname }}
+                    Generate Trip Outputs - {{ $trip->tripname }}
                 </h2>
                 <p class="mt-1 text-sm text-gray-500">
-                    Review proposed trip legs and stays from the planning sequence before applying any changes.
+                    Review the proposed Trip Legs, Leg Points, Trip Stays, and Trip Items and Activities before replacing existing generated outputs.
                 </p>
             </div>
 
@@ -18,6 +18,49 @@
             </div>
         </div>
     </x-slot>
+
+    @php
+        $resolvePlaceName = function ($item) {
+            return $item->place?->placename
+                ?? $item->destinationItem?->place?->placename
+                ?? $item->destinationItem?->destination?->place?->placename
+                ?? $item->destination?->place?->placename
+                ?? '—';
+        };
+
+        $resolveDestinationName = function ($item) {
+            return $item->destination?->destinationname
+                ?? $item->destinationItem?->destination?->destinationname
+                ?? '—';
+        };
+
+        $resolveDestinationItemName = function ($item) {
+            return $item->destinationItem?->itemname ?? '—';
+        };
+
+        $resolveLinkedLabel = function ($item) use ($resolvePlaceName, $resolveDestinationName, $resolveDestinationItemName) {
+            $destinationItemName = $resolveDestinationItemName($item);
+            if ($destinationItemName !== '—') {
+                return $destinationItemName;
+            }
+
+            $destinationName = $resolveDestinationName($item);
+            if ($destinationName !== '—') {
+                return $destinationName;
+            }
+
+            return $resolvePlaceName($item);
+        };
+
+        $resolveFlags = function ($item) {
+            return collect([
+                $item->isrouteanchor ? 'Route anchor' : null,
+                $item->isgovia ? 'Go via' : null,
+                $item->isovernight ? 'Overnight' : null,
+                $item->isstaytarget ? 'Stay target' : null,
+            ])->filter()->values();
+        };
+    @endphp
 
     <div class="py-6">
         <div class="w-full max-w-none mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 space-y-6">
@@ -54,22 +97,16 @@
                                     <tbody class="divide-y divide-gray-100 bg-white">
                                         @foreach($planItems as $item)
                                             @php
-                                                $flags = collect([
-                                                    $item->isrouteanchor ? 'Route anchor' : null,
-                                                    $item->isovernight ? 'Overnight' : null,
-                                                    $item->isstaytarget ? 'Stay target' : null,
-                                                ])->filter()->implode(', ');
-
-                                                $linkedLabel = $item->destinationItem?->itemname
-                                                    ?? $item->destination?->destinationname
-                                                    ?? $item->place?->placename
-                                                    ?? '—';
+                                                $flags = $resolveFlags($item)->implode(', ');
                                             @endphp
                                             <tr>
                                                 <td class="px-3 py-3 align-top text-gray-700">{{ $item->sequence_no }}</td>
                                                 <td class="px-3 py-3 align-top text-gray-700">{{ $item->plantype }}</td>
                                                 <td class="px-3 py-3 align-top">
                                                     <div class="font-medium text-gray-900">{{ $item->display_title }}</div>
+                                                    @if(!empty($item->notes))
+                                                        <div class="mt-1 text-xs text-gray-500 whitespace-pre-line">{{ $item->notes }}</div>
+                                                    @endif
                                                 </td>
                                                 <td class="px-3 py-3 align-top text-gray-700">
                                                     {{ optional($item->planneddate)->format('Y-m-d') ?: '—' }}
@@ -78,7 +115,7 @@
                                                     {{ $flags ?: '—' }}
                                                 </td>
                                                 <td class="px-3 py-3 align-top text-gray-700">
-                                                    {{ $linkedLabel }}
+                                                    {{ $resolveLinkedLabel($item) }}
                                                 </td>
                                             </tr>
                                         @endforeach
@@ -100,23 +137,23 @@
                                 <dd class="text-gray-900">{{ $planItems->count() }}</dd>
                             </div>
                             <div class="flex justify-between gap-4">
-                                <dt class="text-gray-500">Route anchors</dt>
-                                <dd class="text-gray-900">{{ $candidateLegAnchors->count() }}</dd>
+                                <dt class="text-gray-500">Leg boundaries</dt>
+                                <dd class="text-gray-900">{{ $candidateLegBoundaries->count() }}</dd>
                             </div>
                             <div class="flex justify-between gap-4">
                                 <dt class="text-gray-500">Proposed legs</dt>
                                 <dd class="text-gray-900">{{ $candidateLegs->count() }}</dd>
                             </div>
                             <div class="flex justify-between gap-4">
+                                <dt class="text-gray-500">Proposed leg points</dt>
+                                <dd class="text-gray-900">{{ $candidateLegPoints->count() }}</dd>
+                            </div>
+                            <div class="flex justify-between gap-4">
                                 <dt class="text-gray-500">Proposed stays</dt>
                                 <dd class="text-gray-900">{{ $candidateStayItems->count() }}</dd>
                             </div>
                             <div class="flex justify-between gap-4">
-                                <dt class="text-gray-500">Leg points</dt>
-                                <dd class="text-gray-900">{{ $candidateLegPoints->count() }}</dd>
-                            </div>
-                            <div class="flex justify-between gap-4">
-                                <dt class="text-gray-500">Trip items</dt>
+                                <dt class="text-gray-500">Proposed trip items</dt>
                                 <dd class="text-gray-900">{{ $candidateTripItems->count() }}</dd>
                             </div>
                             <div class="flex justify-between gap-4">
@@ -134,42 +171,166 @@
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-sm font-semibold text-gray-900">Proposed trip legs</h3>
+                    <h3 class="text-sm font-semibold text-gray-900">Trip Legs</h3>
                     <p class="mt-1 text-xs text-gray-500">
-                        Each leg is proposed between consecutive route-anchor planning items.
+                        Proposed trip legs generated from planner stay boundaries and movement between planned locations.
                     </p>
                 </div>
 
                 <div class="p-6">
                     @if($candidateLegs->isEmpty())
                         <p class="text-sm text-gray-500">
-                            No trip legs can be proposed yet. Add at least two route-anchor planning items.
+                            No Trip Legs can be proposed yet.
+                        </p>
+                    @else
+                        <div class="space-y-4">
+                            @foreach($candidateLegs as $index => $leg)
+                                @php
+                                    $fromItem = $leg['from_item'];
+                                    $toItem = $leg['to_item'];
+                                    $fromFlags = $resolveFlags($fromItem)->implode(', ');
+                                    $toFlags = $resolveFlags($toItem)->implode(', ');
+                                @endphp
+
+                                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                                    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                                        <div>
+                                            <div class="text-sm font-semibold text-gray-900">
+                                                Leg {{ $index + 1 }} — {{ $leg['from_label'] }} → {{ $leg['to_label'] }}
+                                            </div>
+                                            <div class="mt-1 text-xs text-gray-500">
+                                                {{ $leg['leg_kind'] ?? 'Generated leg' }}
+                                                @if(!empty($leg['start_date']) || !empty($leg['end_date']))
+                                                    · {{ optional($leg['start_date'])->format('d M Y') ?: '—' }}
+                                                    to
+                                                    {{ optional($leg['end_date'])->format('d M Y') ?: '—' }}
+                                                @endif
+                                            </div>
+                                        </div>
+
+                                        <div class="flex flex-wrap gap-2 text-xs">
+                                            @if(!empty($leg['estimated_road_km']))
+                                                <span class="inline-flex items-center px-2 py-1 rounded bg-blue-50 text-blue-700">
+                                                    {{ number_format((float) $leg['estimated_road_km'], 1) }} km est.
+                                                </span>
+                                            @endif
+                                            @if(!empty($leg['estimated_time_label']))
+                                                <span class="inline-flex items-center px-2 py-1 rounded bg-green-50 text-green-700">
+                                                    {{ $leg['estimated_time_label'] }}
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    <div class="p-4 grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                        <div class="rounded-lg border border-gray-200 p-4 bg-white">
+                                            <div class="text-xs font-semibold uppercase tracking-wide text-gray-500">From</div>
+                                            <div class="mt-2 text-sm font-medium text-gray-900">
+                                                {{ $fromItem->display_title }}
+                                            </div>
+                                            <div class="mt-1 text-sm text-gray-600">
+                                                Seq {{ $fromItem->sequence_no }} · {{ $fromItem->plantype }}
+                                            </div>
+                                            <div class="mt-1 text-sm text-gray-600">
+                                                Place: {{ $resolvePlaceName($fromItem) }}
+                                            </div>
+                                            <div class="mt-1 text-sm text-gray-600">
+                                                Destination: {{ $resolveDestinationName($fromItem) }}
+                                            </div>
+                                            <div class="mt-1 text-sm text-gray-600">
+                                                Destination Item: {{ $resolveDestinationItemName($fromItem) }}
+                                            </div>
+                                            <div class="mt-1 text-sm text-gray-600">
+                                                Date: {{ optional($fromItem->planneddate)->format('d M Y') ?: '—' }}
+                                            </div>
+                                            <div class="mt-1 text-xs text-gray-500">
+                                                Flags: {{ $fromFlags ?: '—' }}
+                                            </div>
+                                            @if(!empty($fromItem->notes))
+                                                <div class="mt-2 text-xs text-gray-500 whitespace-pre-line">{{ $fromItem->notes }}</div>
+                                            @endif
+                                        </div>
+
+                                        <div class="rounded-lg border border-gray-200 p-4 bg-white">
+                                            <div class="text-xs font-semibold uppercase tracking-wide text-gray-500">To</div>
+                                            <div class="mt-2 text-sm font-medium text-gray-900">
+                                                {{ $toItem->display_title }}
+                                            </div>
+                                            <div class="mt-1 text-sm text-gray-600">
+                                                Seq {{ $toItem->sequence_no }} · {{ $toItem->plantype }}
+                                            </div>
+                                            <div class="mt-1 text-sm text-gray-600">
+                                                Place: {{ $resolvePlaceName($toItem) }}
+                                            </div>
+                                            <div class="mt-1 text-sm text-gray-600">
+                                                Destination: {{ $resolveDestinationName($toItem) }}
+                                            </div>
+                                            <div class="mt-1 text-sm text-gray-600">
+                                                Destination Item: {{ $resolveDestinationItemName($toItem) }}
+                                            </div>
+                                            <div class="mt-1 text-sm text-gray-600">
+                                                Date: {{ optional($toItem->planneddate)->format('d M Y') ?: '—' }}
+                                            </div>
+                                            <div class="mt-1 text-xs text-gray-500">
+                                                Flags: {{ $toFlags ?: '—' }}
+                                            </div>
+                                            @if(!empty($toItem->notes))
+                                                <div class="mt-2 text-xs text-gray-500 whitespace-pre-line">{{ $toItem->notes }}</div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-sm font-semibold text-gray-900">Leg Points</h3>
+                    <p class="mt-1 text-xs text-gray-500">
+                        Planner items that should sit on a leg as go-via points or waypoints rather than become separate legs or stays.
+                    </p>
+                </div>
+
+                <div class="p-6">
+                    @if($candidateLegPoints->isEmpty())
+                        <p class="text-sm text-gray-500">
+                            No proposed Leg Points were found.
                         </p>
                     @else
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200 text-sm">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">From seq</th>
-                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">From</th>
-                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">To seq</th>
-                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">To</th>
-                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">Start date</th>
-                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">End date</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">Seq</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">Type</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">Title</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">Date</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">Place</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">Linked</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">Flags</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 bg-white">
-                                    @foreach($candidateLegs as $leg)
+                                    @foreach($candidateLegPoints as $item)
                                         <tr>
-                                            <td class="px-3 py-3 align-top text-gray-700">{{ $leg['from_item']->sequence_no }}</td>
-                                            <td class="px-3 py-3 align-top text-gray-900">{{ $leg['from_label'] }}</td>
-                                            <td class="px-3 py-3 align-top text-gray-700">{{ $leg['to_item']->sequence_no }}</td>
-                                            <td class="px-3 py-3 align-top text-gray-900">{{ $leg['to_label'] }}</td>
-                                            <td class="px-3 py-3 align-top text-gray-700">
-                                                {{ optional($leg['planned_start'])->format('Y-m-d') ?: '—' }}
+                                            <td class="px-3 py-3 align-top text-gray-700">{{ $item->sequence_no }}</td>
+                                            <td class="px-3 py-3 align-top text-gray-700">{{ $item->plantype }}</td>
+                                            <td class="px-3 py-3 align-top">
+                                                <div class="font-medium text-gray-900">{{ $item->display_title }}</div>
+                                                @if(!empty($item->notes))
+                                                    <div class="mt-1 text-xs text-gray-500 whitespace-pre-line">{{ $item->notes }}</div>
+                                                @endif
                                             </td>
                                             <td class="px-3 py-3 align-top text-gray-700">
-                                                {{ optional($leg['planned_end'])->format('Y-m-d') ?: '—' }}
+                                                {{ optional($item->planneddate)->format('d M Y') ?: '—' }}
+                                            </td>
+                                            <td class="px-3 py-3 align-top text-gray-700">{{ $resolvePlaceName($item) }}</td>
+                                            <td class="px-3 py-3 align-top text-gray-700">{{ $resolveLinkedLabel($item) }}</td>
+                                            <td class="px-3 py-3 align-top text-xs text-gray-500">
+                                                {{ $resolveFlags($item)->implode(', ') ?: '—' }}
                                             </td>
                                         </tr>
                                     @endforeach
@@ -182,53 +343,16 @@
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-sm font-semibold text-gray-900">Proposed leg points</h3>
-                    <p class="mt-1 text-xs text-gray-500">Route waypoints and anchor items that should sit on a leg rather than create a new leg.</p>
-                </div>
-                <div class="px-6 py-4">
-                    @if ($candidateLegPoints->isEmpty())
-                        <p class="text-sm text-gray-500">No proposed leg points were found.</p>
-                    @else
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-xs border-t border-b border-gray-200">
-                                <thead class="bg-gray-50 text-gray-600 uppercase tracking-wide">
-                                    <tr>
-                                        <th class="px-2 py-2 text-left">Seq</th>
-                                        <th class="px-2 py-2 text-left">Type</th>
-                                        <th class="px-2 py-2 text-left">Title</th>
-                                        <th class="px-2 py-2 text-left">Date</th>
-                                        <th class="px-2 py-2 text-left">Linked</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100">
-                                    @foreach ($candidateLegPoints as $item)
-                                        <tr>
-                                            <td class="px-2 py-2 align-top">{{ $item->sequencenumber }}</td>
-                                            <td class="px-2 py-2 align-top">{{ $item->plantype }}</td>
-                                            <td class="px-2 py-2 align-top font-medium text-gray-900">{{ $item->display_title }}</td>
-                                            <td class="px-2 py-2 align-top">{{ optional($item->planneddate)?->format('d M Y') }}</td>
-                                            <td class="px-2 py-2 align-top text-gray-600">{{ $item->linked_display ?? '—' }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-sm font-semibold text-gray-900">Proposed trip stays</h3>
+                    <h3 class="text-sm font-semibold text-gray-900">Trip Stays</h3>
                     <p class="mt-1 text-xs text-gray-500">
-                        Stays are proposed from planning items marked overnight or stay target.
+                        Proposed Trip Stays from planner items marked overnight or stay target.
                     </p>
                 </div>
 
                 <div class="p-6">
                     @if($candidateStayItems->isEmpty())
                         <p class="text-sm text-gray-500">
-                            No trip stays can be proposed yet. Mark planning items as overnight or stay target.
+                            No Trip Stays can be proposed yet. Mark planning items as overnight or stay target.
                         </p>
                     @else
                         <div class="overflow-x-auto">
@@ -239,18 +363,26 @@
                                         <th class="px-3 py-2 text-left font-semibold text-gray-600">Title</th>
                                         <th class="px-3 py-2 text-left font-semibold text-gray-600">Place</th>
                                         <th class="px-3 py-2 text-left font-semibold text-gray-600">Destination</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">Destination item</th>
                                         <th class="px-3 py-2 text-left font-semibold text-gray-600">Start date</th>
                                         <th class="px-3 py-2 text-left font-semibold text-gray-600">End date</th>
                                         <th class="px-3 py-2 text-left font-semibold text-gray-600">Stay type</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">Flags</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 bg-white">
                                     @foreach($candidateStayItems as $item)
                                         <tr>
                                             <td class="px-3 py-3 align-top text-gray-700">{{ $item->sequence_no }}</td>
-                                            <td class="px-3 py-3 align-top text-gray-900">{{ $item->display_title }}</td>
-                                            <td class="px-3 py-3 align-top text-gray-700">{{ $item->place?->placename ?? '—' }}</td>
-                                            <td class="px-3 py-3 align-top text-gray-700">{{ $item->destination?->destinationname ?? '—' }}</td>
+                                            <td class="px-3 py-3 align-top">
+                                                <div class="font-medium text-gray-900">{{ $item->display_title }}</div>
+                                                @if(!empty($item->notes))
+                                                    <div class="mt-1 text-xs text-gray-500 whitespace-pre-line">{{ $item->notes }}</div>
+                                                @endif
+                                            </td>
+                                            <td class="px-3 py-3 align-top text-gray-700">{{ $resolvePlaceName($item) }}</td>
+                                            <td class="px-3 py-3 align-top text-gray-700">{{ $resolveDestinationName($item) }}</td>
+                                            <td class="px-3 py-3 align-top text-gray-700">{{ $resolveDestinationItemName($item) }}</td>
                                             <td class="px-3 py-3 align-top text-gray-700">
                                                 {{ optional($item->planneddate)->format('Y-m-d') ?: '—' }}
                                             </td>
@@ -258,6 +390,9 @@
                                                 {{ optional($item->plannedenddate)->format('Y-m-d') ?: '—' }}
                                             </td>
                                             <td class="px-3 py-3 align-top text-gray-700">{{ $item->staytype ?: '—' }}</td>
+                                            <td class="px-3 py-3 align-top text-xs text-gray-500">
+                                                {{ $resolveFlags($item)->implode(', ') ?: '—' }}
+                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -269,37 +404,50 @@
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-sm font-semibold text-gray-900">Proposed trip items</h3>
-                    <p class="mt-1 text-xs text-gray-500">Activities, destination items, dump points, fuel stops, and other non-stay planner items.</p>
+                    <h3 class="text-sm font-semibold text-gray-900">Trip Items and Activities</h3>
+                    <p class="mt-1 text-xs text-gray-500">
+                        Activities, destination items, fuel stops, dump points, detours, and other non-stay planner items that will become Trip Items.
+                    </p>
                 </div>
-                <div class="px-6 py-4">
-                    @if ($candidateTripItems->isEmpty())
-                        <p class="text-sm text-gray-500">No proposed trip items were found.</p>
+
+                <div class="p-6">
+                    @if($candidateTripItems->isEmpty())
+                        <p class="text-sm text-gray-500">
+                            No proposed Trip Items or Activities were found.
+                        </p>
                     @else
                         <div class="overflow-x-auto">
-                            <table class="w-full text-xs border-t border-b border-gray-200">
-                                <thead class="bg-gray-50 text-gray-600 uppercase tracking-wide">
+                            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-2 py-2 text-left">Seq</th>
-                                        <th class="px-2 py-2 text-left">Type</th>
-                                        <th class="px-2 py-2 text-left">Title</th>
-                                        <th class="px-2 py-2 text-left">Date</th>
-                                        <th class="px-2 py-2 text-left">Linked</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">Seq</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">Type</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">Title</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">Date</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">Place</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">Linked</th>
+                                        <th class="px-3 py-2 text-left font-semibold text-gray-600">Flags</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-gray-100">
-                                    @foreach ($candidateTripItems as $item)
+                                <tbody class="divide-y divide-gray-100 bg-white">
+                                    @foreach($candidateTripItems as $item)
                                         <tr>
-                                            <td class="px-2 py-2 align-top">{{ $item->sequencenumber }}</td>
-                                            <td class="px-2 py-2 align-top">{{ $item->plantype }}</td>
-                                            <td class="px-2 py-2 align-top">
+                                            <td class="px-3 py-3 align-top text-gray-700">{{ $item->sequence_no }}</td>
+                                            <td class="px-3 py-3 align-top text-gray-700">{{ $item->plantype }}</td>
+                                            <td class="px-3 py-3 align-top">
                                                 <div class="font-medium text-gray-900">{{ $item->display_title }}</div>
-                                                @if (!empty($item->notes))
-                                                    <div class="mt-0.5 text-gray-600 whitespace-pre-line">{{ $item->notes }}</div>
+                                                @if(!empty($item->notes))
+                                                    <div class="mt-1 text-xs text-gray-500 whitespace-pre-line">{{ $item->notes }}</div>
                                                 @endif
                                             </td>
-                                            <td class="px-2 py-2 align-top">{{ optional($item->planneddate)?->format('d M Y') }}</td>
-                                            <td class="px-2 py-2 align-top text-gray-600">{{ $item->linked_display ?? '—' }}</td>
+                                            <td class="px-3 py-3 align-top text-gray-700">
+                                                {{ optional($item->planneddate)->format('d M Y') ?: '—' }}
+                                            </td>
+                                            <td class="px-3 py-3 align-top text-gray-700">{{ $resolvePlaceName($item) }}</td>
+                                            <td class="px-3 py-3 align-top text-gray-700">{{ $resolveLinkedLabel($item) }}</td>
+                                            <td class="px-3 py-3 align-top text-xs text-gray-500">
+                                                {{ $resolveFlags($item)->implode(', ') ?: '—' }}
+                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -313,7 +461,7 @@
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h3 class="text-sm font-semibold text-gray-900">Actions</h3>
                     <p class="mt-1 text-xs text-gray-500">
-                        These actions are scaffolded first so generation and rollback can be added safely next.
+                        Applying generation will clear existing generated legs, stays, leg points, and trip items, then rebuild them from the planner.
                     </p>
                 </div>
 
@@ -323,7 +471,7 @@
                         <input type="hidden" name="return_to" value="{{ $returnTo }}">
                         <button type="submit"
                                 class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
-                            Generate Legs & Stays
+                            Generate Trip Outputs
                         </button>
                     </form>
 

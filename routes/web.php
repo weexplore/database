@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CountryController;
 use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DestinationItemController;
+use App\Http\Controllers\DestinationItemTypeController;
 use App\Http\Controllers\DestinationSourceController;
 use App\Http\Controllers\StateController;
 use App\Http\Controllers\RegionController;
@@ -506,6 +507,15 @@ Route::prefix('knowledge')->name('knowledge.')->group(function () {
             ->name('instrument.transactions.destroy');
     });
 });
+
+Route::get('/destination-item-types', [DestinationItemTypeController::class, 'index'])
+    ->name('destination-item-types.index');
+
+Route::post('/destination-item-types/bulk-save', [DestinationItemTypeController::class, 'bulkSave'])
+    ->name('destination-item-types.bulk-save');
+
+Route::delete('/destination-item-types/{destinationItemType}', [DestinationItemTypeController::class, 'destroy'])
+    ->name('destination-item-types.destroy');
 
 /*
 |--------------------------------------------------------------------------

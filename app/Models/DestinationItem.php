@@ -80,6 +80,7 @@ class DestinationItem extends Model
             'caravan-park' => 'Caravan Park',
             'free-camp' => 'Free Camp',
             'cafe' => 'Cafe',
+            'picnic-area' => 'Picnic Area',
             'bakery' => 'Bakery',
             'butcher' => 'Butcher',
             'takeaway' => 'Takeaway',

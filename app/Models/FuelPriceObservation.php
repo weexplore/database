@@ -40,13 +40,7 @@ class FuelPriceObservation extends Model
 
     public function getPriceSourceLabelAttribute(): string
     {
-        return [
-            'actual_purchase' => 'Actual Purchase',
-            'signboard' => 'Signboard',
-            'website' => 'Website',
-            'imported' => 'Imported',
-            'estimate' => 'Estimate',
-        ][$this->pricesource] ?? ($this->pricesource ?: '—');
+        return static::priceSourceOptions()[$this->pricesource] ?? ($this->pricesource ?: '—');
     }
         public static function fuelTypeOptions(): array
     {

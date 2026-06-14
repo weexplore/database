@@ -212,41 +212,7 @@
                                         @endif
                                     </div>
 
-                                    @if($knowledgeItem->summary || $knowledgeItem->significance)
-                                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
-                                            @if($knowledgeItem->summary)
-                                                <div class="rounded-lg border border-gray-200 p-4">
-                                                    <h5 class="text-sm font-semibold text-gray-900 mb-2">Summary</h5>
-                                                    <div class="text-sm text-gray-700 markdown-content">
-                                                        @include('partials.markdown.rendered-block', [
-                                                            'content' => $knowledgeItem->summary,
-                                                        ])
-                                                    </div>
-                                                </div>
-                                            @endif
-                                            @if($knowledgeItem->detailednotes)
-                                                <section>
-                                                    <h3 class="text-base font-semibold text-slate-900">Detailed Notes</h3>
-                                                    <div class="mt-2 text-sm leading-6 text-slate-700 markdown-content">
-                                                        @include('partials.markdown.rendered-block', [
-                                                            'content' => $knowledgeItem->detailednotes,
-                                                        ])
-                                                    </div>
-                                                </section>
-                                            @endif
-
-                                            @if($knowledgeItem->significance)
-                                                <div class="rounded-lg border border-gray-200 p-4">
-                                                    <h5 class="text-sm font-semibold text-gray-900 mb-2">Significance</h5>
-                                                    <div class="text-sm text-gray-700 markdown-content">
-                                                        @include('partials.markdown.rendered-block', [
-                                                            'content' => $knowledgeItem->significance,
-                                                        ])
-                                                    </div>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    @endif
+                                    
 
                                     @include('reports.knowledge.partials.attachments', [
                                         'attachments' => $knowledgeItem->attachments,

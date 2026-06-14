@@ -1023,7 +1023,6 @@ public function generateApply(Request $request, Trip $trip)
         &$deletedItemsCount,
         &$deletedLegPointsCount
     ) {
-        // Clear planner output links before regenerating
         TripPlanItem::query()
             ->where('tripid', $trip->id)
             ->update([
@@ -1083,88 +1082,78 @@ public function generateApply(Request $request, Trip $trip)
 
             $generatedLegs->push([
                 'model' => $leg,
+                'from_item' => $fromItem,
+                'to_item' => $toItem,
                 'from_item_id' => $fromItem->id,
                 'to_item_id' => $toItem->id,
-                'from_sequence' => (int) ($fromItem->sequence_no ?? 0),
-                'to_sequence' => (int) ($toItem->sequence_no ?? 0),
+                'from_sequence' => (int) ($legData['from_sequence'] ?? $fromItem->sequence_no ?? 0),
+                'to_sequence' => (int) ($legData['to_sequence'] ?? $toItem->sequence_no ?? 0),
                 'start_date' => !empty($legData['start_date'])
                     ? Carbon::parse($legData['start_date'])->startOfDay()
                     : null,
                 'end_date' => !empty($legData['end_date'])
                     ? Carbon::parse($legData['end_date'])->startOfDay()
                     : null,
+                'day_key' => $legData['day_key'] ?? (!empty($legData['start_date'])
+                    ? Carbon::parse($legData['start_date'])->toDateString()
+                    : null),
+                'leg_kind' => $legData['leg_kind'] ?? 'transfer',
             ]);
 
-            // Attach the generated leg to the planner boundary rows
             $fromItem->update([
                 'triplegid' => $leg->id,
             ]);
 
-            $toItem->update([
-                'triplegid' => $leg->id,
-            ]);
+            if ((int) $toItem->id !== (int) $fromItem->id) {
+                $toItem->update([
+                    'triplegid' => $leg->id,
+                ]);
+            }
 
             $createdLegsCount++;
         }
 
         $findLegForPlannerItem = function ($plannerItem) use ($generatedLegs) {
-            $itemSequence = (int) ($plannerItem->sequence_no ?? 0);
-            $itemDate = !empty($plannerItem->planneddate)
-                ? Carbon::parse($plannerItem->planneddate)->startOfDay()
-                : null;
+    $itemSequence = (int) ($plannerItem->sequence_no ?? 0);
+    $itemDate = !empty($plannerItem->planneddate)
+        ? Carbon::parse($plannerItem->planneddate)->startOfDay()
+        : null;
+    $itemDayKey = $itemDate?->toDateString();
 
-            $sequenceMatchedLeg = $generatedLegs->first(function ($legRow) use ($itemSequence) {
-                return $itemSequence > $legRow['from_sequence']
-                    && $itemSequence < $legRow['to_sequence'];
-            });
+    if ($itemDayKey) {
+        $sameDayLegs = $generatedLegs
+            ->filter(fn ($legRow) => ($legRow['day_key'] ?? null) === $itemDayKey)
+            ->sortBy([
+                ['from_sequence', 'asc'],
+                ['to_sequence', 'asc'],
+            ])
+            ->values();
 
-            if ($sequenceMatchedLeg) {
-                return $sequenceMatchedLeg['model'];
-            }
+        $sequenceMatchedLeg = $sameDayLegs->first(function ($legRow) use ($itemSequence) {
+            return $itemSequence >= (int) ($legRow['from_sequence'] ?? 0)
+                && $itemSequence <= (int) ($legRow['to_sequence'] ?? 0);
+        });
 
-            $boundaryMatchedLeg = $generatedLegs->first(function ($legRow) use ($itemSequence) {
-                return $itemSequence === $legRow['from_sequence']
-                    || $itemSequence === $legRow['to_sequence'];
-            });
+        if ($sequenceMatchedLeg) {
+            return $sequenceMatchedLeg['model'];
+        }
 
-            if ($boundaryMatchedLeg) {
-                return $boundaryMatchedLeg['model'];
-            }
+        if ($sameDayLegs->count() === 1) {
+            return $sameDayLegs->first()['model'];
+        }
+    }
 
-            $dateMatchedLeg = $generatedLegs->first(function ($legRow) use ($itemDate) {
-                return $itemDate
-                    && $legRow['start_date']
-                    && $legRow['end_date']
-                    && $itemDate->betweenIncluded($legRow['start_date'], $legRow['end_date']);
-            });
+    $sequenceMatchedLeg = $generatedLegs->first(function ($legRow) use ($itemSequence) {
+        return $itemSequence >= (int) ($legRow['from_sequence'] ?? 0)
+            && $itemSequence <= (int) ($legRow['to_sequence'] ?? 0);
+    });
 
-            if ($dateMatchedLeg) {
-                return $dateMatchedLeg['model'];
-            }
+    if ($sequenceMatchedLeg) {
+        return $sequenceMatchedLeg['model'];
+    }
 
-            $sameDayStartingLeg = $generatedLegs->first(function ($legRow) use ($itemDate) {
-                return $itemDate
-                    && $legRow['start_date']
-                    && $legRow['start_date']->equalTo($itemDate);
-            });
-
-            if ($sameDayStartingLeg) {
-                return $sameDayStartingLeg['model'];
-            }
-
-            $latestPreviousLeg = $generatedLegs
-                ->filter(function ($legRow) use ($itemDate) {
-                    return $itemDate
-                        && $legRow['start_date']
-                        && $legRow['start_date']->lte($itemDate);
-                })
-                ->sortByDesc(function ($legRow) {
-                    return optional($legRow['start_date'])->timestamp ?? 0;
-                })
-                ->first();
-
-            return $latestPreviousLeg['model'] ?? null;
-        };
+    return null;
+};
 
         foreach ($candidateStayItems as $stayItem) {
             $matchedLeg = $findLegForPlannerItem($stayItem);
@@ -1255,16 +1244,20 @@ public function generateApply(Request $request, Trip $trip)
             $createdItemsCount++;
         }
 
-        foreach ($candidateLegPoints as $index => $pointItem) {
+        $legPointSequenceByLeg = [];
+
+        foreach ($candidateLegPoints as $pointItem) {
             $matchedLeg = $findLegForPlannerItem($pointItem);
 
             if (! $matchedLeg) {
                 continue;
             }
 
+            $legPointSequenceByLeg[$matchedLeg->id] = ($legPointSequenceByLeg[$matchedLeg->id] ?? 0) + 1;
+
             TripLegPoint::create([
                 'triplegid' => $matchedLeg->id,
-                'sequence_no' => $index + 1,
+                'sequence_no' => $legPointSequenceByLeg[$matchedLeg->id],
                 'pointtype' => $pointItem->isgovia ? 'govia' : 'waypoint',
                 'placeid' => $pointItem->placeid ?? null,
                 'destinationid' => $pointItem->destinationid ?? null,
@@ -1327,46 +1320,221 @@ private function buildGenerationCandidates(Trip $trip): array
 {
     $trip->loadMissing([
         'planItems' => fn ($query) => $query
-            ->with(['place', 'destination', 'destinationItem', 'tripLeg', 'tripStay'])
+            ->with([
+                'place',
+                'destination.place',
+                'destinationItem.place',
+                'destinationItem.destination.place',
+                'tripLeg',
+                'tripStay',
+            ])
             ->orderByRaw('planneddate IS NULL, planneddate ASC')
             ->orderByRaw('plannedenddate IS NOT NULL, plannedenddate ASC')
             ->orderBy('sequence_no')
             ->orderBy('id')
     ]);
 
-    $planItems = $trip->planItems;
+    $planItems = $trip->planItems
+        ->sortBy([
+            ['sequence_no', 'asc'],
+            ['id', 'asc'],
+        ])
+        ->values();
 
-    $hasPlanningLocation = function ($item): bool {
-        return ! is_null($item->placeid)
-            || ! is_null($item->destinationid)
-            || ! is_null($item->destinationitemid)
-            || ! is_null($item->place)
-            || ! is_null($item->destination)
-            || ! is_null($item->destinationItem);
+    $resolvePlaceId = function ($item): int {
+        return (int) (
+            $item->placeid
+            ?: $item->destinationItem?->placeid
+            ?: $item->destinationItem?->destination?->placeid
+            ?: $item->destination?->placeid
+            ?: 0
+        );
+    };
+
+    $hasPlanningLocation = function ($item) use ($resolvePlaceId): bool {
+        return $resolvePlaceId($item) > 0
+            || ! empty($item->destinationid)
+            || ! empty($item->destinationitemid);
+    };
+
+    $samePlace = function ($a, $b) use ($resolvePlaceId): bool {
+        if (! $a || ! $b) {
+            return false;
+        }
+
+        $aPlaceId = $resolvePlaceId($a);
+        $bPlaceId = $resolvePlaceId($b);
+
+        return $aPlaceId > 0
+            && $bPlaceId > 0
+            && $aPlaceId === $bPlaceId;
     };
 
     $candidateStayItems = $planItems
         ->filter(function ($item) use ($hasPlanningLocation) {
-            if (! $hasPlanningLocation($item)) {
-                return false;
+            return $hasPlanningLocation($item)
+                && ((bool) $item->isovernight || (bool) $item->isstaytarget);
+        })
+        ->values();
+
+    $candidateLegs = collect();
+
+    $firstLocatedItem = $planItems->first(function ($item) use ($hasPlanningLocation) {
+        return $hasPlanningLocation($item);
+    });
+
+    if ($candidateStayItems->isNotEmpty()) {
+        $firstStay = $candidateStayItems->first();
+
+        if (
+            $firstLocatedItem
+            && (int) $firstLocatedItem->id !== (int) $firstStay->id
+            && (int) ($firstLocatedItem->sequence_no ?? 0) < (int) ($firstStay->sequence_no ?? 0)
+        ) {
+            $candidateLegs->push([
+                'from_item' => $firstLocatedItem,
+                'to_item' => $firstStay,
+                'from_label' => $firstLocatedItem->display_title,
+                'to_label' => $firstStay->display_title,
+                'from_sequence' => (int) ($firstLocatedItem->sequence_no ?? 0),
+                'to_sequence' => (int) ($firstStay->sequence_no ?? 0),
+                'planned_start' => $firstStay->planneddate,
+                'planned_end' => $firstStay->planneddate,
+                'start_date' => $firstStay->planneddate,
+                'end_date' => $firstStay->planneddate,
+                'day_key' => ! empty($firstStay->planneddate)
+                    ? Carbon::parse($firstStay->planneddate)->toDateString()
+                    : null,
+                'leg_kind' => 'transfer',
+            ]);
+        }
+
+        for ($i = 1; $i < $candidateStayItems->count(); $i++) {
+            $fromStay = $candidateStayItems[$i - 1];
+            $toStay = $candidateStayItems[$i];
+
+            $betweenItems = $planItems
+                ->filter(function ($item) use ($fromStay, $toStay) {
+                    $sequence = (int) ($item->sequence_no ?? 0);
+
+                    return $sequence > (int) ($fromStay->sequence_no ?? 0)
+                        && $sequence < (int) ($toStay->sequence_no ?? 0);
+                })
+                ->values();
+
+            if (! $samePlace($fromStay, $toStay)) {
+                $candidateLegs->push([
+                    'from_item' => $fromStay,
+                    'to_item' => $toStay,
+                    'from_label' => $fromStay->display_title,
+                    'to_label' => $toStay->display_title,
+                    'from_sequence' => (int) ($fromStay->sequence_no ?? 0),
+                    'to_sequence' => (int) ($toStay->sequence_no ?? 0),
+                    'planned_start' => $toStay->planneddate,
+                    'planned_end' => $toStay->planneddate,
+                    'start_date' => $toStay->planneddate,
+                    'end_date' => $toStay->planneddate,
+                    'day_key' => ! empty($toStay->planneddate)
+                        ? Carbon::parse($toStay->planneddate)->toDateString()
+                        : null,
+                    'leg_kind' => 'transfer',
+                ]);
+
+                continue;
             }
 
-            return (bool) $item->isovernight || (bool) $item->isstaytarget;
+            $offBaseItems = $betweenItems
+                ->filter(function ($item) use ($fromStay, $samePlace, $hasPlanningLocation) {
+                    if (! $hasPlanningLocation($item)) {
+                        return false;
+                    }
+
+                    if ((bool) $item->isovernight || (bool) $item->isstaytarget) {
+                        return false;
+                    }
+
+                    return ! $samePlace($item, $fromStay);
+                })
+                ->values();
+
+            if ($offBaseItems->isEmpty()) {
+                continue;
+            }
+
+            $firstOffBase = $offBaseItems->first();
+            $lastOffBase = $offBaseItems->last();
+
+            $candidateLegs->push([
+                'from_item' => $fromStay,
+                'to_item' => $toStay,
+                'from_label' => $fromStay->display_title,
+                'to_label' => $toStay->display_title,
+                'from_sequence' => (int) ($firstOffBase->sequence_no ?? $fromStay->sequence_no ?? 0),
+                'to_sequence' => (int) ($lastOffBase->sequence_no ?? $toStay->sequence_no ?? 0),
+                'planned_start' => $firstOffBase->planneddate ?? $fromStay->planneddate,
+                'planned_end' => $lastOffBase->planneddate ?? $toStay->planneddate,
+                'start_date' => $firstOffBase->planneddate ?? $fromStay->planneddate,
+                'end_date' => $lastOffBase->planneddate ?? $toStay->planneddate,
+                'day_key' => ! empty($firstOffBase->planneddate)
+                    ? Carbon::parse($firstOffBase->planneddate)->toDateString()
+                    : (! empty($fromStay->planneddate)
+                        ? Carbon::parse($fromStay->planneddate)->toDateString()
+                        : null),
+                'leg_kind' => 'day_trip',
+            ]);
+        }
+    }
+
+    $candidateLegs = $candidateLegs
+        ->sortBy(function ($leg) {
+            $startTimestamp = ! empty($leg['start_date'])
+                ? Carbon::parse($leg['start_date'])->startOfDay()->timestamp
+                : PHP_INT_MAX;
+
+            $fromSequence = (int) ($leg['from_sequence'] ?? PHP_INT_MAX);
+            $toSequence = (int) ($leg['to_sequence'] ?? PHP_INT_MAX);
+
+            return sprintf(
+                '%010d-%09d-%09d',
+                $startTimestamp,
+                $fromSequence,
+                $toSequence
+            );
         })
+        ->values();
+
+    $candidateLegBoundaryIds = $candidateLegs
+        ->flatMap(fn ($leg) => [
+            (int) $leg['from_item']->id,
+            (int) $leg['to_item']->id,
+        ])
+        ->unique()
         ->values();
 
     $candidateLegBoundaries = $planItems
-        ->filter(function ($item) use ($hasPlanningLocation) {
-            if (! $hasPlanningLocation($item)) {
-                return false;
-            }
-
-            return (bool) $item->isrouteanchor;
-        })
+        ->filter(fn ($item) => $candidateLegBoundaryIds->contains((int) $item->id))
         ->values();
 
+    $isItemWithinLeg = function ($item, array $leg) {
+        $sequence = (int) ($item->sequence_no ?? 0);
+
+        if (($leg['leg_kind'] ?? null) === 'day_trip') {
+            return $sequence >= (int) ($leg['from_sequence'] ?? 0)
+                && $sequence <= (int) ($leg['to_sequence'] ?? 0);
+        }
+
+        return $sequence > (int) ($leg['from_sequence'] ?? 0)
+            && $sequence < (int) ($leg['to_sequence'] ?? PHP_INT_MAX);
+    };
+
     $candidateLegPoints = $planItems
-        ->filter(function ($item) use ($candidateStayItems, $candidateLegBoundaries, $hasPlanningLocation) {
+        ->filter(function ($item) use (
+            $candidateStayItems,
+            $candidateLegBoundaryIds,
+            $candidateLegs,
+            $hasPlanningLocation,
+            $isItemWithinLeg
+        ) {
             if (! $hasPlanningLocation($item)) {
                 return false;
             }
@@ -1375,21 +1543,36 @@ private function buildGenerationCandidates(Trip $trip): array
                 return false;
             }
 
-            if ($candidateLegBoundaries->contains('id', $item->id)) {
+            if ($candidateLegBoundaryIds->contains((int) $item->id)) {
                 return false;
             }
 
-            return (bool) $item->isgovia;
+            if (! (bool) $item->isgovia) {
+                return false;
+            }
+
+            return $candidateLegs->contains(fn ($leg) => $isItemWithinLeg($item, $leg));
         })
         ->values();
 
     $candidateTripItems = $planItems
-        ->filter(function ($item) use ($candidateStayItems, $candidateLegBoundaries, $candidateLegPoints) {
+        ->filter(function ($item) use (
+            $candidateStayItems,
+            $candidateLegBoundaryIds,
+            $candidateLegPoints,
+            $candidateLegs,
+            $hasPlanningLocation,
+            $isItemWithinLeg
+        ) {
+            if (! $hasPlanningLocation($item)) {
+                return false;
+            }
+
             if ($candidateStayItems->contains('id', $item->id)) {
                 return false;
             }
 
-            if ($candidateLegBoundaries->contains('id', $item->id)) {
+            if ($candidateLegBoundaryIds->contains((int) $item->id)) {
                 return false;
             }
 
@@ -1397,41 +1580,9 @@ private function buildGenerationCandidates(Trip $trip): array
                 return false;
             }
 
-            return true;
+            return $candidateLegs->contains(fn ($leg) => $isItemWithinLeg($item, $leg));
         })
         ->values();
-
-    $candidateLegs = collect();
-
-    if ($candidateLegBoundaries->count() > 1) {
-        for ($i = 1; $i < $candidateLegBoundaries->count(); $i++) {
-            $fromItem = $candidateLegBoundaries[$i - 1];
-            $toItem = $candidateLegBoundaries[$i];
-
-            // Skip legs where we are at the same place (no towing between boundaries).
-            $samePlaceId = ($fromItem->placeid && $toItem->placeid && $fromItem->placeid === $toItem->placeid);
-
-            $sameDestinationItem = ($fromItem->destinationitemid && $toItem->destinationitemid
-                && $fromItem->destinationitemid === $toItem->destinationitemid);
-
-            if ($samePlaceId || $sameDestinationItem) {
-                continue;
-            }
-
-            $candidateLegs->push([
-                'from_item'      => $fromItem,
-                'to_item'        => $toItem,
-                'from_label'     => $fromItem->display_title,
-                'to_label'       => $toItem->display_title,
-                'from_sequence'  => $fromItem->sequence_no,
-                'to_sequence'    => $toItem->sequence_no,
-                'planned_start'  => $fromItem->planneddate,
-                'planned_end'    => $toItem->planneddate,
-                'start_date'     => $fromItem->planneddate,
-                'end_date'       => $toItem->planneddate,
-            ]);
-        }
-    }
 
     return [
         'planItems' => $planItems,

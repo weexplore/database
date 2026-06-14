@@ -137,12 +137,14 @@ class KnowledgeItemController extends Controller
 
     $rules = [
         'existing' => ['nullable', 'array'],
-        'existing.*.itemname' => ['required', 'string', 'max:255'],
+        // 'existing.*.itemname' => ['required', 'string', 'max:255'],
         'existing.*.primarycategoryid' => ['required', 'integer', Rule::exists('knowledgecategories', 'id')],
         'existing.*.itemtype' => $itemTypeRule,
         'existing.*.itemstatus' => ['nullable', 'string', 'max:30'],
         'existing.*.summary' => ['nullable', 'string'],
         'existing.*.sortorder' => ['nullable', 'integer', 'min:0'],
+        'existing.*.startdate' => ['nullable', 'date'],
+        'existing.*.enddate' => ['nullable', 'date'],
         'existing.*.nextreviewdate' => ['nullable', 'date'],
         'existing.*.isfeatured' => ['nullable', 'boolean'],
         'existing.*.isactive' => ['nullable', 'boolean'],
@@ -154,6 +156,8 @@ class KnowledgeItemController extends Controller
         'new.itemstatus' => ['nullable', 'string', 'max:30'],
         'new.summary' => ['nullable', 'string'],
         'new.sortorder' => ['nullable', 'integer', 'min:0'],
+        'new.startdate' => ['nullable', 'date'],
+        'new.enddate' => ['nullable', 'date'],
         'new.nextreviewdate' => ['nullable', 'date'],
         'new.isfeatured' => ['nullable', 'boolean'],
         'new.isactive' => ['nullable', 'boolean'],
@@ -165,6 +169,7 @@ class KnowledgeItemController extends Controller
         'itemstatus' => ['nullable', 'string'],
         'active' => ['nullable', 'in:0,1'],
         'page' => ['nullable', 'integer', 'min:1'],
+        'show_selected_category_panel' => ['nullable', 'in:0,1'],
     ];
 
     $validated = $request->validate($rules, [], [
@@ -179,11 +184,13 @@ class KnowledgeItemController extends Controller
 
             $item->update([
                 'primarycategoryid' => $row['primarycategoryid'],
-                'itemname' => trim((string) $row['itemname']),
+                // 'itemname' => trim((string) $row['itemname']),
                 'itemtype' => $row['itemtype'] ?? null,
                 'itemstatus' => $row['itemstatus'] ?? null,
                 'summary' => $row['summary'] ?? null,
                 'sortorder' => $row['sortorder'] ?? 0,
+                'startdate' => $row['startdate'] ?? null,
+                'enddate' => $row['enddate'] ?? null,
                 'nextreviewdate' => $row['nextreviewdate'] ?? null,
                 'isfeatured' => (bool) ($row['isfeatured'] ?? false),
                 'isactive' => (bool) ($row['isactive'] ?? false),
@@ -191,7 +198,6 @@ class KnowledgeItemController extends Controller
         }
 
         $new = $validated['new'] ?? [];
-
         $hasNewRow = trim((string) ($new['itemname'] ?? '')) !== '';
 
         if ($hasNewRow) {
@@ -206,6 +212,8 @@ class KnowledgeItemController extends Controller
                 'itemstatus' => ['nullable', 'string', 'max:30'],
                 'summary' => ['nullable', 'string'],
                 'sortorder' => ['nullable', 'integer', 'min:0'],
+                'startdate' => ['nullable', 'date'],
+                'enddate' => ['nullable', 'date'],
                 'nextreviewdate' => ['nullable', 'date'],
                 'isfeatured' => ['nullable', 'boolean'],
                 'isactive' => ['nullable', 'boolean'],
@@ -224,6 +232,8 @@ class KnowledgeItemController extends Controller
                 'itemstatus' => $new['itemstatus'] ?? 'active',
                 'summary' => $new['summary'] ?? null,
                 'sortorder' => $new['sortorder'] ?? 0,
+                'startdate' => $new['startdate'] ?? null,
+                'enddate' => $new['enddate'] ?? null,
                 'nextreviewdate' => $new['nextreviewdate'] ?? null,
                 'isfeatured' => (bool) ($new['isfeatured'] ?? false),
                 'isactive' => array_key_exists('isactive', $new) ? (bool) $new['isactive'] : true,
@@ -231,15 +241,16 @@ class KnowledgeItemController extends Controller
         }
     });
 
-return redirect()->route('knowledge-categories.index', [
-    'domainid' => $request->input('domainid'),
-    'categoryid' => $request->input('categoryid'),
-    'search' => $request->input('search'),
-    'knowledgeitemtypeid' => $request->input('itemtype'),
-    'itemstatus' => $request->input('itemstatus'),
-    'active' => $request->input('active'),
-    'page' => $request->input('page'),
-])->with('success', 'Knowledge items saved successfully.');
+    return redirect()->route('knowledge-categories.index', [
+        'domainid' => $request->input('domainid'),
+        'categoryid' => $request->input('categoryid'),
+        'search' => $request->input('search'),
+        'knowledgeitemtypeid' => $request->input('itemtype'),
+        'itemstatus' => $request->input('itemstatus'),
+        'active' => $request->input('active'),
+        'page' => $request->input('page'),
+        'show_selected_category_panel' => $request->input('show_selected_category_panel'),
+    ])->with('success', 'Knowledge items saved successfully.');
 }
 
     public function edit(Request $request, KnowledgeItem $knowledgeItem): View

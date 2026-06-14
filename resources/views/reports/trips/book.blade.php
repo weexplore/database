@@ -72,7 +72,7 @@
                             <div class="mt-1">
                                 @php
                                     $start = $trip->startdate ? $trip->startdate->format('d M Y') : null;
-                                    $end   = $trip->enddate ? $trip->enddate->format('d M Y') : null;
+                                    $end = $trip->enddate ? $trip->enddate->format('d M Y') : null;
                                 @endphp
                                 {{ $start ?: 'Unknown' }} – {{ $end ?: 'Unknown' }}
                             </div>
@@ -110,7 +110,6 @@
                         </div>
                     </div>
 
-                    {{-- Key notes: summary + planning + actual --}}
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="md:col-span-1">
                             <div class="text-xs uppercase tracking-wide text-gray-500">
@@ -160,6 +159,7 @@
                 </div>
             </div>
 
+            {{-- Budget defaults and totals --}}
             <div class="bg-white shadow-sm sm:rounded-lg">
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h3 class="text-sm font-semibold text-gray-900">
@@ -261,11 +261,32 @@
                         Trip legs
                     </h3>
                     <p class="mt-1 text-xs text-gray-500">
-                        Planned and actual travel segments for this trip.
+                        Planned and actual travel segments for this trip, with related stays and activities grouped under each leg.
                     </p>
                 </div>
 
                 <div class="px-6 py-4 space-y-6">
+                    @php
+                        $unassignedStays = $trip->stays
+                            ->whereNull('triplegid')
+                            ->sortBy([
+                                ['checkindate', 'asc'],
+                                ['checkoutdate', 'asc'],
+                                ['id', 'asc'],
+                            ])
+                            ->values();
+
+                        $unassignedItems = $trip->tripItems
+                            ->whereNull('triplegid')
+                            ->sortBy([
+                                ['itemdate', 'asc'],
+                                ['startdatetime', 'asc'],
+                                ['sortorder', 'asc'],
+                                ['id', 'asc'],
+                            ])
+                            ->values();
+                    @endphp
+
                     @if ($trip->legs->isEmpty())
                         <p class="text-sm text-gray-500">
                             No trip legs are recorded for this trip.
@@ -284,43 +305,87 @@
                                 $toDestination = $leg->toDestination;
                                 $toDestinationItem = $leg->toDestinationItem;
 
-                                $fromLabel = $fromDestinationItem?->itemname
-                                    ?? $fromPlace?->placename
-                                    ?? '—';
-
-                                $toLabel = $toDestinationItem?->itemname
-                                    ?? $toPlace?->placename
-                                    ?? '—';
+                                $fromLabel = $fromDestinationItem?->itemname ?? $fromPlace?->placename ?? '—';
+                                $toLabel = $toDestinationItem?->itemname ?? $toPlace?->placename ?? '—';
 
                                 $fromLat = $fromDestinationItem?->latitude ?? $fromPlace?->latitude;
                                 $fromLng = $fromDestinationItem?->longitude ?? $fromPlace?->longitude;
                                 $toLat = $toDestinationItem?->latitude ?? $toPlace?->latitude;
                                 $toLng = $toDestinationItem?->longitude ?? $toPlace?->longitude;
 
-                                $fromMapName = $fromDestinationItem?->itemname
-                                    ?? $fromPlace?->placename
-                                    ?? 'Start';
-
-                                $toMapName = $toDestinationItem?->itemname
-                                    ?? $toPlace?->placename
-                                    ?? 'Destination';
+                                $fromMapName = $fromDestinationItem?->itemname ?? $fromPlace?->placename ?? 'Start';
+                                $toMapName = $toDestinationItem?->itemname ?? $toPlace?->placename ?? 'Destination';
 
                                 $hasMap = $fromLat !== null && $fromLng !== null && $toLat !== null && $toLng !== null;
+
+                                $fromMeta = collect([
+                                    $fromPlace?->placename && $fromPlace?->placename !== $fromLabel ? 'Place: ' . $fromPlace->placename : null,
+                                    $fromDestination?->destinationname ? 'Destination: ' . $fromDestination->destinationname : null,
+                                    $fromDestinationItem?->itemname && $fromDestinationItem?->itemname !== $fromLabel ? 'Item: ' . $fromDestinationItem->itemname : null,
+                                ])->filter()->values();
+
+                                $toMeta = collect([
+                                    $toPlace?->placename && $toPlace?->placename !== $toLabel ? 'Place: ' . $toPlace->placename : null,
+                                    $toDestination?->destinationname ? 'Destination: ' . $toDestination->destinationname : null,
+                                    $toDestinationItem?->itemname && $toDestinationItem?->itemname !== $toLabel ? 'Item: ' . $toDestinationItem->itemname : null,
+                                ])->filter()->values();
+
+                                $fromHasExtraDetails = $fromDestinationItem && (
+                                    $fromDestinationItem->shortdescription ||
+                                    $fromDestinationItem->notes ||
+                                    $fromDestinationItem->addressline1 ||
+                                    $fromDestinationItem->addressline2 ||
+                                    $fromDestinationItem->addressline3 ||
+                                    $fromDestinationItem->postcode ||
+                                    $fromDestinationItem->telephone ||
+                                    $fromDestinationItem->website ||
+                                    $fromDestinationItem->caravanaccessnotes ||
+                                    $fromDestinationItem->disabilityaccessnotes
+                                );
+
+                                $toHasExtraDetails = $toDestinationItem && (
+                                    $toDestinationItem->shortdescription ||
+                                    $toDestinationItem->notes ||
+                                    $toDestinationItem->addressline1 ||
+                                    $toDestinationItem->addressline2 ||
+                                    $toDestinationItem->addressline3 ||
+                                    $toDestinationItem->postcode ||
+                                    $toDestinationItem->telephone ||
+                                    $toDestinationItem->website ||
+                                    $toDestinationItem->caravanaccessnotes ||
+                                    $toDestinationItem->disabilityaccessnotes
+                                );
+
+                                $legStays = $trip->stays
+                                    ->where('triplegid', $leg->id)
+                                    ->sortBy([
+                                        ['checkindate', 'asc'],
+                                        ['checkoutdate', 'asc'],
+                                        ['id', 'asc'],
+                                    ])
+                                    ->values();
+
+                                $legItems = $trip->tripItems
+                                    ->where('triplegid', $leg->id)
+                                    ->sortBy([
+                                        ['itemdate', 'asc'],
+                                        ['startdatetime', 'asc'],
+                                        ['sortorder', 'asc'],
+                                        ['id', 'asc'],
+                                    ])
+                                    ->values();
                             @endphp
 
                             <div class="trip-leg-card border border-gray-200 rounded-lg">
                                 <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-start justify-between gap-4">
                                     <div>
                                         <h4 class="text-sm font-semibold text-gray-900">
-                                            Leg {{ $leg->legnumber }}
-                                            @if ($leg->title)
-                                                — {{ $leg->title }}
-                                            @endif
+                                            Leg {{ $leg->legnumber }}@if ($leg->title) — {{ $leg->title }}@endif
                                         </h4>
                                         <p class="mt-1 text-xs text-gray-500">
                                             {{ $start ?: 'Unknown' }} – {{ $end ?: 'Unknown' }}
                                             @if ($leg->nightsplanned !== null)
-                                                • {{ $leg->nightsplanned }} night{{ (int) $leg->nightsplanned === 1 ? '' : 's' }}
+                                                · {{ $leg->nightsplanned }} night{{ (int) $leg->nightsplanned === 1 ? '' : 's' }}
                                             @endif
                                         </p>
                                     </div>
@@ -333,75 +398,53 @@
                                     </div>
                                 </div>
 
-                                <div class="p-4 space-y-4">
-                                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
+                                <div class="p-3 space-y-4">
+                                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 text-sm">
                                         <div class="border border-gray-200 rounded-lg p-3">
-                                            <div class="text-xs uppercase tracking-wide text-gray-500">From</div>
-                                            <div class="mt-1 font-medium text-gray-900">
-                                                {{ $fromLabel }}
-                                            </div>
+                                            <div class="text-[11px] uppercase tracking-wide text-gray-500">From</div>
+                                            <div class="mt-1 font-medium text-gray-900">{{ $fromLabel }}</div>
 
-                                            <div class="mt-3 grid grid-cols-1 gap-2 text-xs">
-                                                <div>
-                                                    <span class="uppercase tracking-wide text-gray-500">Place</span>
-                                                    <div class="mt-0.5 text-gray-800">
-                                                        {{ $fromPlace?->placename ?: '—' }}
-                                                    </div>
+                                            @if ($fromMeta->isNotEmpty())
+                                                <div class="mt-1 text-xs text-gray-600">
+                                                    {{ $fromMeta->join(' · ') }}
                                                 </div>
+                                            @endif
 
-                                                <div>
-                                                    <span class="uppercase tracking-wide text-gray-500">Destination</span>
-                                                    <div class="mt-0.5 text-gray-800">
-                                                        {{ $fromDestination?->destinationname ?: '—' }}
-                                                    </div>
-                                                </div>
-
-                                                <div>
-                                                    <span class="uppercase tracking-wide text-gray-500">Destination item</span>
-                                                    <div class="mt-0.5 text-gray-800">
-                                                        {{ $fromDestinationItem?->itemname ?: '—' }}
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            @if ($fromHasExtraDetails)
+                                                @include('reports.trips.partials.location-details', [
+                                                    'destinationItem' => $fromDestinationItem,
+                                                    'place' => $fromPlace,
+                                                    'showPlaceName' => false,
+                                                    'showDestinationItemHeading' => false,
+                                                ])
+                                            @endif
                                         </div>
 
                                         <div class="border border-gray-200 rounded-lg p-3">
-                                            <div class="text-xs uppercase tracking-wide text-gray-500">To</div>
-                                            <div class="mt-1 font-medium text-gray-900">
-                                                {{ $toLabel }}
-                                            </div>
+                                            <div class="text-[11px] uppercase tracking-wide text-gray-500">To</div>
+                                            <div class="mt-1 font-medium text-gray-900">{{ $toLabel }}</div>
 
-                                            <div class="mt-3 grid grid-cols-1 gap-2 text-xs">
-                                                <div>
-                                                    <span class="uppercase tracking-wide text-gray-500">Place</span>
-                                                    <div class="mt-0.5 text-gray-800">
-                                                        {{ $toPlace?->placename ?: '—' }}
-                                                    </div>
+                                            @if ($toMeta->isNotEmpty())
+                                                <div class="mt-1 text-xs text-gray-600">
+                                                    {{ $toMeta->join(' · ') }}
                                                 </div>
+                                            @endif
 
-                                                <div>
-                                                    <span class="uppercase tracking-wide text-gray-500">Destination</span>
-                                                    <div class="mt-0.5 text-gray-800">
-                                                        {{ $toDestination?->destinationname ?: '—' }}
-                                                    </div>
-                                                </div>
-
-                                                <div>
-                                                    <span class="uppercase tracking-wide text-gray-500">Destination item</span>
-                                                    <div class="mt-0.5 text-gray-800">
-                                                        {{ $toDestinationItem?->itemname ?: '—' }}
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            @if ($toHasExtraDetails)
+                                                @include('reports.trips.partials.location-details', [
+                                                    'destinationItem' => $toDestinationItem,
+                                                    'place' => $toPlace,
+                                                    'showPlaceName' => false,
+                                                    'showDestinationItemHeading' => false,
+                                                ])
+                                            @endif
                                         </div>
                                     </div>
 
                                     @if ($leg->legPoints && $leg->legPoints->isNotEmpty())
                                         <div class="border border-gray-200 rounded-lg">
                                             <div class="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                                                <div class="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                                                    Leg points
-                                                </div>
+                                                <div class="text-xs font-semibold uppercase tracking-wide text-gray-600">Leg points</div>
                                                 <div class="text-xs text-gray-500">
                                                     {{ $leg->legPoints->count() }} point{{ $leg->legPoints->count() === 1 ? '' : 's' }}
                                                 </div>
@@ -410,8 +453,7 @@
                                             <div class="divide-y divide-gray-100 text-xs">
                                                 @foreach ($leg->legPoints as $point)
                                                     @php
-                                                        $label =
-                                                            $point->title
+                                                        $label = $point->title
                                                             ?? optional($point->destinationItem)->itemname
                                                             ?? optional($point->destination)->destinationname
                                                             ?? optional($point->place)->placename
@@ -420,24 +462,34 @@
                                                         $pointTypeLabel = $point->pointtype
                                                             ? ucfirst(str_replace('_', ' ', $point->pointtype))
                                                             : 'Point';
+
+                                                        $pointMeta = collect([
+                                                            $point->place ? 'Place: ' . $point->place->placename : null,
+                                                            $point->destination ? 'Destination: ' . $point->destination->destinationname : null,
+                                                            $point->destinationItem ? 'Item: ' . $point->destinationItem->itemname : null,
+                                                        ])->filter()->values();
+
+                                                        $pointHasExtraDetails = $point->destinationItem && (
+                                                            $point->destinationItem->shortdescription ||
+                                                            $point->destinationItem->notes ||
+                                                            $point->destinationItem->addressline1 ||
+                                                            $point->destinationItem->addressline2 ||
+                                                            $point->destinationItem->addressline3 ||
+                                                            $point->destinationItem->postcode ||
+                                                            $point->destinationItem->telephone ||
+                                                            $point->destinationItem->website ||
+                                                            $point->destinationItem->caravanaccessnotes ||
+                                                            $point->destinationItem->disabilityaccessnotes
+                                                        );
                                                     @endphp
 
                                                     <div class="px-3 py-2 flex items-start justify-between gap-3">
-                                                        <div>
-                                                            <div class="font-medium text-gray-900">
-                                                                {{ $label }}
-                                                            </div>
-
+                                                        <div class="min-w-0 flex-1">
+                                                            <div class="font-medium text-gray-900">{{ $label }}</div>
                                                             <div class="mt-0.5 text-[11px] text-gray-500">
                                                                 {{ $pointTypeLabel }}
-                                                                @if ($point->place)
-                                                                    • Place: {{ $point->place->placename }}
-                                                                @endif
-                                                                @if ($point->destination)
-                                                                    • Destination: {{ $point->destination->destinationname }}
-                                                                @endif
-                                                                @if ($point->destinationItem)
-                                                                    • Item: {{ $point->destinationItem->itemname }}
+                                                                @if ($pointMeta->isNotEmpty())
+                                                                    · {{ $pointMeta->join(' · ') }}
                                                                 @endif
                                                             </div>
 
@@ -448,14 +500,47 @@
                                                                     ])
                                                                 </div>
                                                             @endif
+
+                                                            @if ($pointHasExtraDetails)
+                                                                @include('reports.trips.partials.location-details', [
+                                                                    'destinationItem' => $point->destinationItem,
+                                                                    'place' => $point->place,
+                                                                    'showPlaceName' => false,
+                                                                    'showDestinationItemHeading' => false,
+                                                                ])
+                                                            @endif
                                                         </div>
 
-                                                        @if ($point->sequence_no !== null)
+                                                        @if ($point->sequenceno !== null)
                                                             <div class="text-[11px] text-gray-500 font-semibold">
-                                                                #{{ $point->sequence_no }}
+                                                                {{ $point->sequenceno }}
                                                             </div>
                                                         @endif
                                                     </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
+
+
+
+                                    @if ($legItems->isNotEmpty())
+                                        <div class="border border-gray-200 rounded-lg overflow-hidden">
+                                            <div class="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                                                <div class="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                                                    Items and activities on this leg
+                                                </div>
+                                                <div class="text-xs text-gray-500">
+                                                    {{ $legItems->count() }} item{{ $legItems->count() === 1 ? '' : 's' }}
+                                                </div>
+                                            </div>
+
+                                            <div class="divide-y divide-gray-100">
+                                                @foreach ($legItems as $item)
+                                                    @include('reports.trips.partials.trip-item-card', [
+                                                        'item' => $item,
+                                                        'compact' => true,
+                                                    ])
                                                 @endforeach
                                             </div>
                                         </div>
@@ -477,6 +562,28 @@
                                     @else
                                         <div class="rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
                                             Map unavailable because the selected start or end point does not have coordinates.
+                                        </div>
+                                    @endif
+
+                                                                        @if ($legStays->isNotEmpty())
+                                        <div class="border border-gray-200 rounded-lg overflow-hidden">
+                                            <div class="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                                                <div class="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                                                    Stays on this leg
+                                                </div>
+                                                <div class="text-xs text-gray-500">
+                                                    {{ $legStays->count() }} stay{{ $legStays->count() === 1 ? '' : 's' }}
+                                                </div>
+                                            </div>
+
+                                            <div class="divide-y divide-gray-100">
+                                                @foreach ($legStays as $stay)
+                                                    @include('reports.trips.partials.stay-card', [
+                                                        'stay' => $stay,
+                                                        'compact' => true,
+                                                    ])
+                                                @endforeach
+                                            </div>
                                         </div>
                                     @endif
 
@@ -543,171 +650,79 @@
                 </div>
             </div>
 
-            {{-- Trip stays --}}
-            <div class="bg-white shadow-sm sm:rounded-lg">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-sm font-semibold text-gray-900">
-                        Trip stays
-                    </h3>
-                    <p class="mt-1 text-xs text-gray-500">
-                        Accommodation and overnight stays for this trip.
-                    </p>
-                </div>
-
-                <div class="px-6 py-4">
-                    @if ($trip->stays->isEmpty())
-                        <p class="text-sm text-gray-500">
-                            No stays are recorded for this trip.
+            @if ($unassignedStays->isNotEmpty())
+                <div class="bg-white shadow-sm sm:rounded-lg">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-sm font-semibold text-gray-900">
+                            Unassigned stays
+                        </h3>
+                        <p class="mt-1 text-xs text-gray-500">
+                            Stays recorded for this trip that are not linked to a specific trip leg.
                         </p>
-                    @else
-                        <table class="w-full text-xs border-t border-b border-gray-200">
-                            <thead class="bg-gray-50 text-gray-600 uppercase tracking-wide">
-                                <tr>
-                                    <th class="px-2 py-2 text-left">Stay</th>
-                                    <th class="px-2 py-2 text-left">Place</th>
-                                    <th class="px-2 py-2 text-left">Dates</th>
-                                    <th class="px-2 py-2 text-right">Nights</th>
-                                    <th class="px-2 py-2 text-right">Est. cost</th>
-                                    <th class="px-2 py-2 text-right">Actual cost</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                @foreach ($trip->stays as $stay)
-                                    @php
-                                        $checkIn  = $stay->checkindate ? $stay->checkindate->format('d M Y') : null;
-                                        $checkOut = $stay->checkoutdate ? $stay->checkoutdate->format('d M Y') : null;
-                                    @endphp
-                                    <tr>
-                                        <td class="px-2 py-2 align-top">
-                                            <div class="font-medium">
-                                                {{ $stay->stayname }}
-                                            </div>
-                                            <div class="mt-0.5 text-gray-500">
-                                                {{ $stay->staytype ?: '—' }}
-                                            </div>
-                                        </td>
-                                        <td class="px-2 py-2 align-top">
-                                            {{ optional($stay->place)->placename ?: '—' }}
-                                        </td>
-                                        <td class="px-2 py-2 align-top">
-                                            {{ $checkIn ?: 'Unknown' }} – {{ $checkOut ?: 'Unknown' }}
-                                        </td>
-                                        <td class="px-2 py-2 align-top text-right">
-                                            {{ $stay->nights ?? '—' }}
-                                        </td>
-                                        <td class="px-2 py-2 align-top text-right">
-                                            {{ $stay->estimatedtotalcost !== null ? number_format($stay->estimatedtotalcost, 2) : '—' }}
-                                        </td>
-                                        <td class="px-2 py-2 align-top text-right">
-                                            {{ $stay->actualtotalcost !== null ? number_format($stay->actualtotalcost, 2) : '—' }}
-                                        </td>
-                                    </tr>
-                                @endforeach
-                                <tr class="bg-gray-50 font-semibold">
-                                    <td colspan="4" class="px-2 py-2 text-right">
-                                        Totals
-                                    </td>
-                                    <td class="px-2 py-2 text-right">
-                                        {{ $stayEstimatedTotal !== null ? number_format($stayEstimatedTotal, 2) : '—' }}
-                                    </td>
-                                    <td class="px-2 py-2 text-right">
-                                        {{ $stayActualTotal !== null ? number_format($stayActualTotal, 2) : '—' }}
-                                    </td>
-                                    <td></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    @endif
-                </div>
-            </div>
+                    </div>
 
-            {{-- Trip items (activities, etc.) --}}
-            <div class="bg-white shadow-sm sm:rounded-lg">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-sm font-semibold text-gray-900">
-                        Trip items and activities
-                    </h3>
-                    <p class="mt-1 text-xs text-gray-500">
-                        Planned and completed activities, drives, walks, and other items.
-                    </p>
-                </div>
+                    <div class="px-6 py-4">
+                        <div class="space-y-4">
+                            @foreach ($unassignedStays as $stay)
+                                @include('reports.trips.partials.stay-card', [
+                                    'stay' => $stay,
+                                    'compact' => false,
+                                ])
+                            @endforeach
 
-                <div class="px-6 py-4">
-                    @if ($trip->tripItems->isEmpty())
-                        <p class="text-sm text-gray-500">
-                            No trip items are recorded for this trip.
+                            <div class="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+                                <div class="flex items-center justify-end gap-8 text-sm font-semibold text-gray-900">
+                                    <div>
+                                        Estimated total:
+                                        {{ $unassignedStays->sum(fn ($stay) => (float) ($stay->estimatedtotalcost ?? 0)) ? number_format($unassignedStays->sum(fn ($stay) => (float) ($stay->estimatedtotalcost ?? 0)), 2) : '—' }}
+                                    </div>
+                                    <div>
+                                        Actual total:
+                                        {{ $unassignedStays->sum(fn ($stay) => (float) ($stay->actualtotalcost ?? 0)) ? number_format($unassignedStays->sum(fn ($stay) => (float) ($stay->actualtotalcost ?? 0)), 2) : '—' }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            @if ($unassignedItems->isNotEmpty())
+                <div class="bg-white shadow-sm sm:rounded-lg">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-sm font-semibold text-gray-900">
+                            Unassigned items and activities
+                        </h3>
+                        <p class="mt-1 text-xs text-gray-500">
+                            Activities and items recorded for this trip that are not linked to a specific trip leg.
                         </p>
-                    @else
-                        <table class="w-full text-xs border-t border-b border-gray-200">
-                            <thead class="bg-gray-50 text-gray-600 uppercase tracking-wide">
-                                <tr>
-                                    <th class="px-2 py-2 text-left">Date</th>
-                                    <th class="px-2 py-2 text-left">Type</th>
-                                    <th class="px-2 py-2 text-left">Title</th>
-                                    <th class="px-2 py-2 text-left">Location</th>
-                                    <th class="px-2 py-2 text-right">Est. total</th>
-                                    <th class="px-2 py-2 text-right">Actual</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                @foreach ($trip->tripItems as $item)
-                                    @php
-                                        $dateLabel = $item->itemdate
-                                            ? $item->itemdate->format('d M Y')
-                                            : ($item->startdatetime ? $item->startdatetime->format('d M Y') : '—');
+                    </div>
 
-                                        $location =
-                                            optional($item->place)->placename
-                                            ?? optional($item->destination)->destinationname
-                                            ?? optional($item->destinationItem)->itemname
-                                            ?? '—';
-                                    @endphp
-                                    <tr>
-                                        <td class="px-2 py-2 align-top">
-                                            {{ $dateLabel }}
-                                        </td>
-                                        <td class="px-2 py-2 align-top">
-                                            {{ $item->itemtype ?: '—' }}
-                                        </td>
-                                        <td class="px-2 py-2 align-top">
-                                            <div class="font-medium">
-                                                {{ $item->title }}
-                                            </div>
-                                            @if ($item->description)
-                                                <div class="mt-0.5 text-gray-600 markdown-content">
-                                                    @include('partials.markdown.rendered-block', [
-                                                        'content' => $item->description,
-                                                    ])
-                                                </div>
-                                            @endif
-                                        </td>
-                                        <td class="px-2 py-2 align-top">
-                                            {{ $location }}
-                                        </td>
-                                        <td class="px-2 py-2 align-top text-right">
-                                            {{ $item->estimatedtotalcost !== null ? number_format($item->estimatedtotalcost, 2) : '—' }}
-                                        </td>
-                                        <td class="px-2 py-2 align-top text-right">
-                                            {{ $item->actualcost !== null ? number_format($item->actualcost, 2) : '—' }}
-                                        </td>
-                                    </tr>
-                                @endforeach
-                                <tr class="bg-gray-50 font-semibold">
-                                    <td colspan="4" class="px-2 py-2 text-right">
-                                        Totals
-                                    </td>
-                                    <td class="px-2 py-2 text-right">
-                                        {{ $itemEstimatedTotal !== null ? number_format($itemEstimatedTotal, 2) : '—' }}
-                                    </td>
-                                    <td class="px-2 py-2 text-right">
-                                        {{ $itemActualTotal !== null ? number_format($itemActualTotal, 2) : '—' }}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    @endif
+                    <div class="px-6 py-4">
+                        <div class="space-y-4">
+                            @foreach ($unassignedItems as $item)
+                                @include('reports.trips.partials.trip-item-card', [
+                                    'item' => $item,
+                                    'compact' => false,
+                                ])
+                            @endforeach
+
+                            <div class="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+                                <div class="flex items-center justify-end gap-8 text-sm font-semibold text-gray-900">
+                                    <div>
+                                        Estimated total:
+                                        {{ $unassignedItems->sum(fn ($item) => (float) ($item->estimatedtotalcost ?? 0)) ? number_format($unassignedItems->sum(fn ($item) => (float) ($item->estimatedtotalcost ?? 0)), 2) : '—' }}
+                                    </div>
+                                    <div>
+                                        Actual total:
+                                        {{ $unassignedItems->sum(fn ($item) => (float) ($item->actualcost ?? 0)) ? number_format($unassignedItems->sum(fn ($item) => (float) ($item->actualcost ?? 0)), 2) : '—' }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            @endif
 
             {{-- Reviews (including private) --}}
             <div class="bg-white shadow-sm sm:rounded-lg">
@@ -730,7 +745,6 @@
                             @foreach ($trip->reviews as $review)
                                 @php
                                     $reviewDate = $review->reviewdate ? $review->reviewdate->format('d M Y') : 'Unknown date';
-
                                     $subject =
                                         optional($review->stay)->stayname
                                         ?? optional($review->tripItem)->title
@@ -957,6 +971,12 @@
             height: 28rem;
         }
 
+        .location-detail-stack,
+        .location-detail-stack > div {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
         .markdown-content > *:first-child {
             margin-top: 0;
         }
@@ -997,7 +1017,9 @@
         }
 
         @media print {
-            .trip-leg-card {
+            .trip-leg-card,
+            .location-detail-stack,
+            .location-detail-stack > div {
                 break-inside: avoid;
                 page-break-inside: avoid;
             }

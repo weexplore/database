@@ -56,6 +56,11 @@ class AdminDashboardController extends Controller
                             'description' => 'Keep price history by stop, date, and fuel type.',
                             'route' => route('fuel-price-observations.index'),
                         ],
+                        [
+                            'title' => 'Destination Item Types',
+                            'description' => 'Maintain types for destination items.',
+                            'route' => route('destination-item-types.index'),
+                        ],
                     ],
                 ],
                 [
