@@ -367,7 +367,7 @@
                                         $relationshipFacts = $entry['relationshipFacts'] ?? collect();
                                     @endphp
 
-                                    <div class="border-top border-gray-100 pt-4 first:border-t-0 first:pt-0 space-y-2">
+                                    <div class="border-t border-gray-100 pt-4 first:border-t-0 first:pt-0 space-y-2">
                                         <div class="text-sm font-medium text-gray-900">
                                             {{ $entry['displayTypeLabel'] ?? 'Related' }}
                                             @if($relatedItem)
@@ -397,7 +397,7 @@
                                                     <div class="rounded-md bg-gray-50 border border-gray-200 px-3 py-2">
                                                         <div class="flex flex-wrap items-center gap-2">
                                                             <div class="text-sm font-medium text-gray-800">
-                                                                {{ $fact->factTypeLabel() ?? ucfirst($fact->facttype) }}
+                                                                {{ $fact->facttype ? ucfirst(str_replace(['-', '_'], ' ', $fact->facttype)) : 'Fact' }}
                                                             </div>
 
                                                             @if($fact->ispreferred)
@@ -421,7 +421,7 @@
                                                             @endif
 
                                                             @if($fact->datequalifier)
-                                                                – {{ $fact->dateQualifierLabel() ?? ucfirst($fact->datequalifier) }}
+                                                                – {{ ucfirst(str_replace(['-', '_'], ' ', $fact->datequalifier)) }}
                                                             @endif
 
                                                             @if($fact->place)
@@ -432,7 +432,7 @@
                                                             @endif
 
                                                             @if($fact->proofstatus)
-                                                                – {{ $fact->proofStatusLabel() ?? ucfirst($fact->proofstatus) }}
+                                                                – {{ ucfirst(str_replace(['-', '_'], ' ', $fact->proofstatus)) }}
                                                             @endif
                                                         </div>
 
@@ -466,7 +466,7 @@
                                         <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
                                             <div class="flex flex-wrap items-center gap-2">
                                                 <div class="text-sm font-medium text-gray-800">
-                                                    {{ $fact->factLabel() ?? ucfirst($fact->facttype) }}
+                                                    {{ $fact->facttype ? ucfirst(str_replace(['-', '_'], ' ', $fact->facttype)) : 'Fact' }}
                                                 </div>
 
                                                 @if($fact->ispreferred)
@@ -490,7 +490,7 @@
                                                 @endif
 
                                                 @if($fact->datequalifier)
-                                                    – {{ $fact->dateQualifierLabel() ?? ucfirst($fact->datequalifier) }}
+                                                    – {{ ucfirst(str_replace(['-', '_'], ' ', $fact->datequalifier)) }}
                                                 @endif
 
                                                 @if($fact->place)
@@ -501,7 +501,7 @@
                                                 @endif
 
                                                 @if($fact->proofstatus)
-                                                    – {{ $fact->proofStatusLabel() ?? ucfirst($fact->proofstatus) }}
+                                                    – {{ ucfirst(str_replace(['-', '_'], ' ', $fact->proofstatus)) }}
                                                 @endif
                                             </div>
 

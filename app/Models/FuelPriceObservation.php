@@ -56,6 +56,7 @@ class FuelPriceObservation extends Model
         ];
     }
 
+    
     public static function priceSourceOptions(): array
     {
         return [

@@ -316,7 +316,62 @@
                                 $fromMapName = $fromDestinationItem?->itemname ?? $fromPlace?->placename ?? 'Start';
                                 $toMapName = $toDestinationItem?->itemname ?? $toPlace?->placename ?? 'Destination';
 
-                                $hasMap = $fromLat !== null && $fromLng !== null && $toLat !== null && $toLng !== null;
+                                $orderedLegPoints = ($leg->legPoints ?? collect())
+                                    ->sortBy([
+                                        ['sequenceno', 'asc'],
+                                        ['id', 'asc'],
+                                    ])
+                                    ->values();
+
+                                $routeWaypoints = collect();
+
+                                if ($fromLat !== null && $fromLng !== null) {
+                                    $routeWaypoints->push([
+                                        'lat' => (float) $fromLat,
+                                        'lng' => (float) $fromLng,
+                                        'name' => $fromMapName,
+                                        'type' => 'from',
+                                    ]);
+                                }
+
+                                foreach ($orderedLegPoints as $point) {
+                                    $pointLat =
+                                        $point->destinationItem?->latitude
+                                        ?? $point->place?->latitude
+                                        ?? $point->destination?->place?->latitude;
+
+                                    $pointLng =
+                                        $point->destinationItem?->longitude
+                                        ?? $point->place?->longitude
+                                        ?? $point->destination?->place?->longitude;
+
+                                    $pointName =
+                                        $point->title
+                                        ?? optional($point->destinationItem)->itemname
+                                        ?? optional($point->destination)->destinationname
+                                        ?? optional($point->place)->placename
+                                        ?? 'Leg point';
+
+                                    if ($pointLat !== null && $pointLng !== null) {
+                                        $routeWaypoints->push([
+                                            'lat' => (float) $pointLat,
+                                            'lng' => (float) $pointLng,
+                                            'name' => $pointName,
+                                            'type' => 'leg_point',
+                                        ]);
+                                    }
+                                }
+
+                                if ($toLat !== null && $toLng !== null) {
+                                    $routeWaypoints->push([
+                                        'lat' => (float) $toLat,
+                                        'lng' => (float) $toLng,
+                                        'name' => $toMapName,
+                                        'type' => 'to',
+                                    ]);
+                                }
+
+                                $hasMap = $routeWaypoints->count() >= 2;
 
                                 $fromMeta = collect([
                                     $fromPlace?->placename && $fromPlace?->placename !== $fromLabel ? 'Place: ' . $fromPlace->placename : null,
@@ -441,17 +496,17 @@
                                         </div>
                                     </div>
 
-                                    @if ($leg->legPoints && $leg->legPoints->isNotEmpty())
+                                    @if ($orderedLegPoints->isNotEmpty())
                                         <div class="border border-gray-200 rounded-lg">
                                             <div class="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
                                                 <div class="text-xs font-semibold uppercase tracking-wide text-gray-600">Leg points</div>
                                                 <div class="text-xs text-gray-500">
-                                                    {{ $leg->legPoints->count() }} point{{ $leg->legPoints->count() === 1 ? '' : 's' }}
+                                                    {{ $orderedLegPoints->count() }} point{{ $orderedLegPoints->count() === 1 ? '' : 's' }}
                                                 </div>
                                             </div>
 
                                             <div class="divide-y divide-gray-100 text-xs">
-                                                @foreach ($leg->legPoints as $point)
+                                                @foreach ($orderedLegPoints as $point)
                                                     @php
                                                         $label = $point->title
                                                             ?? optional($point->destinationItem)->itemname
@@ -522,8 +577,6 @@
                                         </div>
                                     @endif
 
-
-
                                     @if ($legItems->isNotEmpty())
                                         <div class="border border-gray-200 rounded-lg overflow-hidden">
                                             <div class="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
@@ -551,21 +604,16 @@
                                             <div
                                                 id="trip-leg-map-{{ $leg->id }}"
                                                 class="trip-leg-map rounded-lg border border-gray-300"
-                                                data-from-lat="{{ $fromLat }}"
-                                                data-from-lng="{{ $fromLng }}"
-                                                data-to-lat="{{ $toLat }}"
-                                                data-to-lng="{{ $toLng }}"
-                                                data-from-name="{{ $fromMapName }}"
-                                                data-to-name="{{ $toMapName }}"
+                                                data-waypoints='@json($routeWaypoints->values())'
                                             ></div>
                                         </div>
                                     @else
                                         <div class="rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
-                                            Map unavailable because the selected start or end point does not have coordinates.
+                                            Map unavailable because fewer than two route points on this leg have coordinates.
                                         </div>
                                     @endif
 
-                                                                        @if ($legStays->isNotEmpty())
+                                    @if ($legStays->isNotEmpty())
                                         <div class="border border-gray-200 rounded-lg overflow-hidden">
                                             <div class="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
                                                 <div class="text-xs font-semibold uppercase tracking-wide text-gray-600">
@@ -968,7 +1016,8 @@
 
         .trip-leg-map {
             width: 100%;
-            height: 28rem;
+            height: 18rem;
+            position: relative;
         }
 
         .location-detail-stack,
@@ -1052,14 +1101,6 @@
         crossorigin=""
     />
 
-    <style>
-        .trip-leg-map {
-            height: 18rem;
-            width: 100%;
-            position: relative;
-        }
-    </style>
-
     <script
         src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
@@ -1076,19 +1117,31 @@
         const tripBookMaps = [];
 
         document.querySelectorAll('.trip-leg-map').forEach(function (element) {
-            const fromLat = parseFloat(element.dataset.fromLat);
-            const fromLng = parseFloat(element.dataset.fromLng);
-            const toLat = parseFloat(element.dataset.toLat);
-            const toLng = parseFloat(element.dataset.toLng);
-            const fromName = element.dataset.fromName || 'Start';
-            const toName = element.dataset.toName || 'Destination';
+            let waypoints = [];
 
-            if (
-                Number.isNaN(fromLat) ||
-                Number.isNaN(fromLng) ||
-                Number.isNaN(toLat) ||
-                Number.isNaN(toLng)
-            ) {
+            try {
+                waypoints = JSON.parse(element.dataset.waypoints || '[]');
+            } catch (error) {
+                console.error('Invalid waypoint JSON', error);
+                return;
+            }
+
+            waypoints = waypoints
+                .filter(function (point) {
+                    return point
+                        && Number.isFinite(parseFloat(point.lat))
+                        && Number.isFinite(parseFloat(point.lng));
+                })
+                .map(function (point) {
+                    return {
+                        lat: parseFloat(point.lat),
+                        lng: parseFloat(point.lng),
+                        name: point.name || 'Point',
+                        type: point.type || 'leg_point'
+                    };
+                });
+
+            if (waypoints.length < 2) {
                 return;
             }
 
@@ -1101,34 +1154,34 @@
                 attribution: '&copy; OpenStreetMap contributors',
             }).addTo(map);
 
-            const points = [
-                [fromLat, fromLng],
-                [toLat, toLng]
-            ];
+            waypoints.forEach(function (point, index) {
+                const isFirst = index === 0;
+                const isLast = index === waypoints.length - 1;
 
-            L.circleMarker(points[0], {
-                radius: 7,
-                color: '#1d4ed8',
-                weight: 2,
-                fillColor: '#3b82f6',
-                fillOpacity: 1,
-            }).addTo(map).bindPopup('From: ' + fromName);
+                const markerStyle = isFirst
+                    ? { radius: 7, color: '#1d4ed8', weight: 2, fillColor: '#3b82f6', fillOpacity: 1 }
+                    : isLast
+                        ? { radius: 7, color: '#b91c1c', weight: 2, fillColor: '#ef4444', fillOpacity: 1 }
+                        : { radius: 6, color: '#0369a1', weight: 2, fillColor: '#0ea5e9', fillOpacity: 1 };
 
-            L.circleMarker(points[1], {
-                radius: 7,
-                color: '#b91c1c',
-                weight: 2,
-                fillColor: '#ef4444',
-                fillOpacity: 1,
-            }).addTo(map).bindPopup('To: ' + toName);
+                const markerLabel = isFirst
+                    ? 'From: ' + point.name
+                    : isLast
+                        ? 'To: ' + point.name
+                        : 'Leg point: ' + point.name;
+
+                L.circleMarker([point.lat, point.lng], markerStyle)
+                    .addTo(map)
+                    .bindPopup(markerLabel);
+            });
 
             let activeRouteLayer = null;
 
             function fitMapToLayer(layer) {
                 map.invalidateSize();
 
-                if (fromLat === toLat && fromLng === toLng) {
-                    map.setView([fromLat, fromLng], 11);
+                if (waypoints.length === 1) {
+                    map.setView([waypoints[0].lat, waypoints[0].lng], 11);
                     return;
                 }
 
@@ -1145,16 +1198,16 @@
                     getLayer: function () {
                         return activeRouteLayer;
                     },
-                    fromLat: fromLat,
-                    fromLng: fromLng,
-                    toLat: toLat,
-                    toLng: toLng,
                 });
             }
 
+            const coordinates = waypoints.map(function (point) {
+                return point.lng + ',' + point.lat;
+            }).join(';');
+
             const routeUrl =
                 'https://router.project-osrm.org/route/v1/driving/' +
-                fromLng + ',' + fromLat + ';' + toLng + ',' + toLat +
+                coordinates +
                 '?overview=full&geometries=geojson&steps=false';
 
             fetch(routeUrl)
@@ -1166,9 +1219,7 @@
                         throw new Error('Route not available');
                     }
 
-                    const routeGeometry = data.routes[0].geometry;
-
-                    activeRouteLayer = L.geoJSON(routeGeometry, {
+                    activeRouteLayer = L.geoJSON(data.routes[0].geometry, {
                         style: {
                             color: '#2563eb',
                             weight: 4,
@@ -1180,12 +1231,17 @@
                     storeMapForPrint();
                 })
                 .catch(function () {
-                    activeRouteLayer = L.polyline(points, {
-                        color: '#2563eb',
-                        weight: 4,
-                        opacity: 0.85,
-                        dashArray: '6,6',
-                    }).addTo(map);
+                    activeRouteLayer = L.polyline(
+                        waypoints.map(function (point) {
+                            return [point.lat, point.lng];
+                        }),
+                        {
+                            color: '#2563eb',
+                            weight: 4,
+                            opacity: 0.85,
+                            dashArray: '6,6',
+                        }
+                    ).addTo(map);
 
                     fitMapToLayer(activeRouteLayer);
                     storeMapForPrint();
@@ -1202,16 +1258,11 @@
                     }
 
                     entry.map.invalidateSize();
-
-                    if (entry.fromLat === entry.toLat && entry.fromLng === entry.toLng) {
-                        entry.map.setView([entry.fromLat, entry.fromLng], 11);
-                    } else {
-                        entry.map.fitBounds(layer.getBounds(), {
-                            padding: [24, 24],
-                            maxZoom: 10,
-                            animate: false,
-                        });
-                    }
+                    entry.map.fitBounds(layer.getBounds(), {
+                        padding: [24, 24],
+                        maxZoom: 10,
+                        animate: false,
+                    });
                 });
             }, 300);
         }
