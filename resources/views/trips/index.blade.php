@@ -126,11 +126,10 @@
                                 @forelse($trips as $trip)
                                     <tr>
                                         <td class="px-3 py-2">
-                                            <input type="text"
-                                                   name="existing[{{ $trip->id }}][tripname]"
-                                                   value="{{ old("existing.{$trip->id}.tripname", $trip->tripname) }}"
-                                                   class="w-64 rounded-md border-gray-300 shadow-sm text-sm"
-                                                   required>
+                                            <a href="{{ route('trips.edit', $trip) }}"
+                                            class="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs">
+                                                {{ $trip->tripname }}
+                                            </a>
                                         </td>
 
                                         <td class="px-3 py-2">
@@ -186,8 +185,6 @@
                                                class="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs">
                                                 Open
                                             </a>
-
-
                                         </td>
                                     </tr>
                                 @empty

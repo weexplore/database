@@ -97,7 +97,7 @@ class TripController extends Controller
         $validated = $request->validate([
             'existing' => ['nullable', 'array'],
 
-            'existing.*.tripname' => ['required', 'string', 'max:200'],
+            // 'existing.*.tripname' => ['required', 'string', 'max:200'],
             'existing.*.tripstatus' => ['required', 'string', Rule::in($this->statusOptions)],
             'existing.*.startdate' => ['nullable', 'date'],
             'existing.*.enddate' => ['nullable', 'date', 'after_or_equal:existing.*.startdate'],
@@ -119,52 +119,45 @@ class TripController extends Controller
         ]);
 
         DB::transaction(function () use ($validated) {
-            foreach ($validated['existing'] ?? [] as $tripId => $row) {
-                $tripname = trim((string) ($row['tripname'] ?? ''));
+    foreach ($validated['existing'] ?? [] as $tripId => $row) {
+        $trip = Trip::findOrFail($tripId);
 
-                if ($tripname === '') {
-                    throw ValidationException::withMessages([
-                        "existing.$tripId.tripname" => 'Trip name is required.',
-                    ]);
-                }
+        $tripname = trim((string) ($trip->tripname ?? ''));
 
-                $trip = Trip::findOrFail($tripId);
+        $trip->update([
+            'tripstatus' => $row['tripstatus'],
+            'startdate' => $row['startdate'] ?? null,
+            'enddate' => $row['enddate'] ?? null,
+            'travellercount' => $row['travellercount'] ?? 2,
+            'islocked' => (bool) ($row['islocked'] ?? false),
+            'slug' => $trip->slug ?: Str::slug($tripname),
+        ]);
+    }
 
-                $trip->update([
-                    'tripname' => $tripname,
-                    'tripstatus' => $row['tripstatus'],
-                    'startdate' => $row['startdate'] ?? null,
-                    'enddate' => $row['enddate'] ?? null,
-                    'travellercount' => $row['travellercount'] ?? 2,
-                    'islocked' => (bool) ($row['islocked'] ?? false),
-                    'slug' => $trip->slug ?: Str::slug($tripname),
-                ]);
-            }
+    $new = $validated['new'] ?? [];
+    $newName = trim((string) ($new['tripname'] ?? ''));
+    $hasNewTrip = $newName !== ''
+        || !empty($new['startdate'] ?? null)
+        || !empty($new['enddate'] ?? null);
 
-            $new = $validated['new'] ?? [];
-            $newName = trim((string) ($new['tripname'] ?? ''));
-            $hasNewTrip = $newName !== ''
-                || !empty($new['startdate'] ?? null)
-                || !empty($new['enddate'] ?? null);
+    if ($hasNewTrip) {
+        if ($newName === '') {
+            throw ValidationException::withMessages([
+                'new.tripname' => 'Trip name is required for a new trip.',
+            ]);
+        }
 
-            if ($hasNewTrip) {
-                if ($newName === '') {
-                    throw ValidationException::withMessages([
-                        'new.tripname' => 'Trip name is required for a new trip.',
-                    ]);
-                }
-
-                Trip::create([
-                    'tripname' => $newName,
-                    'slug' => Str::slug($newName),
-                    'tripstatus' => $new['tripstatus'] ?? 'planned',
-                    'startdate' => $new['startdate'] ?? null,
-                    'enddate' => $new['enddate'] ?? null,
-                    'travellercount' => $new['travellercount'] ?? 2,
-                    'islocked' => (bool) ($new['islocked'] ?? false),
-                ]);
-            }
-        });
+        Trip::create([
+            'tripname' => $newName,
+            'slug' => Str::slug($newName),
+            'tripstatus' => $new['tripstatus'] ?? 'planned',
+            'startdate' => $new['startdate'] ?? null,
+            'enddate' => $new['enddate'] ?? null,
+            'travellercount' => $new['travellercount'] ?? 2,
+            'islocked' => (bool) ($new['islocked'] ?? false),
+        ]);
+    }
+});
 
         return redirect()
             ->route('trips.index', [

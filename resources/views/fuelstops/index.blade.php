@@ -160,7 +160,11 @@
                             @forelse ($fuelStops as $fuelStop)
                                 <tr>
                                     <td class="px-4 py-3 align-top">
-                                        <div class="font-medium text-gray-900">{{ $fuelStop->stopname }}</div>
+                                        <a href="{{ route('fuel-stops.edit', ['fuel_stop' => $fuelStop, 'return_to' => request()->fullUrl()]) }}"
+                                        class="inline-flex items-center px-3 py-1.5 min-w-[220px] border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200">
+                                            {{ $fuelStop->stopname }}
+                                        </a>
+
                                         @if ($fuelStop->caravanaccessnotes)
                                             <div class="mt-1 text-xs text-gray-500">
                                                 {{ \Illuminate\Support\Str::limit($fuelStop->caravanaccessnotes, 80) }}
