@@ -113,6 +113,36 @@ class AdminDashboardController extends Controller
                         ],
                     ],
                 ],
+                [
+                    'title' => 'Cashbook',
+                    'cards' => [
+                        [
+                            'title' => 'Legal Entities',
+                            'description' => 'Maintain legal entities used for ownership, reporting, and cashbook scope.',
+                            'route' => route('legal-entities.index'),
+                        ],
+                        [
+                            'title' => 'Cashbook Accounts',
+                            'description' => 'Manage bank, cash, and other cashbook accounts for each entity.',
+                            'route' => route('cashbook-accounts.index'),
+                        ],
+                        [
+                            'title' => 'Cashbook Categories',
+                            'description' => 'Maintain receipt and payment categories, including grouped parent categories.',
+                            'route' => route('cashbook-categories.index'),
+                        ],
+                        [
+                            'title' => 'Cashbook Transactions',
+                            'description' => 'Capture and review receipts, payments, transfers, and coded transaction lines.',
+                            'route' => route('cashbook-transactions.index'),
+                        ],
+                                                [
+                            'title' => 'Cashbook Reports',
+                            'description' => 'Cashbook Reports.',
+                            'route' => route('cashbook-reports.index'),
+                        ],
+                    ],
+                ],
             ],
         ]);
     }

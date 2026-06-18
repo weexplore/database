@@ -58,6 +58,13 @@
                                     : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
                         Knowledge
                     </a>
+                    <a href="{{ route('cashbook-transactions.index') }}"
+                        class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
+                        {{ request()->routeIs('cashbook-transactions.*')
+                            ? 'border-b-2 border-white text-white'
+                            : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
+                        Cashbook Transactions
+                    </a>
 
                 </div>
             </div>

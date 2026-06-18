@@ -58,6 +58,12 @@ use App\Http\Controllers\InstrumentCorporateActionController;
 use App\Http\Controllers\InstrumentTransactionController;
 use App\Http\Controllers\KnowledgeReportController;
 
+use App\Http\Controllers\LegalEntityController;
+use App\Http\Controllers\CashbookAccountController;
+use App\Http\Controllers\CashbookCategoryController;
+use App\Http\Controllers\CashbookTransactionController;
+use App\Http\Controllers\CashbookReportController;
+use App\Http\Controllers\CashbookImportController;
 /*
 |--------------------------------------------------------------------------
 | Dashboard
@@ -159,6 +165,60 @@ Route::prefix('vehicles')->name('vehicles.')->group(function () {
 
 Route::resource('fuel-stops', FuelStopController::class)->except(['show']);
 Route::resource('fuel-price-observations', FuelPriceObservationController::class)->except(['show']);
+
+/*
+|--------------------------------------------------------------------------
+| Cashbook
+|--------------------------------------------------------------------------
+| Cashbook-style finance registers and transaction workflow.
+| Legal entities, accounts, and categories are compact master modules,
+| while transactions use a fuller workflow-oriented edit screen.
+*/
+Route::prefix('legal-entities')->name('legal-entities.')->group(function () {
+    Route::get('/', [LegalEntityController::class, 'index'])->name('index');
+    Route::post('/', [LegalEntityController::class, 'store'])->name('store');
+    Route::get('{legalEntity}/edit', [LegalEntityController::class, 'edit'])->name('edit');
+    Route::put('{legalEntity}', [LegalEntityController::class, 'update'])->name('update');
+    Route::delete('{legalEntity}', [LegalEntityController::class, 'destroy'])->name('destroy');
+});
+
+Route::prefix('cashbook-accounts')->name('cashbook-accounts.')->group(function () {
+    Route::get('/', [CashbookAccountController::class, 'index'])->name('index');
+    Route::get('create', [CashbookAccountController::class, 'create'])->name('create');
+    Route::post('/', [CashbookAccountController::class, 'store'])->name('store');
+    Route::get('{cashbookAccount}/edit', [CashbookAccountController::class, 'edit'])->name('edit');
+    Route::put('{cashbookAccount}', [CashbookAccountController::class, 'update'])->name('update');
+    Route::delete('{cashbookAccount}', [CashbookAccountController::class, 'destroy'])->name('destroy');
+});
+
+Route::prefix('cashbook-categories')->name('cashbook-categories.')->group(function () {
+    Route::get('/', [CashbookCategoryController::class, 'index'])->name('index');
+    Route::get('create', [CashbookCategoryController::class, 'create'])->name('create');
+    Route::post('/', [CashbookCategoryController::class, 'store'])->name('store');
+    Route::get('{cashbookCategory}/edit', [CashbookCategoryController::class, 'edit'])->name('edit');
+    Route::put('{cashbookCategory}', [CashbookCategoryController::class, 'update'])->name('update');
+    Route::delete('{cashbookCategory}', [CashbookCategoryController::class, 'destroy'])->name('destroy');
+    Route::post('bulk-update', [CashbookCategoryController::class, 'bulkUpdate'])->name('bulk-update');
+});
+
+Route::prefix('cashbook-transactions')->name('cashbook-transactions.')->group(function () {
+    Route::get('/', [CashbookTransactionController::class, 'index'])->name('index');
+    Route::get('create', [CashbookTransactionController::class, 'create'])->name('create');
+    Route::post('/', [CashbookTransactionController::class, 'store'])->name('store');
+    Route::get('{cashbookTransaction}/edit', [CashbookTransactionController::class, 'edit'])->name('edit');
+    Route::put('{cashbookTransaction}', [CashbookTransactionController::class, 'update'])->name('update');
+    Route::delete('{cashbookTransaction}', [CashbookTransactionController::class, 'destroy'])->name('destroy');
+    Route::post('quick-store', [CashbookTransactionController::class, 'quickStore'])->name('quick-store');
+    Route::post('{cashbookTransaction}/quick-update', [CashbookTransactionController::class, 'quickUpdate'])->name('quick-update');
+    Route::patch('{transaction}/toggle-reconciled', [CashbookTransactionController::class, 'toggleReconciled'])->name('toggle-reconciled');
+    Route::post('bulk-update', [CashbookTransactionController::class, 'bulkUpdate'])->name('bulk-update');
+});
+Route::get('/cashbook-reports', [CashbookReportController::class, 'index'])->name('cashbook-reports.index');
+Route::prefix('cashbook-import')->name('cashbook-import.')->group(function () {
+    Route::get('qif', [CashbookImportController::class, 'showUpload'])->name('qif.show');
+    Route::post('qif', [CashbookImportController::class, 'store'])->name('qif.store');
+    Route::delete('qif-batch', [CashbookImportController::class, 'destroyBatch'])->name('qif.batch.destroy');
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -544,3 +604,4 @@ Route::prefix('bible-references')->name('knowledge.items.bible-references.')->gr
     Route::delete('{bibleReference}', [BibleReferenceController::class, 'destroy'])->name('destroy');
     Route::post('{bibleReference}/fetch-passage', [BibleReferenceController::class, 'fetchPassage'])->name('fetch-passage');
 });
+
