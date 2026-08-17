@@ -170,7 +170,7 @@
                 @foreach ($searchProfiles as $profile)
                     <option
                         value="{{ $profile->id }}"
-                        @selected((string) old('triplegsearchprofileid', $tripLeg->triplegsearchprofileid) === (string) $profile->id)
+                        @selected((string) old('triplegsearchprofileid', $tripLeg?->triplegsearchprofileid) === (string) $profile->id)
                     >
                         {{ $profile->profilename }}
                         @if (!empty($profile->profiletype))

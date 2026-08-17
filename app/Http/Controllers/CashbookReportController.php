@@ -67,19 +67,44 @@ class CashbookReportController extends Controller
             $reportType
         );
 
+        // Unpack for blade convenience
+        $openingBalance   = $reportTotals['opening_balance'];
+        $receiptsTotal    = $reportTotals['receipts_total'];
+        $paymentsTotal    = $reportTotals['payments_total'];
+        $transfersTotal   = $reportTotals['transfers_total'];
+        $netMovement      = $reportTotals['net_movement'];
+        $ledgerBalance    = $reportTotals['ledger_balance'];
+        $reconciledBalance = $reportTotals['reconciled_balance'];
+        $receiptCount     = $reportTotals['receipt_count'];
+        $paymentCount     = $reportTotals['payment_count'];
+        $transferCount    = $reportTotals['transfer_count'];
+        $transactionCount = $reportTotals['transaction_count'];
+
         return view('cashbookreports.index', [
-            'legalEntities' => $legalEntities,
-            'accounts' => $accounts,
-            'scope' => $scope,
-            'reportType' => $reportType,
-            'legalEntityId' => $legalEntityId,
-            'accountId' => $accountId,
-            'dateFrom' => $dateFrom,
-            'dateTo' => $dateTo,
-            'reconciledOnly' => $reconciledOnly,
-            'includeZeroBalances' => $includeZeroBalances,
-            'reportRows' => $reportRows,
-            'reportTotals' => $reportTotals,
+            'legalEntities'      => $legalEntities,
+            'accounts'           => $accounts,
+            'scope'              => $scope,
+            'reportType'         => $reportType,
+            'legalEntityId'      => $legalEntityId,
+            'accountId'          => $accountId,
+            'dateFrom'           => $dateFrom,
+            'dateTo'             => $dateTo,
+            'reconciledOnly'     => $reconciledOnly,
+            'includeZeroBalances'=> $includeZeroBalances,
+            'reportRows'         => $reportRows,
+            'reportTotals'       => $reportTotals,
+            // Individual unpacked totals for blade
+            'openingBalance'     => $openingBalance,
+            'receiptsTotal'      => $receiptsTotal,
+            'paymentsTotal'      => $paymentsTotal,
+            'transfersTotal'     => $transfersTotal,
+            'netMovement'        => $netMovement,
+            'ledgerBalance'      => $ledgerBalance,
+            'reconciledBalance'  => $reconciledBalance,
+            'receiptCount'       => $receiptCount,
+            'paymentCount'       => $paymentCount,
+            'transferCount'      => $transferCount,
+            'transactionCount'   => $transactionCount,
         ]);
     }
 
@@ -299,6 +324,82 @@ $categories = CashbookCategory::query()
         ->sortBy([
             ['category_type_sort', 'asc'],
             ['category_sequence', 'asc'],
+        ])
+        ->values();
+}
+
+private function buildCategoryTransactionRows(
+    Collection $accounts,
+    ?string $dateFrom,
+    ?string $dateTo,
+    bool $reconciledOnly,
+    bool $includeZeroBalances
+): Collection {
+    $accountIds = $accounts->pluck('id')->values();
+
+    $lines = CashbookTransactionLine::query()
+        ->with([
+            'category.categoryType',
+            'transaction.account',
+        ])
+        ->select('cashbook_transaction_lines.*')
+        ->join('cashbook_transactions', 'cashbook_transactions.id', '=', 'cashbook_transaction_lines.transactionid')
+        ->whereIn('cashbook_transactions.accountid', $accountIds)
+        ->when($dateFrom, fn ($query) => $query->whereDate('cashbook_transactions.transactiondate', '>=', $dateFrom))
+        ->when($dateTo, fn ($query) => $query->whereDate('cashbook_transactions.transactiondate', '<=', $dateTo))
+        ->when($reconciledOnly, fn ($query) => $query->where('cashbook_transactions.isreconciled', 1))
+        ->orderBy('cashbook_transactions.transactiondate')
+        ->orderBy('cashbook_transactions.id')
+        ->get();
+
+    $orderMap = $this->categoryOrderMap($accounts);
+
+    $rows = $lines->map(function ($line) use ($orderMap) {
+        $transaction = $line->transaction;
+        $category = $line->category;
+        $amount = (float) ($line->amount ?? 0);
+        $kind = strtolower(trim((string) ($transaction?->transactionkind ?? '')));
+
+        $typeCode = strtolower(trim((string) ($category?->categoryType?->typecode ?? '')));
+        $typeName = $category?->categoryType?->typename ?: ucfirst($typeCode ?: '');
+
+        return [
+            'transaction_id' => $line->transactionid,
+            'transaction_date' => $transaction?->transactiondate,
+            'account_id' => $transaction?->accountid,
+            'account_name' => $transaction?->account?->accountname,
+            'category_id' => $line->categoryid,
+            'category_name' => $category?->categoryname ?? 'Uncategorised',
+            'category_type_code' => $typeCode,
+            'category_type_name' => $typeName ?: 'Other',
+            'category_type_sort' => $this->categoryTypeSort($typeCode, $typeName),
+            'category_sequence' => $orderMap->get($line->categoryid)['sequence'] ?? 999999,
+            'description' => $transaction?->description ?? $line->description ?? '',
+            'reference' => $transaction?->reference ?? '',
+            'is_reconciled' => (bool) ($transaction?->isreconciled ?? false),
+            'receipt_amount' => $kind === 'receipt' ? round($amount, 2) : 0.00,
+            'payment_amount' => $kind === 'payment' ? round($amount, 2) : 0.00,
+            'transfer_amount' => $kind === 'transfer' ? round($amount, 2) : 0.00,
+            'net_amount' => $kind === 'receipt' ? round($amount, 2) : round(-$amount, 2),
+            'transaction_count' => 1,
+        ];
+    });
+
+    if (! $includeZeroBalances) {
+        $rows = $rows->filter(function (array $row) {
+            return
+                abs((float) $row['receipt_amount']) > 0.00001 ||
+                abs((float) $row['payment_amount']) > 0.00001 ||
+                abs((float) $row['transfer_amount']) > 0.00001;
+        })->values();
+    }
+
+    return $rows
+        ->sortBy([
+            ['category_type_sort', 'asc'],
+            ['category_sequence', 'asc'],
+            ['transaction_date', 'asc'],
+            ['transaction_id', 'asc'],
         ])
         ->values();
 }

@@ -64,6 +64,9 @@ use App\Http\Controllers\CashbookCategoryController;
 use App\Http\Controllers\CashbookTransactionController;
 use App\Http\Controllers\CashbookReportController;
 use App\Http\Controllers\CashbookImportController;
+
+use App\Http\Controllers\BudgetHeaderController;
+use App\Http\Controllers\BudgetLineController;
 /*
 |--------------------------------------------------------------------------
 | Dashboard
@@ -218,6 +221,40 @@ Route::prefix('cashbook-import')->name('cashbook-import.')->group(function () {
     Route::get('qif', [CashbookImportController::class, 'showUpload'])->name('qif.show');
     Route::post('qif', [CashbookImportController::class, 'store'])->name('qif.store');
     Route::delete('qif-batch', [CashbookImportController::class, 'destroyBatch'])->name('qif.batch.destroy');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Cashbook Budgets
+|--------------------------------------------------------------------------
+| Budget headers (one per financial year), budget lines (account/category
+| combinations), and month-level adopted and revised amounts.
+*/
+Route::prefix('cashbook-budgets')->name('cashbook.budgets.')->group(function () {
+
+    // Budget Headers
+    Route::get('/',                         [BudgetHeaderController::class, 'index'])->name('index');
+    Route::get('/create',                   [BudgetHeaderController::class, 'create'])->name('create');
+    Route::post('/',                        [BudgetHeaderController::class, 'store'])->name('store');
+    Route::get('/{budget}/edit',            [BudgetHeaderController::class, 'edit'])->name('edit');
+    Route::put('/{budget}',                 [BudgetHeaderController::class, 'update'])->name('update');
+    Route::delete('/{budget}',              [BudgetHeaderController::class, 'destroy'])->name('destroy');
+
+    // Status transitions
+    Route::post('/{budget}/adopt',          [BudgetHeaderController::class, 'adopt'])->name('adopt');
+    Route::post('/{budget}/revise',         [BudgetHeaderController::class, 'revise'])->name('revise');
+    Route::post('/{budget}/close',          [BudgetHeaderController::class, 'close'])->name('close');
+    Route::post('/{budget}/reopen',         [BudgetHeaderController::class, 'reopen'])->name('reopen');
+
+    // Budget Lines
+    Route::prefix('/{budget}/lines')->name('lines.')->group(function () {
+        Route::get('/',                     [BudgetLineController::class, 'index'])->name('index');
+        Route::post('/',                    [BudgetLineController::class, 'store'])->name('store');
+        Route::delete('/{line}',            [BudgetLineController::class, 'destroy'])->name('destroy');
+        Route::post('/{line}/months',       [BudgetLineController::class, 'updateMonths'])->name('updateMonths');
+        Route::post('/{line}/method',       [BudgetLineController::class, 'applyMethod'])->name('applyMethod');
+    });
+
 });
 
 /*

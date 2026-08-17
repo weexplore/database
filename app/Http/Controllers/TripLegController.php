@@ -8,6 +8,7 @@ use App\Models\Place;
 use App\Models\Trip;
 use App\Models\TripItem;
 use App\Models\TripLeg;
+use App\Models\TripLegSearchProfile;
 use App\Models\Vehicle;
 use App\Services\RouteDiscoveryProfileResolver;
 use App\Services\RouteDiscoveryService;
@@ -73,19 +74,30 @@ class TripLegController extends Controller
             ->orderBy('id')
             ->get();
 
+        $searchProfiles = TripLegSearchProfile::where(function ($q) use ($trip) {
+                $q->where('tripid', $trip->id)
+                ->orWhereNull('tripid');
+            })
+            ->orderBy('profilename')
+            ->get();
+
         $showCreate = $request->boolean('show_create');
         $selectedFromDestinationId = $request->integer('fromdestination_id');
         $selectedFromPlaceId = $request->integer('fromplace_id');
         $selectedToDestinationId = $request->integer('todestination_id');
         $selectedToPlaceId = $request->integer('toplace_id');
 
+        $tripLeg = new TripLeg();  
+
         return view('trip-legs.index', compact(
             'trip',
             'legs',
+            'tripLeg',
             'places',
             'destinations',
             'destinationItems',
             'vehicles',
+            'searchProfiles', 
             'showCreate',
             'selectedFromDestinationId',
             'selectedFromPlaceId',

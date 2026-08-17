@@ -136,10 +136,15 @@ class AdminDashboardController extends Controller
                             'description' => 'Capture and review receipts, payments, transfers, and coded transaction lines.',
                             'route' => route('cashbook-transactions.index'),
                         ],
-                                                [
+                        [
                             'title' => 'Cashbook Reports',
                             'description' => 'Cashbook Reports.',
                             'route' => route('cashbook-reports.index'),
+                        ],
+                        [
+                            'title' => 'Cashbook Budgets',
+                            'description' => 'Cashbook Budgets.',
+                            'route' => route('cashbook.budgets.index'),
                         ],
                     ],
                 ],
