@@ -64,6 +64,36 @@ class AdminDashboardController extends Controller
                     ],
                 ],
                 [
+                    'title' => 'Task Management',
+                    'cards' => [
+                        [
+                            'title' => 'Projects',
+                            'description' => 'Create and manage projects, owners, and target dates.',
+                            'route' => route('projects.index'),
+                        ],
+                        [
+                            'title' => 'All Tasks',
+                            'description' => 'Manage All Tasks.',
+                            'route' => route('tasksall.all'),
+                        ],
+                        [
+                            'title' => 'Labels',
+                            'description' => 'Maintain reusable tags for categorising tasks.',
+                            'route' => route('labels.index'),
+                        ],
+                        [
+                            'title' => 'Task Statuses',
+                            'description' => 'Manage global default statuses used when new projects are created.',
+                            'route' => route('task-statuses.defaults'),
+                        ],
+                        [
+                            'title' => 'Stickies',
+                            'description' => 'Your private corkboard for quick personal notes.',
+                            'route' => route('stickies.index'),
+                        ],
+                    ],
+                ],
+                [
                     'title' => 'Research',
                     'cards' => [
                         [

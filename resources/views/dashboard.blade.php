@@ -18,6 +18,7 @@
                     </div>
                 </div>
 
+
                 <div>
                     <h3 class="text-sm font-semibold text-gray-800 mb-3">Phase 1 foundation</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -53,6 +54,36 @@
                         <a href="{{ route('vehicles.index') }}" class="block p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition">
                             <h4 class="text-sm font-semibold text-gray-900 mb-1">Vehicles</h4>
                             <p class="text-xs text-gray-600">Create and manage vehicles.</p>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-800 mb-3">Task Management</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        <a href="{{ route('projects.index') }}" class="block p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition">
+                            <h4 class="text-sm font-semibold text-gray-900 mb-1">Projects</h4>
+                            <p class="text-xs text-gray-600">Create and manage projects, owners, and target dates.</p>
+                        </a>
+
+                        <a href="{{ route('tasks.index', 1) }}" class="block p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition">
+                            <h4 class="text-sm font-semibold text-gray-900 mb-1">Tasks</h4>
+                            <p class="text-xs text-gray-600">Open a project to view its task board and sub-tasks.</p>
+                        </a>
+
+                        <a href="{{ route('labels.index') }}" class="block p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition">
+                            <h4 class="text-sm font-semibold text-gray-900 mb-1">Labels</h4>
+                            <p class="text-xs text-gray-600">Maintain reusable tags for categorising tasks.</p>
+                        </a>
+
+                        <a href="{{ route('task-statuses.defaults') }}" class="block p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition">
+                            <h4 class="text-sm font-semibold text-gray-900 mb-1">Task Statuses</h4>
+                            <p class="text-xs text-gray-600">Manage global default statuses used when new projects are created.</p>
+                        </a>
+
+                        <a href="{{ route('stickies.index') }}" class="block p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition">
+                            <h4 class="text-sm font-semibold text-gray-900 mb-1">Stickies</h4>
+                            <p class="text-xs text-gray-600">Your private corkboard for quick personal notes.</p>
                         </a>
                     </div>
                 </div>

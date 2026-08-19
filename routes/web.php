@@ -67,6 +67,15 @@ use App\Http\Controllers\CashbookImportController;
 
 use App\Http\Controllers\BudgetHeaderController;
 use App\Http\Controllers\BudgetLineController;
+
+use App\Http\Controllers\LabelController;
+use App\Http\Controllers\TaskStatusController;
+use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\TaskController;
+use App\Http\Controllers\StickyController;
+use App\Http\Controllers\TaskCommentController;
+
+
 /*
 |--------------------------------------------------------------------------
 | Dashboard
@@ -641,4 +650,55 @@ Route::prefix('bible-references')->name('knowledge.items.bible-references.')->gr
     Route::delete('{bibleReference}', [BibleReferenceController::class, 'destroy'])->name('destroy');
     Route::post('{bibleReference}/fetch-passage', [BibleReferenceController::class, 'fetchPassage'])->name('fetch-passage');
 });
+/*
+|--------------------------------------------------------------------------
+| TASK and Project Management
+|--------------------------------------------------------------------------
+*/
+Route::get('labels', [LabelController::class, 'index'])->name('labels.index');
+Route::post('labels', [LabelController::class, 'store'])->name('labels.store');
+Route::delete('labels/{label}', [LabelController::class, 'destroy'])->name('labels.destroy');
+Route::post('labels/bulk-update', [LabelController::class, 'bulkUpdate'])->name('labels.bulk-update');
 
+Route::get('task-statuses/defaults', [TaskStatusController::class, 'defaults'])->name('task-statuses.defaults');
+Route::post('task-statuses/defaults', [TaskStatusController::class, 'store'])->name('task-statuses.defaults.store');
+Route::patch('task-statuses/defaults', [TaskStatusController::class, 'update'])->name('task-statuses.defaults.update');
+
+Route::get('projects/{project}/statuses', [TaskStatusController::class, 'index'])->name('projects.statuses.index');
+Route::patch('projects/{project}/statuses', [TaskStatusController::class, 'update'])->name('projects.statuses.update');
+Route::post('projects/{project}/statuses', [TaskStatusController::class, 'store'])->name('projects.statuses.store');
+Route::post('projects/{project}/statuses/attach-default', [TaskStatusController::class, 'attachDefault'])->name('task-statuses.attach-default');
+Route::post('projects/{project}/statuses/bulk-update', [TaskStatusController::class, 'bulkUpdate'])->name('task-statuses.bulk-update');
+
+Route::delete('task-statuses/{taskStatus}', [TaskStatusController::class, 'destroy'])->name('task-statuses.destroy');
+
+Route::resource('projects', ProjectController::class)->only(['index', 'store', 'destroy']);
+Route::patch('projects/bulk-update', [ProjectController::class, 'update'])->name('projects.update');
+
+Route::get('projects/{project}/tasks', [TaskController::class, 'index'])->name('tasks.index');
+Route::resource('tasks', TaskController::class)->only(['show', 'store', 'update', 'destroy']);
+
+Route::get('stickies', [StickyController::class, 'index'])
+    ->name('stickies.index');
+
+Route::post('stickies', [StickyController::class, 'store'])
+    ->name('stickies.store');
+
+Route::patch('stickies/{sticky}', [StickyController::class, 'update'])
+    ->name('stickies.update');
+
+Route::delete('stickies/{sticky}', [StickyController::class, 'destroy'])
+    ->name('stickies.destroy');
+
+Route::get('/tasksall/all', [TaskController::class, 'allIndex'])
+    ->name('tasksall.all');
+Route::post('tasks/bulk-update', [TaskController::class, 'bulkUpdate'])
+    ->name('tasks.bulk-update');    
+Route::post('tasks/{task}/comments', [TaskCommentController::class, 'store'])->name('task-comments.store');
+Route::delete('task-comments/{comment}', [TaskCommentController::class, 'destroy'])->name('task-comments.destroy');
+Route::post('/tasks/{task}/move-status', [TaskController::class, 'moveStatus'])
+    ->name('tasks.move-status');
+Route::post('/tasks/{task}/move-project', [TaskController::class, 'moveProject'])
+    ->name('tasks.move-project');
+Route::post('/tasks/{task}/recurrence', [TaskController::class, 'updateRecurrence'])
+    ->name('tasks.update-recurrence');
