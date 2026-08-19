@@ -1,4 +1,3 @@
-
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
@@ -9,80 +8,123 @@
     <div class="py-6">
         <div class="w-full max-w-none mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 space-y-6">
 
-            @include('partials.admin.flash-messages')
-            @include('partials.admin.validation-summary')
+            <div class="flex items-center justify-between">
+                <p class="text-sm text-gray-600">
+                    Drag notes to arrange them. Select Edit to change a note.
+                </p>
 
-            {{-- New sticky form --}}
-            <div class="bg-white shadow-sm rounded-lg p-4 space-y-3">
-                <h3 class="text-sm font-semibold text-gray-900">New sticky</h3>
-
-                <form method="POST" action="{{ route('stickies.store') }}" class="space-y-2">
+                <form method="POST" action="{{ route('stickies.create-and-edit') }}">
                     @csrf
 
-                    <div>
-                        <label class="block text-xs font-medium text-gray-600">Text</label>
-                        <textarea name="stickytext" rows="3" required
-                                  class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm bg-yellow-50"></textarea>
-                    </div>
-
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600">Colour</label>
-                            <input type="color" name="colourhex" value="#FEF08A"
-                                class="mt-1 w-12 h-8 border-gray-300 rounded-md shadow-sm">
-                        </div>
-
-                        <button type="submit"
-                                class="px-4 py-1.5 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700">
-                            Save sticky
-                        </button>
-                    </div>
+                    <button type="submit"
+                            class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                        + New Sticky
+                    </button>
                 </form>
             </div>
 
+            
             {{-- Stickies board --}}
-            <div class="border border-gray-300 rounded-lg bg-yellow-50 min-h-[300px] p-4 flex flex-wrap gap-4">
+            <div id="stickies-board"
+                 class="relative border border-gray-300 rounded-lg bg-yellow-50 min-h-[400px] overflow-auto">
+
                 @forelse ($stickies as $sticky)
-                    <div class="w-64 rounded shadow p-2 text-sm flex flex-col gap-2"
-                        style="background: {{ $sticky->colourhex ?? '#FEF08A' }}">
+                    <div
+                        class="sticky-note absolute inline-block max-w-xs rounded shadow p-2 text-sm cursor-move"
+                        data-id="{{ $sticky->id }}"
+                        style="
+                            left: {{ $sticky->positionx ?? 40 }}px;
+                            top:  {{ $sticky->positiony ?? 40 }}px;
+                            background: {{ $sticky->colourhex ?? '#FEF08A' }};
+                        "
+                    >
+                        {{-- Render markdown as HTML --}}
+                        {!! app(\Illuminate\Mail\Markdown::class)->parse($sticky->stickytext ?? '') !!}
 
-                        <form method="POST" action="{{ route('stickies.update', $sticky) }}" class="space-y-2">
-                            @csrf
-                            @method('PATCH')
+                        <div class="mt-2 flex justify-between items-center gap-2 text-[11px]">
+                            <span class="text-gray-500">Drag to move</span>
 
-                            <textarea name="stickytext" rows="3" required
-                                    class="w-full border-gray-300 rounded-md shadow-sm text-xs bg-yellow-50">{{ $sticky->stickytext }}</textarea>
+                            <div class="flex gap-1">
+                                <a href="{{ route('stickies.edit', [
+                                        'sticky' => $sticky,
+                                        'return' => request()->fullUrl(),
+                                    ]) }}"
+                                class="px-2 py-0.5 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-100">
+                                    Edit
+                                </a>
 
-                            <div class="flex items-center justify-between">
-                                <input type="color" name="colourhex"
-                                    value="{{ $sticky->colourhex ?? '#FEF08A' }}"
-                                    class="w-12 h-8 border-gray-300 rounded-md shadow-sm">
-
-                                <button type="submit"
-                                        class="px-3 py-1 bg-blue-600 text-white text-[11px] font-semibold rounded hover:bg-blue-700">
-                                    Save
-                                </button>
+                                <form method="POST"
+                                    action="{{ route('stickies.destroy', $sticky) }}"
+                                    onsubmit="return confirm('Delete this sticky?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit"
+                                            class="px-2 py-0.5 rounded bg-red-600 text-white hover:bg-red-700">
+                                        Delete
+                                    </button>
+                                </form>
                             </div>
-                        </form>
-
-                        <form method="POST"
-                              action="{{ route('stickies.destroy', $sticky) }}"
-                              onsubmit="return confirm('Delete this sticky?');">
-                            @csrf
-                            @method('DELETE')
-
-                            <button type="submit"
-                                    class="mt-1 px-3 py-1 bg-red-600 text-white text-[11px] font-semibold rounded hover:bg-red-700">
-                                Delete
-                            </button>
-                        </form>
+                        </div>
                     </div>
                 @empty
-                    <p class="text-xs text-gray-500">
-                        No stickies yet. Use the form above to create one.
+                    <p class="p-4 text-xs text-gray-500">
+                        No stickies yet. Use the editor above to create one.
                     </p>
                 @endforelse
             </div>
         </div>
     </div>
+
+    {{-- Drag-and-drop behaviour --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const board = document.getElementById('stickies-board');
+            if (!board) return;
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+            document.querySelectorAll('.sticky-note').forEach(note => {
+                note.addEventListener('mousedown', (event) => {
+                    // Only drag with left button
+                    if (event.button !== 0) return;
+
+                    const boardRect = board.getBoundingClientRect();
+                    const noteRect = note.getBoundingClientRect();
+
+                    const offsetX = event.clientX - noteRect.left;
+                    const offsetY = event.clientY - noteRect.top;
+
+                    function onMouseMove(e) {
+                        const x = e.clientX - boardRect.left - offsetX;
+                        const y = e.clientY - boardRect.top - offsetY;
+
+                        note.style.left = x + 'px';
+                        note.style.top  = y + 'px';
+                    }
+
+                    function onMouseUp() {
+                        document.removeEventListener('mousemove', onMouseMove);
+                        document.removeEventListener('mouseup', onMouseUp);
+
+                        const payload = {
+                            x: parseInt(note.style.left, 10) || 0,
+                            y: parseInt(note.style.top, 10) || 0,
+                        };
+
+                        fetch(`{{ url('/stickies') }}/${note.dataset.id}/position`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(payload),
+                        }).catch(() => {});
+                    }
+
+                    document.addEventListener('mousemove', onMouseMove);
+                    document.addEventListener('mouseup', onMouseUp);
+                });
+            });
+        });
+    </script>
 </x-app-layout>

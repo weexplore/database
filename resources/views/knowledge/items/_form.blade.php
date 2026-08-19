@@ -101,7 +101,6 @@
                     min-rows="3"
                     placeholder="Short overview of the knowledge item"
                     help="Markdown supported, including headings, lists, emphasis, and tables."
-                    preview-title="Summary Preview"
                 />
             </div>
         </div>
@@ -123,7 +122,7 @@
                 min-rows="8"
                 placeholder="Full notes, observations, or structured research detail"
                 help="Markdown supported, including headings, lists, emphasis, links, and tables."
-                preview-title="Detailed Notes Preview"
+                :startCollapsed="true"
             />
 
             <x-forms.markdown-field
@@ -135,7 +134,6 @@
                 min-rows="4"
                 placeholder="Why this item matters"
                 help="Markdown supported for structured commentary and summaries."
-                preview-title="Significance Preview"
             />
 
             <x-forms.markdown-field
@@ -147,7 +145,6 @@
                 min-rows="4"
                 placeholder="Review comments, follow-up actions, or quality notes"
                 help="Markdown supported for follow-up actions, checklists, and review commentary."
-                preview-title="Review Notes Preview"
             />
         </div>
     </div>

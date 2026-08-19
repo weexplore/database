@@ -92,31 +92,45 @@
                         <div class="flex items-center justify-between mb-2">
                             <label class="block text-xs font-medium text-gray-600">Labels</label>
 
-                            <button type="button"
-                                    id="toggle-task-labels-panel"
-                                    class="text-xs px-2 py-1 rounded border border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100">
-                                Add or change labels
-                            </button>
+                            {{-- Only show the toggle when at least one label is already selected --}}
+                            @if ($task->labels->isNotEmpty())
+                                <button type="button"
+                                        id="toggle-task-labels-panel"
+                                        class="text-xs px-2 py-1 rounded border border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100">
+                                    Add or change labels
+                                </button>
+                            @endif
                         </div>
 
-                        {{-- Summary chips of selected labels --}}
-                        <div id="selected-task-labels-summary" class="flex flex-wrap gap-2 mb-2 hidden">
-                            {{-- chips injected by JS --}}
-                        </div>
+                        {{-- Show selected-label chips only when labels exist --}}
+                        @if ($task->labels->isNotEmpty())
+                            <div id="selected-task-labels-summary" class="flex flex-wrap gap-2 mb-2">
+                                @foreach ($task->labels as $label)
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-white text-xs font-medium"
+                                        style="background: {{ $label->colourhex }}">
+                                        {{ $label->labelname }}
+                                    </span>
+                                @endforeach
+                            </div>
+                        @endif
 
-                        {{-- Full labels panel, hidden by default --}}
-                        <div id="task-labels-panel" class="border border-gray-200 rounded-md p-3 bg-gray-50 hidden">
+                        {{-- 
+                            With no selected labels: panel is open.
+                            With labels selected: panel starts hidden and is opened by the button.
+                        --}}
+                        <div id="task-labels-panel"
+                            class="border border-gray-200 rounded-md p-3 bg-gray-50 {{ $task->labels->isNotEmpty() ? 'hidden' : '' }}">
                             <div class="flex flex-wrap gap-3">
-                                @foreach (\App\Models\Label::orderBy('labelname')->get() as $label)
+                                @foreach ($labels as $label)
                                     <label class="flex items-center gap-2 text-sm">
                                         <input type="checkbox"
-                                               class="task-label-checkbox"
-                                               name="labelids[]"
-                                               value="{{ $label->id }}"
-                                               @checked($task->labels->contains($label->id))>
+                                            class="task-label-checkbox"
+                                            name="labelids[]"
+                                            value="{{ $label->id }}"
+                                            @checked($task->labels->contains($label->id))>
 
                                         <span class="px-2 py-0.5 rounded-full text-white text-xs"
-                                              style="background:{{ $label->colourhex }}">
+                                            style="background: {{ $label->colourhex }}">
                                             {{ $label->labelname }}
                                         </span>
                                     </label>
@@ -392,23 +406,395 @@
                 </div>
             </div>
 
-            @if ($task->subtasks->count())
-                <div class="bg-white shadow-sm rounded-lg p-6">
-                    <h3 class="text-sm font-semibold mb-3">Sub-tasks</h3>
-                    <ul class="divide-y divide-gray-100">
-                        @foreach ($task->subtasks as $sub)
-                            <li class="py-2 flex justify-between items-center text-sm">
-                                <a href="{{ route('tasks.show', ['task' => $sub, 'from' => $from]) }}" class="hover:underline">
-                                    {{ $sub->tasktitle }}
-                                </a>
-                                <span class="text-xs text-gray-500">
-                                    {{ $sub->status->statuslabel ?? '' }}
-                                </span>
-                            </li>
-                        @endforeach
-                    </ul>
+            {{-- Sub-tasks --}}
+            <div class="bg-white shadow-sm rounded-lg p-6">
+                <div class="flex items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-900">Sub-tasks</h3>
+                        <p class="mt-1 text-xs text-gray-500">
+                            Create, review, and update tasks attached to “{{ $task->tasktitle }}”.
+                        </p>
+                    </div>
                 </div>
-            @endif
+
+                {{-- Valid external form: table fields attach using form="new-subtask-form" --}}
+                <form id="new-subtask-form"
+                    method="POST"
+                    action="{{ route('tasks.store') }}">
+                    @csrf
+
+                    <input type="hidden" name="projectid" value="{{ $task->projectid }}">
+                    <input type="hidden" name="parenttaskid" value="{{ $task->id }}">
+                    <input type="hidden" name="from" value="{{ $from }}">
+                    <input type="hidden" name="return_url" value="{{ $returnUrl }}">
+                </form>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-50 border-y border-gray-200">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                                    Sub-task
+                                </th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                                    Start Date
+                                </th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                                    Due Date
+                                </th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                                    Priority
+                                </th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                                    Status
+                                </th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                                    Labels
+                                </th>
+                                <th class="px-3 py-2 text-right text-xs font-semibold text-gray-600">
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+
+                        <tbody class="divide-y divide-gray-100">
+                            {{-- New sub-task row --}}
+                            <tr class="bg-blue-50 align-top">
+                                <td class="px-3 py-2 min-w-[260px]">
+                                    <input form="new-subtask-form"
+                                        type="text"
+                                        name="title"
+                                        required
+                                        placeholder="New sub-task"
+                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                </td>
+
+                                <td class="px-3 py-2 min-w-[145px]">
+                                    <input form="new-subtask-form"
+                                        type="date"
+                                        name="startdate"
+                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                </td>
+
+                                <td class="px-3 py-2 min-w-[145px]">
+                                    <input form="new-subtask-form"
+                                        type="date"
+                                        name="duedate"
+                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                </td>
+
+                                <td class="px-3 py-2 min-w-[125px]">
+                                    <select form="new-subtask-form"
+                                            name="priority"
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                        <option value="medium" selected>Medium</option>
+                                        <option value="low">Low</option>
+                                        <option value="high">High</option>
+                                        <option value="urgent">Urgent</option>
+                                    </select>
+                                </td>
+
+                                <td class="px-3 py-2 min-w-[170px]">
+                                    <select form="new-subtask-form"
+                                            name="statusid"
+                                            required
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                        @foreach ($statuses as $status)
+                                            <option value="{{ $status->id }}">
+                                                {{ $status->statuslabel }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </td>
+
+                                <td class="px-3 py-2 min-w-[180px]">
+                                    <span class="text-xs text-gray-400">
+                                        Add labels in View
+                                    </span>
+                                </td>
+
+                                <td class="px-3 py-2 whitespace-nowrap text-right">
+                                    <button form="new-subtask-form"
+                                            type="submit"
+                                            class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded hover:bg-blue-700">
+                                        + Add
+                                    </button>
+                                </td>
+                            </tr>
+
+                            {{-- Existing sub-tasks --}}
+                            @forelse ($task->subtasks as $sub)
+                                {{-- Valid external form; fields in the table row attach to it --}}
+                                <form id="subtask-form-{{ $sub->id }}"
+                                    method="POST"
+                                    action="{{ route('tasks.update', $sub) }}">
+                                    @csrf
+                                    @method('PATCH')
+
+                                    <input type="hidden" name="from" value="{{ $from }}">
+                                    <input type="hidden" name="return_url" value="{{ url()->full() }}">
+                                </form>
+
+                                <tr class="hover:bg-gray-50 align-top">
+                                    <td class="px-3 py-2 min-w-[260px]">
+                                        <input form="subtask-form-{{ $sub->id }}"
+                                            type="text"
+                                            name="title"
+                                            value="{{ $sub->tasktitle }}"
+                                            required
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                    </td>
+
+                                    <td class="px-3 py-2 min-w-[145px]">
+                                        <input form="subtask-form-{{ $sub->id }}"
+                                            type="date"
+                                            name="startdate"
+                                            value="{{ $sub->startdate?->format('Y-m-d') }}"
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                    </td>
+
+                                    <td class="px-3 py-2 min-w-[145px]">
+                                        <input form="subtask-form-{{ $sub->id }}"
+                                            type="date"
+                                            name="duedate"
+                                            value="{{ $sub->duedate?->format('Y-m-d') }}"
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                    </td>
+
+                                    <td class="px-3 py-2 min-w-[125px]">
+                                        <select form="subtask-form-{{ $sub->id }}"
+                                                name="priority"
+                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                            @foreach (['low', 'medium', 'high', 'urgent'] as $priority)
+                                                <option value="{{ $priority }}"
+                                                        @selected($sub->priority === $priority)>
+                                                    {{ ucfirst($priority) }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </td>
+
+                                    <td class="px-3 py-2 min-w-[170px]">
+                                        <select form="subtask-form-{{ $sub->id }}"
+                                                name="statusid"
+                                                required
+                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                            @foreach ($statuses as $status)
+                                                <option value="{{ $status->id }}"
+                                                        @selected($sub->statusid === $status->id)>
+                                                    {{ $status->statuslabel }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </td>
+
+                                    {{-- Display only labels assigned to this sub-task --}}
+                                    <td class="px-3 py-2 min-w-[180px]">
+                                        @if ($sub->labels->isNotEmpty())
+                                            <div class="flex flex-wrap gap-1">
+                                                @foreach ($sub->labels as $label)
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-white text-[11px]"
+                                                        style="background: {{ $label->colourhex }}">
+                                                        {{ $label->labelname }}
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <span class="text-xs text-gray-400">—</span>
+                                        @endif
+                                    </td>
+
+                                    <td class="px-3 py-2 whitespace-nowrap text-right">
+                                        <button form="subtask-form-{{ $sub->id }}"
+                                                type="submit"
+                                                class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700">
+                                            Save
+                                        </button>
+
+                                        <a href="{{ route('tasks.show', [
+                                                'task' => $sub,
+                                                'from' => $from,
+                                                'return' => $returnUrl,
+                                            ]) }}"
+                                        class="ml-1 inline-flex items-center px-3 py-1.5 border border-gray-300 bg-white text-gray-700 text-xs font-semibold rounded hover:bg-gray-50">
+                                            View
+                                        </a>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-3 py-5 text-center text-xs text-gray-500">
+                                        No sub-tasks yet. Use the blue row above to add one.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {{-- Dependencies --}}
+            <div class="bg-white shadow-sm rounded-lg border border-indigo-200">
+                <div class="px-4 py-3 border-b border-indigo-200 bg-indigo-50">
+                    <h3 class="text-sm font-semibold text-indigo-900">Dependencies</h3>
+                    <p class="mt-1 text-xs text-indigo-700">
+                        Record tasks that must occur before this task. These will be used by Gantt charts.
+                    </p>
+                </div>
+
+                <div class="p-4 space-y-4">
+                    {{-- Add a dependency --}}
+                    <form method="POST"
+                        action="{{ route('tasks.dependencies.store', $task) }}"
+                        class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                        @csrf
+
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-medium text-gray-600">
+                                This task depends on
+                            </label>
+
+                            <select name="dependsontaskid"
+                                    required
+                                    class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                <option value="">Select earlier task</option>
+
+                                @foreach ($projectTasks as $otherTask)
+                                    <option value="{{ $otherTask->id }}">
+                                        {{ $otherTask->tasktitle }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">
+                                Type
+                            </label>
+
+                            <select name="dependencytype"
+                                    class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                <option value="FS">Finish to Start</option>
+                                <option value="SS">Start to Start</option>
+                                <option value="FF">Finish to Finish</option>
+                                <option value="SF">Start to Finish</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">
+                                Lag days
+                            </label>
+
+                            <input type="number"
+                                name="lagdays"
+                                value="0"
+                                class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
+                        </div>
+
+                        <div class="md:col-span-4 flex justify-end">
+                            <button type="submit"
+                                    class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded hover:bg-indigo-700">
+                                Add dependency
+                            </button>
+                        </div>
+                    </form>
+
+                    {{-- Existing dependencies --}}
+                    @if ($task->dependencies->isNotEmpty())
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-sm">
+                                <thead class="border-y border-gray-200 bg-gray-50">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                                            Depends on task
+                                        </th>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                                            Type
+                                        </th>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                                            Lag
+                                        </th>
+                                        <th class="px-3 py-2 text-right text-xs font-semibold text-gray-600">
+                                            Action
+                                        </th>
+                                    </tr>
+                                </thead>
+
+                                <tbody class="divide-y divide-gray-100">
+                                    @foreach ($task->dependencies as $dependency)
+                                        <tr>
+                                            <td class="px-3 py-2">
+                                                <a href="{{ route('tasks.show', [
+                                                        'task' => $dependency->dependsOnTask,
+                                                        'from' => $from,
+                                                        'return' => url()->full(),
+                                                    ]) }}"
+                                                class="hover:underline">
+                                                    {{ $dependency->dependsOnTask->tasktitle }}
+                                                </a>
+                                            </td>
+
+                                            <td class="px-3 py-2 text-xs text-gray-700">
+                                                @switch($dependency->dependencytype)
+                                                    @case('FS')
+                                                        Finish to Start
+                                                        @break
+
+                                                    @case('SS')
+                                                        Start to Start
+                                                        @break
+
+                                                    @case('FF')
+                                                        Finish to Finish
+                                                        @break
+
+                                                    @case('SF')
+                                                        Start to Finish
+                                                        @break
+
+                                                    @default
+                                                        {{ $dependency->dependencytype }}
+                                                @endswitch
+                                            </td>
+
+                                            <td class="px-3 py-2 text-xs text-gray-700">
+                                                {{ $dependency->lagdays }} day{{ abs($dependency->lagdays) === 1 ? '' : 's' }}
+                                            </td>
+
+                                            <td class="px-3 py-2 text-right">
+                                                <form method="POST"
+                                                    action="{{ route('tasks.dependencies.destroy', [
+                                                        'task' => $task,
+                                                        'dependency' => $dependency,
+                                                    ]) }}"
+                                                    onsubmit="return confirm('Remove this dependency?');">
+                                                    @csrf
+                                                    @method('DELETE')
+
+                                                    <button type="submit"
+                                                            class="inline-flex items-center px-3 py-1.5 border border-red-300 rounded text-xs font-semibold text-red-700 bg-white hover:bg-red-50">
+                                                        Remove
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <p class="text-xs text-gray-500">
+                            No dependencies have been added.
+                        </p>
+                    @endif
+
+                    <p class="text-[11px] text-gray-500">
+                        FS = Finish to Start; SS = Start to Start; FF = Finish to Finish; SF = Start to Finish.
+                        Positive lag delays this task; negative lag allows overlap.
+                    </p>
+                </div>
+            </div>
 
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <h3 class="text-sm font-semibold mb-3">Comments</h3>
@@ -479,7 +865,7 @@
             const panel = document.getElementById('task-labels-panel');
             const summary = document.getElementById('selected-task-labels-summary');
 
-            if (!toggleButton || !panel || !summary) {
+            if (!panel) {
                 return;
             }
 
@@ -519,16 +905,20 @@
                 });
             }
 
-            function updateToggleLabel() {
-                toggleButton.textContent = panel.classList.contains('hidden')
-                    ? 'Add or change labels'
-                    : 'Hide labels';
-            }
+            if (toggleButton) {
+                function updateToggleLabel() {
+                    toggleButton.textContent = panel.classList.contains('hidden')
+                        ? 'Add or change labels'
+                        : 'Hide labels';
+                }
 
-            toggleButton.addEventListener('click', function () {
-                panel.classList.toggle('hidden');
+                toggleButton.addEventListener('click', function () {
+                    panel.classList.toggle('hidden');
+                    updateToggleLabel();
+                });
+
                 updateToggleLabel();
-            });
+            }
 
             checkboxes.forEach(cb => cb.addEventListener('change', updateSummary));
 

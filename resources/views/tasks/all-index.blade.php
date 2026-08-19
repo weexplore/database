@@ -136,13 +136,73 @@
                             @forelse ($tasks as $task)
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-3 py-2">
-                                        {{-- All Tasks list --}}
-                                        <a href="{{ route('tasks.show', [
-                                            'task' => $task,
-                                            'from' => 'alltasks',
-                                        ]) }}&return={{ urlencode(request()->fullUrl()) }}">
-                                            {{ $task->tasktitle }}
-                                        </a>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <a href="{{ route('tasks.show', [
+                                                'task' => $task,
+                                                'from' => 'alltasks',
+                                                'return' => request()->fullUrl(),
+                                            ]) }}"
+                                            class="hover:underline">
+                                                {{ $task->tasktitle }}
+                                            </a>
+
+                                            @if ($task->recurrence)
+                                                <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold shadow-sm"
+                                                    style="border-color: #a78bfa; background-color: #f5f3ff; color: #5b21b6;"
+                                                    title="Active recurring task">
+                                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                                        class="h-3.5 w-3.5"
+                                                        viewBox="0 0 20 20"
+                                                        fill="currentColor"
+                                                        aria-hidden="true">
+                                                        <path fill-rule="evenodd"
+                                                            d="M15.312 11.424a5.5 5.5 0 0 1-9.625 1.258.75.75 0 1 0-1.14.974 7 7 0 0 0 12.258-1.601.75.75 0 0 0-1.493-.2ZM4.688 8.576a5.5 5.5 0 0 1 9.625-1.258.75.75 0 1 0 1.14-.974A7 7 0 0 0 3.195 7.945a.75.75 0 0 0 1.493.2Z"
+                                                            clip-rule="evenodd" />
+                                                        <path d="M13.5 3.5a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 .75.75v2.5a.75.75 0 0 1-1.5 0V5.31l-1.22 1.22a.75.75 0 0 1-1.06-1.06l1.22-1.22h-.69a.75.75 0 0 1-.75-.75ZM6.5 16.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1-.75-.75v-2.5a.75.75 0 0 1 1.5 0v.69l1.22-1.22a.75.75 0 0 1 1.06 1.06L5.06 15.75h.69a.75.75 0 0 1 .75.75Z" />
+                                                    </svg>
+                                                    Recurring
+                                                </span>
+                                            @endif
+
+                                            @if ($task->parentTask)
+                                                <a href="{{ route('tasks.show', [
+                                                    'task' => $task->parentTask,
+                                                    'from' => 'alltasks',
+                                                    'return' => request()->fullUrl(),
+                                                ]) }}"
+                                                class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold shadow-sm hover:opacity-80"
+                                                style="border-color: #4ade80; background-color: #f0fdf4; color: #166534;"
+                                                title="Child of: {{ $task->parentTask->tasktitle }}">
+                                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                                        class="h-3.5 w-3.5"
+                                                        viewBox="0 0 20 20"
+                                                        fill="currentColor"
+                                                        aria-hidden="true">
+                                                        <path fill-rule="evenodd"
+                                                            d="M3 4.75A1.75 1.75 0 0 1 4.75 3h3.5A1.75 1.75 0 0 1 10 4.75v3.5A1.75 1.75 0 0 1 8.25 10H6.5v2.25A1.75 1.75 0 0 0 8.25 14H12v1.25A1.75 1.75 0 0 0 13.75 17h1.5A1.75 1.75 0 0 0 17 15.25v-3.5A1.75 1.75 0 0 0 15.25 10h-1.5A1.75 1.75 0 0 0 12 11.75V12.5H8.25a.25.25 0 0 1-.25-.25V10h.25A1.75 1.75 0 0 0 10 8.25v-3.5A1.75 1.75 0 0 0 8.25 3h-3.5A1.75 1.75 0 0 0 3 4.75Zm1.75-.25a.25.25 0 0 0-.25.25v3.5c0 .138.112.25.25.25h3.5a.25.25 0 0 0 .25-.25v-3.5a.25.25 0 0 0-.25-.25h-3.5Zm9 7.75a.25.25 0 0 0-.25.25v3.5c0 .138.112.25.25.25h1.5a.25.25 0 0 0 .25-.25v-3.5a.25.25 0 0 0-.25-.25h-1.5Z"
+                                                            clip-rule="evenodd" />
+                                                    </svg>
+                                                    Child task
+                                                </a>
+                                            @endif
+
+                                            @if ($task->subtasks_count > 0)
+                                                <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold shadow-sm"
+                                                    style="border-color: #38bdf8; background-color: #f0f9ff; color: #075985;"
+                                                    title="{{ $task->subtasks_count }} subtask{{ $task->subtasks_count === 1 ? '' : 's' }}">
+                                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                                        class="h-3.5 w-3.5"
+                                                        viewBox="0 0 20 20"
+                                                        fill="currentColor"
+                                                        aria-hidden="true">
+                                                        <path fill-rule="evenodd"
+                                                            d="M5.5 3.75A2.75 2.75 0 0 1 8.25 1h6A2.75 2.75 0 0 1 17 3.75v4.5A2.75 2.75 0 0 1 14.25 11H9.5v2.25A2.75 2.75 0 0 1 6.75 16H5.06l-1.53 1.53A.75.75 0 0 1 2.25 17v-4.75A2.75 2.75 0 0 1 5 9.5h.5v-5.75Zm2.75-1.25A1.25 1.25 0 0 0 7 3.75V9.5h7.25a2.75 2.75 0 0 1 1.25.3V3.75a1.25 1.25 0 0 0-1.25-1.25h-6ZM5 11a1.25 1.25 0 0 0-1.25 1.25v2.94l.47-.47A.75.75 0 0 1 4.75 14.5h2A1.25 1.25 0 0 0 8 13.25V11H5Z"
+                                                            clip-rule="evenodd" />
+                                                    </svg>
+                                                    {{ $task->subtasks_count }} subtask{{ $task->subtasks_count === 1 ? '' : 's' }}
+                                                </span>
+                                            @endif
+                                        </div>
                                     </td>
                                     <td class="px-3 py-2 text-xs text-gray-700">
                                         {{ $task->project->projectname ?? '—' }}

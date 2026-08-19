@@ -18,8 +18,16 @@ class TaskController extends Controller
         $hideClosed = $request->boolean('hideclosed', true);
 
         $tasksQuery = $project->tasks()
-            ->with(['status', 'assignee', 'labels', 'recurrence'])
-            ->whereNull('parenttaskid');
+            ->with([
+                'status',
+                'assignee',
+                'labels',
+                'parentTask',
+                'recurrence' => function ($q) {
+                    $q->where('isactive', 1);
+                },
+            ])
+            ->withCount('subtasks');
 
         if ($hideClosed) {
             $tasksQuery->where(function (Builder $q) {
@@ -42,56 +50,133 @@ class TaskController extends Controller
 
     public function show(Task $task)
     {
-        $task->load(['subtasks.status', 'labels', 'comments.user', 'recurrence', 'dependsOn']);
+        $task->load([
+            'project',
+            'status',
+            'assignee',
+            'labels',
+            'recurrence',
+            'subtasks.status',
+            'subtasks.labels',
+            'comments.user',
+            'dependencies.dependsOnTask.status',
+        ]);
 
         $projects = Project::orderBy('projectname')->get();
 
-        return view('tasks.show', compact('task', 'projects'));
+        $statuses = $task->project
+            ->taskStatuses()
+            ->orderBy('sortorder')
+            ->get();
+
+        $labels = Label::orderBy('labelname')->get();
+
+        $projectTasks = $task->project
+            ->tasks()
+            ->where('id', '!=', $task->id)
+            ->orderBy('tasktitle')
+            ->get();
+
+        return view('tasks.show', compact(
+            'task',
+            'projects',
+            'statuses',
+            'labels',
+            'projectTasks'
+        ));
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'projectid' => 'required|exists:projects,id',
-            'parenttaskid' => 'nullable|exists:tasks,id',
-            'statusid' => 'required|exists:task_statuses,id',
-            'title' => 'required|string|max:200',
-            'description' => 'nullable|string',
-            'priority' => 'nullable|string',
-            'assigneeid' => 'nullable|exists:users,id',
-            'startdate' => 'nullable|date',
-            'duedate' => 'nullable|date',
-            'labelids' => 'nullable|array',
+            'projectid'    => ['required', 'exists:projects,id'],
+            'parenttaskid' => ['nullable', 'exists:tasks,id'],
+            'statusid'     => ['required', 'exists:task_statuses,id'],
+            'title'        => ['required', 'string', 'max:200'],
+            'description'  => ['nullable', 'string'],
+            'priority'     => ['nullable', 'in:low,medium,high,urgent'],
+            'assigneeid'   => ['nullable', 'exists:users,id'],
+            'startdate'    => ['nullable', 'date'],
+            'duedate'      => ['nullable', 'date'],
+            'labelids'     => ['nullable', 'array'],
+            'labelids.*'   => ['integer', 'exists:labels,id'],
         ]);
 
-        // Map to DB column names
+        if (!empty($data['parenttaskid'])) {
+            $parentTask = Task::findOrFail($data['parenttaskid']);
+
+            if ((int) $parentTask->projectid !== (int) $data['projectid']) {
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'parenttaskid' => 'A sub-task must belong to the same project as its parent task.',
+                    ]);
+            }
+        }
+
         $data['tasktitle'] = $data['title'];
         unset($data['title']);
 
         $data['assignedto'] = $data['assigneeid'] ?? null;
         unset($data['assigneeid']);
 
+        // labelids belongs to the pivot relation, not the tasks table.
+        $labelIds = $data['labelids'] ?? [];
+        unset($data['labelids']);
+
         $task = Task::create($data);
 
-        if (!empty($data['labelids'])) {
-            $task->labels()->sync($data['labelids']);
+        $task->labels()->sync($labelIds);
+
+        if (!empty($task->parenttaskid)) {
+            return redirect()
+                ->route('tasks.show', [
+                    'task' => $task->parenttaskid,
+                    'from' => $request->input('from'),
+                    'return' => $request->input('return_url'),
+                ])
+                ->with('success', 'Sub-task created.');
         }
 
-        return redirect()->route('tasks.show', $task)->with('success', 'Task created.');
+        return redirect()
+            ->route('tasks.show', $task)
+            ->with('success', 'Task created.');
     }
 
     public function update(Request $request, Task $task)
     {
         $data = $request->validate([
-            'statusid' => 'required|exists:task_statuses,id',
-            'title' => 'required|string|max:200',
-            'description' => 'nullable|string',
-            'priority' => 'nullable|string',
-            'assigneeid' => 'nullable|exists:users,id',
-            'startdate' => 'nullable|date',
-            'duedate' => 'nullable|date',
-            'labelids' => 'nullable|array',
+            'parenttaskid' => ['nullable', 'exists:tasks,id'],
+            'statusid'     => ['required', 'exists:task_statuses,id'],
+            'title'        => ['required', 'string', 'max:200'],
+            'description'  => ['nullable', 'string'],
+            'priority'     => ['nullable', 'in:low,medium,high,urgent'],
+            'assigneeid'   => ['nullable', 'exists:users,id'],
+            'startdate'    => ['nullable', 'date'],
+            'duedate'      => ['nullable', 'date'],
+            'labelids'     => ['nullable', 'array'],
+            'labelids.*'   => ['integer', 'exists:labels,id'],
         ]);
+
+        if (!empty($data['parenttaskid'])) {
+            if ((int) $data['parenttaskid'] === (int) $task->id) {
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'parenttaskid' => 'A task cannot be its own parent.',
+                    ]);
+            }
+
+            $parentTask = Task::findOrFail($data['parenttaskid']);
+
+            if ((int) $parentTask->projectid !== (int) $task->projectid) {
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'parenttaskid' => 'A sub-task must belong to the same project as its parent task.',
+                    ]);
+            }
+        }
 
         $data['tasktitle'] = $data['title'];
         unset($data['title']);
@@ -99,18 +184,19 @@ class TaskController extends Controller
         $data['assignedto'] = $data['assigneeid'] ?? null;
         unset($data['assigneeid']);
 
+        $labelIds = $data['labelids'] ?? [];
+        unset($data['labelids']);
+
         $task->update($data);
-        $task->labels()->sync($data['labelids'] ?? []);
+        $task->labels()->sync($labelIds);
 
         $from = $request->input('from');
         $returnUrl = $request->input('return_url');
 
         if ($returnUrl) {
-            // Go back to exactly where we came from (All Tasks page N with filters)
             return redirect($returnUrl)->with('success', 'Task updated.');
         }
 
-        // Fallbacks: from Kanban or direct
         if ($from === 'alltasks') {
             return redirect()
                 ->route('tasksall.all')
@@ -238,7 +324,16 @@ class TaskController extends Controller
     }
 
     $tasksQuery = Task::query()
-        ->with(['project', 'labels', 'status'])
+        ->with([
+            'project',
+            'labels',
+            'status',
+            'parentTask',
+            'recurrence' => function ($q) {
+                $q->where('isactive', 1);
+            },
+        ])
+        ->withCount('subtasks')
         ->when($projectId, function (Builder $q) use ($projectId) {
             $q->where('projectid', $projectId);
         })

@@ -1,7 +1,3 @@
-@php
-    use Illuminate\Support\Str;
-    $startCollapsed = 'true';
-@endphp
 {{-- resources/views/knowledge/items/partials/notes-panel.blade.php --}}
 
 <style>
@@ -105,13 +101,13 @@
                         name="notecontent"
                         id="note_notecontent"
                         label="Note Content"
-                        :value="old('notecontent')"
-                        rows="5"
+                        :value="old('notecontent', '')"
+                        rows="8"
                         minRows="4"
                         maxRows="18"
                         placeholder="Write the note content in Markdown..."
-                        help="Markdown supported. Use Show preview to view formatted content."
-                        required
+                        help="Markdown supported, including headings, lists, emphasis, links, and tables."
+                        :startCollapsed="false"
                     />
                 </div>
 
@@ -240,13 +236,13 @@
                                 name="notecontent"
                                 id="note_notecontent_{{ $note->id }}"
                                 label="Note Content"
-                                :value="old('notecontent', $note->notecontent)"
-                                rows="5"
+                                :value="old('notecontent', $note->notecontent ?? '')"
+                                rows="8"
                                 minRows="4"
                                 maxRows="18"
                                 placeholder="Write the note content in Markdown..."
-                                help="Markdown supported. Use Show preview to view formatted content."
-                                required
+                                help="Markdown supported, including headings, lists, emphasis, links, and tables."
+                                :startCollapsed="false"
                             />
                         </div>
 
@@ -429,6 +425,7 @@
 </div>
 
 @if(($activeTab ?? null) === 'notes')
+    @include('partials.markdown.markdown-styles')
     @include('partials.forms.markdown-field-scripts')
 
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>

@@ -1,4 +1,3 @@
-{{-- resources/views/components/forms/markdown-field.blade.php --}}
 @props([
     'name',
     'id' => null,
@@ -9,6 +8,7 @@
     'maxRows' => 14,
     'placeholder' => '',
     'help' => null,
+    'startCollapsed' => true,
 ])
 
 @php
@@ -40,14 +40,13 @@
 
         .markdown-editor-textarea {
             width: 100%;
-            min-height: 8rem;
+            height: 12rem;
+            min-height: 12rem;
             max-height: 24rem;
+            box-sizing: border-box;
             resize: vertical;
             overflow-y: auto;
-        }
-
-        .markdown-preview-panel[hidden] {
-            display: none !important;
+            overflow-x: hidden;
         }
 
         .markdown-preview-panel {
@@ -75,7 +74,12 @@
         </label>
     @endif
 
-    <div class="rounded-lg border border-gray-200 bg-white p-4 space-y-4">
+    {{-- Editor panel: collapsed by default --}}
+    <div
+        id="{{ $fieldId }}-editor"
+        class="rounded-lg border border-gray-200 bg-white p-4 space-y-4 js-markdown-editor-container"
+        @if($startCollapsed) hidden @endif
+    >
         <textarea
             name="{{ $fieldName }}"
             id="{{ $fieldId }}"
@@ -84,7 +88,7 @@
             data-max-rows="{{ $maxRows }}"
             data-markdown-render-target-id="{{ $renderedId }}"
             placeholder="{{ $placeholder }}"
-            class="js-auto-resize-textarea js-markdown-source markdown-editor-textarea block w-full rounded-md border-gray-300 shadow-sm text-sm"
+            class="js-markdown-source markdown-editor-textarea block w-full rounded-md border-gray-300 shadow-sm text-sm"
         >{{ $fieldValue }}</textarea>
 
         @if($help)
@@ -92,21 +96,46 @@
                 {{ $help }}
             </p>
         @endif
-
-        <div class="flex items-center justify-start gap-3">
-            <button type="button"
-                    class="markdown-field-toggle js-markdown-preview-toggle"
-                    data-target="{{ $renderedId }}-container"
-                    aria-expanded="false"
-                    aria-controls="{{ $renderedId }}-container">
-                Show preview
-            </button>
-        </div>
     </div>
 
+    {{-- Toggle button for editor --}}
+    <button type="button"
+            class="markdown-field-toggle"
+            data-target="{{ $fieldId }}-editor"
+            onclick="
+                (function(btn) {
+                    var panel = document.getElementById(btn.dataset.target);
+                    if (!panel) return;
+
+                    var textarea = panel.querySelector('.markdown-editor-textarea');
+
+                    if (panel.hasAttribute('hidden')) {
+                        panel.removeAttribute('hidden');
+
+                        if (textarea) {
+                            textarea.style.overflowY = 'scroll';
+                            textarea.style.height = '12rem';
+
+                            requestAnimationFrame(function () {
+                                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                                textarea.focus();
+                            });
+                        }
+                    } else {
+                        panel.setAttribute('hidden', 'hidden');
+                    }
+
+                    btn.textContent = panel.hasAttribute('hidden')
+                        ? 'Edit text'
+                        : 'Hide editor';
+                })(this);
+            ">
+        {{ $startCollapsed ? 'Edit text' : 'Hide editor' }}
+    </button>
+
+    {{-- Always-visible preview --}}
     <div id="{{ $renderedId }}-container"
-         class="rounded-lg border border-gray-200 bg-gray-50 p-4 markdown-preview-panel js-markdown-rendered-block"
-         hidden>
+         class="rounded-lg border border-gray-200 bg-gray-50 p-4 markdown-preview-panel js-markdown-rendered-block">
         <div id="{{ $renderedId }}"
              class="markdown-content text-sm text-gray-700 js-markdown-render-target"
              data-empty-html="<p class='markdown-rendered-empty'>No content yet.</p>"></div>
@@ -116,3 +145,34 @@
         <p class="text-sm text-red-600">{{ $message }}</p>
     @enderror
 </div>
+
+@once
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.js-markdown-editor-toggle').forEach(btn => {
+                const targetId = btn.dataset.target;
+                const panel = document.getElementById(targetId);
+                if (!panel) return;
+
+                function updateLabel() {
+                    if (panel.hasAttribute('hidden')) {
+                        btn.textContent = 'Edit text';
+                    } else {
+                        btn.textContent = 'Hide editor';
+                    }
+                }
+
+                btn.addEventListener('click', () => {
+                    if (panel.hasAttribute('hidden')) {
+                        panel.removeAttribute('hidden');
+                    } else {
+                        panel.setAttribute('hidden', 'hidden');
+                    }
+                    updateLabel();
+                });
+
+                updateLabel();
+            });
+        });
+    </script>
+@endonce

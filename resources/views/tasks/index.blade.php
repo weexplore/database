@@ -36,7 +36,7 @@
                 <form id="new-task-form"
                     method="POST"
                     action="{{ route('tasks.store') }}"
-                    class="border-b border-gray-200 p-4 grid grid-cols-1 md:grid-cols-5 gap-4 bg-gray-50">
+                    class="border-b border-gray-200 p-4 grid grid-cols-1 md:grid-cols-6 gap-4 bg-gray-50">
                     @csrf
                     <input type="hidden" name="projectid" value="{{ $project->id }}">
 
@@ -53,6 +53,17 @@
                             @foreach ($statuses as $status)
                                 <option value="{{ $status->id }}">{{ $status->statuslabel }}</option>
                             @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600">Priority</label>
+                        <select name="priority"
+                                class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm">
+                            <option value="medium" selected>Medium</option>
+                            <option value="low">Low</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
                         </select>
                     </div>
 
@@ -101,16 +112,108 @@
                                             <a href="{{ route('tasks.show', $task) }}"
                                                class="block bg-white rounded-md shadow-sm p-3 text-sm hover:shadow-md transition">
                                                 <div class="font-medium">{{ $task->tasktitle }}</div>
+                                                @if ($task->startdate)
+                                                    <div class="text-xs text-gray-500 mt-1">
+                                                        Start {{ $task->startdate->format('d M Y') }}
+                                                    </div>
+                                                @endif
 
                                                 @if ($task->duedate)
                                                     <div class="text-xs text-gray-500 mt-1">
                                                         Due {{ $task->duedate->format('d M Y') }}
                                                     </div>
                                                 @endif
-                                                @if (optional($task->recurrence)->isactive)
-                                                    <div class="mt-1 text-[11px] text-emerald-700 flex items-center gap-1">
-                                                        <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                                        Recurring task
+                                                @if ($task->priority)
+                                                    @php
+                                                        $priority = strtolower($task->priority);
+
+                                                        $priorityStyles = match ($priority) {
+                                                            'urgent' => [
+                                                                'label' => 'Urgent',
+                                                                'border' => '#ef4444',
+                                                                'background' => '#fef2f2',
+                                                                'colour' => '#991b1b',
+                                                                'icon' => '!',
+                                                            ],
+                                                            'high' => [
+                                                                'label' => 'High',
+                                                                'border' => '#f97316',
+                                                                'background' => '#fff7ed',
+                                                                'colour' => '#9a3412',
+                                                                'icon' => '↑',
+                                                            ],
+                                                            'low' => [
+                                                                'label' => 'Low',
+                                                                'border' => '#94a3b8',
+                                                                'background' => '#f8fafc',
+                                                                'colour' => '#475569',
+                                                                'icon' => '↓',
+                                                            ],
+                                                            default => [
+                                                                'label' => 'Medium',
+                                                                'border' => '#eab308',
+                                                                'background' => '#fefce8',
+                                                                'colour' => '#854d0e',
+                                                                'icon' => '—',
+                                                            ],
+                                                        };
+                                                    @endphp
+
+                                                    <div class="mt-2">
+                                                        <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold shadow-sm"
+                                                            style="border-color: {{ $priorityStyles['border'] }}; background-color: {{ $priorityStyles['background'] }}; color: {{ $priorityStyles['colour'] }};"
+                                                            title="Priority: {{ $priorityStyles['label'] }}">
+                                                            <span class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[10px] leading-none"
+                                                                style="border-color: {{ $priorityStyles['border'] }};">
+                                                                {{ $priorityStyles['icon'] }}
+                                                            </span>
+                                                            {{ $priorityStyles['label'] }}
+                                                        </span>
+                                                    </div>
+                                                @endif
+                                                @if ($task->recurrence || $task->subtasks_count > 0 || $task->parentTask)
+                                                    <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                                                        @if ($task->recurrence)
+                                                            <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold shadow-sm"
+                                                                style="border-color: #a78bfa; background-color: #f5f3ff; color: #5b21b6;"
+                                                                title="Active recurring task">
+                                                                <svg xmlns="http://www.w3.org/2000/svg"
+                                                                    class="h-3.5 w-3.5"
+                                                                    viewBox="0 0 20 20"
+                                                                    fill="currentColor"
+                                                                    aria-hidden="true">
+                                                                    <path fill-rule="evenodd"
+                                                                        d="M15.312 11.424a5.5 5.5 0 0 1-9.625 1.258.75.75 0 1 0-1.14.974 7 7 0 0 0 12.258-1.601.75.75 0 0 0-1.493-.2ZM4.688 8.576a5.5 5.5 0 0 1 9.625-1.258.75.75 0 1 0 1.14-.974A7 7 0 0 0 3.195 7.945a.75.75 0 0 0 1.493.2Z"
+                                                                        clip-rule="evenodd" />
+                                                                    <path d="M13.5 3.5a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 .75.75v2.5a.75.75 0 0 1-1.5 0V5.31l-1.22 1.22a.75.75 0 0 1-1.06-1.06l1.22-1.22h-.69a.75.75 0 0 1-.75-.75ZM6.5 16.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1-.75-.75v-2.5a.75.75 0 0 1 1.5 0v.69l1.22-1.22a.75.75 0 0 1 1.06 1.06L5.06 15.75h.69a.75.75 0 0 1 .75.75Z" />
+                                                                </svg>
+                                                                Recurring
+                                                            </span>
+                                                        @endif
+
+                                                        @if ($task->subtasks_count > 0)
+                                                            <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold shadow-sm"
+                                                                style="border-color: #38bdf8; background-color: #f0f9ff; color: #075985;"
+                                                                title="{{ $task->subtasks_count }} subtask{{ $task->subtasks_count === 1 ? '' : 's' }}">
+                                                                <svg xmlns="http://www.w3.org/2000/svg"
+                                                                    class="h-3.5 w-3.5"
+                                                                    viewBox="0 0 20 20"
+                                                                    fill="currentColor"
+                                                                    aria-hidden="true">
+                                                                    <path fill-rule="evenodd"
+                                                                        d="M3.75 3.5A1.25 1.25 0 0 1 5 2.25h9A1.25 1.25 0 0 1 15.25 3.5v4A1.25 1.25 0 0 1 14 8.75H9v1.5h5.25A1.75 1.75 0 0 1 16 12v3.25A1.75 1.75 0 0 1 14.25 17h-2.5A1.75 1.75 0 0 1 10 15.25V12A1.75 1.75 0 0 1 11.75 10.25H7.5V8.75H5A1.25 1.25 0 0 1 3.75 7.5v-4ZM5 3.75a.25.25 0 0 0-.25.25v3a.25.25 0 0 0 .25.25h9a.25.25 0 0 0 .25-.25V4a.25.25 0 0 0-.25-.25H5Zm6.75 7.75a.25.25 0 0 0-.25.25v3.5c0 .138.112.25.25.25h2.5a.25.25 0 0 0 .25-.25v-3.5a.25.25 0 0 0-.25-.25h-2.5Z"
+                                                                        clip-rule="evenodd" />
+                                                                </svg>
+                                                                {{ $task->subtasks_count }} subtask{{ $task->subtasks_count === 1 ? '' : 's' }}
+                                                            </span>
+                                                        @endif
+                                                        @if ($task->parentTask)
+                                                            <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold shadow-sm"
+                                                                style="border-color: #4ade80; background-color: #f0fdf4; color: #166534;"
+                                                                title="Child of: {{ $task->parentTask->tasktitle }}">
+                                                                ↳ Child task
+                                                            </span>
+                                                        @endif
                                                     </div>
                                                 @endif
 

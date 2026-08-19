@@ -74,6 +74,7 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\StickyController;
 use App\Http\Controllers\TaskCommentController;
+use App\Http\Controllers\TaskDependencyController;
 
 
 /*
@@ -678,17 +679,18 @@ Route::patch('projects/bulk-update', [ProjectController::class, 'update'])->name
 Route::get('projects/{project}/tasks', [TaskController::class, 'index'])->name('tasks.index');
 Route::resource('tasks', TaskController::class)->only(['show', 'store', 'update', 'destroy']);
 
-Route::get('stickies', [StickyController::class, 'index'])
-    ->name('stickies.index');
+// routes/web.php
 
-Route::post('stickies', [StickyController::class, 'store'])
-    ->name('stickies.store');
-
-Route::patch('stickies/{sticky}', [StickyController::class, 'update'])
-    ->name('stickies.update');
-
-Route::delete('stickies/{sticky}', [StickyController::class, 'destroy'])
-    ->name('stickies.destroy');
+Route::get('/stickies', [StickyController::class, 'index'])->name('stickies.index');
+Route::post('/stickies', [StickyController::class, 'store'])->name('stickies.store');
+Route::patch('/stickies/{sticky}', [StickyController::class, 'update'])->name('stickies.update');
+Route::delete('/stickies/{sticky}', [StickyController::class, 'destroy'])->name('stickies.destroy');
+Route::get('/stickies/{sticky}/edit', [StickyController::class, 'edit'])
+    ->name('stickies.edit');
+Route::post('/stickies/create-and-edit', [StickyController::class, 'createAndEdit'])
+    ->name('stickies.create-and-edit');
+Route::post('/stickies/{sticky}/position', [StickyController::class, 'updatePosition'])
+    ->name('stickies.update-position');
 
 Route::get('/tasksall/all', [TaskController::class, 'allIndex'])
     ->name('tasksall.all');
@@ -702,3 +704,10 @@ Route::post('/tasks/{task}/move-project', [TaskController::class, 'moveProject']
     ->name('tasks.move-project');
 Route::post('/tasks/{task}/recurrence', [TaskController::class, 'updateRecurrence'])
     ->name('tasks.update-recurrence');
+
+
+Route::post('/tasks/{task}/dependencies', [TaskDependencyController::class, 'store'])
+    ->name('tasks.dependencies.store');
+
+Route::delete('/tasks/{task}/dependencies/{dependency}', [TaskDependencyController::class, 'destroy'])
+    ->name('tasks.dependencies.destroy');

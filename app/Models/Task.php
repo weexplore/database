@@ -79,4 +79,17 @@ class Task extends Model
     {
         return $this->belongsToMany(Task::class, 'task_dependencies', 'taskid', 'dependsontaskid');
     }
+    public function parentTask()
+    {
+        return $this->belongsTo(Task::class, 'parenttaskid');
+    }
+    public function dependencies()
+    {
+        return $this->hasMany(TaskDependency::class, 'taskid');
+    }
+
+    public function dependentTasks()
+    {
+        return $this->hasMany(TaskDependency::class, 'dependsontaskid');
+    }
 }
