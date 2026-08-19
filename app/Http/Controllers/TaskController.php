@@ -18,7 +18,7 @@ class TaskController extends Controller
         $hideClosed = $request->boolean('hideclosed', true);
 
         $tasksQuery = $project->tasks()
-            ->with(['status', 'assignee', 'labels', 'recurrence']) // + recurrence
+            ->with(['status', 'assignee', 'labels', 'recurrence'])
             ->whereNull('parenttaskid');
 
         if ($hideClosed) {
@@ -30,7 +30,10 @@ class TaskController extends Controller
             });
         }
 
-        $tasks = $tasksQuery->get()->groupBy('statusid');
+        $tasks = $tasksQuery
+            ->orderByRaw('duedate IS NULL, duedate ASC')
+            ->get()
+            ->groupBy('statusid');
 
         $statuses = $project->taskStatuses()->orderBy('sortorder')->get();
 
@@ -99,7 +102,24 @@ class TaskController extends Controller
         $task->update($data);
         $task->labels()->sync($data['labelids'] ?? []);
 
-        return redirect()->route('tasks.show', $task)->with('success', 'Task updated.');
+        $from = $request->input('from');
+        $returnUrl = $request->input('return_url');
+
+        if ($returnUrl) {
+            // Go back to exactly where we came from (All Tasks page N with filters)
+            return redirect($returnUrl)->with('success', 'Task updated.');
+        }
+
+        // Fallbacks: from Kanban or direct
+        if ($from === 'alltasks') {
+            return redirect()
+                ->route('tasksall.all')
+                ->with('success', 'Task updated.');
+        }
+
+        return redirect()
+            ->route('tasks.index', $task->projectid)
+            ->with('success', 'Task updated.');
     }
 
     public function destroy(Task $task)

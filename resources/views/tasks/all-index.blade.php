@@ -136,8 +136,11 @@
                             @forelse ($tasks as $task)
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-3 py-2">
-                                        <a href="{{ route('tasks.show', ['task' => $task, 'from' => 'alltasks']) }}"
-                                        class="text-sm text-blue-700 hover:underline">
+                                        {{-- All Tasks list --}}
+                                        <a href="{{ route('tasks.show', [
+                                            'task' => $task,
+                                            'from' => 'alltasks',
+                                        ]) }}&return={{ urlencode(request()->fullUrl()) }}">
                                             {{ $task->tasktitle }}
                                         </a>
                                     </td>
@@ -177,8 +180,12 @@
                                         </select>
                                     </td>
                                     <td class="px-3 py-2 text-right">
-                                        {{-- optional per-row button if you ever want row-only submits --}}
-                                        <a href="{{ route('tasks.show', ['task' => $task, 'from' => 'alltasks']) }}"
+                                        {{-- View button with return URL --}}
+                                        <a href="{{ route('tasks.show', [
+                                                'task'   => $task,
+                                                'from'   => 'alltasks',
+                                                'return' => request()->fullUrl(),
+                                            ]) }}"
                                         class="inline-flex items-center px-2.5 py-1.5 border border-gray-300 rounded text-xs text-gray-700 bg-white hover:bg-gray-100">
                                             View
                                         </a>

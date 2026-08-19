@@ -13,11 +13,14 @@
 
             @php
                 $from = request('from');
+                $returnUrl = request('return'); // may be null
             @endphp
+
+            
 
             @if ($from === 'alltasks')
                 <button type="button"
-                        onclick="window.location.href='{{ route('tasksall.all') }}'"
+                        onclick="window.location.href='{{ $returnUrl ?: route('tasksall.all') }}'"
                         class="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded border border-gray-300 hover:bg-gray-200">
                     ← Back to All Tasks
                 </button>
@@ -34,6 +37,9 @@
                 <form method="POST" action="{{ route('tasks.update', $task) }}" class="space-y-4">
                     @csrf
                     @method('PATCH')
+                    <input type="hidden" name="from" value="{{ $from }}">
+                    <input type="hidden" name="return_url" value="{{ $returnUrl }}">
+
 
                     <div>
                         <label class="block text-xs font-medium text-gray-600">Title</label>
@@ -153,6 +159,10 @@
                           class="space-y-4">
                         @csrf
                         @method('POST')
+
+                        <input type="hidden" name="from" value="{{ $from }}">
+                        <input type="hidden" name="return_url" value="{{ $returnUrl }}">
+
 
                         {{-- Core recurrence fields in a wider grid --}}
                         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -314,6 +324,10 @@
                         @csrf
                         @method('DELETE')
 
+                        <input type="hidden" name="from" value="{{ $from }}">
+                        <input type="hidden" name="return_url" value="{{ $returnUrl }}">
+
+
                         <div class="flex items-center justify-end">
                             <button type="submit"
                                     class="inline-flex items-center px-4 py-2 border border-red-300 rounded-md text-xs font-semibold text-red-700 bg-white uppercase tracking-widest hover:bg-red-50">
@@ -338,8 +352,7 @@
             <div id="move-task-panel"
                  class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-indigo-200 hidden">
                 <div class="px-4 py-3 border-b border-indigo-200 bg-indigo-50">
-                    <h3 class="text-sm font-semibold text-indigo-8
-00">Move Task to Another Project</h3>
+                    <h3 class="text-sm font-semibold text-indigo-800">Move Task to Another Project</h3>
                     <p class="mt-1 text-xs text-indigo-700">
                         Choose a target project. The task will be moved and its status mapped where possible.
                     </p>
@@ -350,6 +363,10 @@
                           action="{{ route('tasks.move-project', $task) }}"
                           onsubmit="return confirm('Move this task to a different project?');">
                         @csrf
+
+                        <input type="hidden" name="from" value="{{ $from }}">
+                        <input type="hidden" name="return_url" value="{{ $returnUrl }}">
+
 
                         <div class="flex flex-wrap gap-3 items-end">
                             <div class="flex-1 min-w-[220px]">
@@ -412,6 +429,11 @@
                       action="{{ route('task-comments.store', $task) }}"
                       class="flex gap-2">
                     @csrf
+
+                        <input type="hidden" name="from" value="{{ $from }}">
+                        <input type="hidden" name="return_url" value="{{ $returnUrl }}">
+
+
                     <input type="text"
                            name="commenttext"
                            required
