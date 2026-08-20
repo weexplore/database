@@ -802,9 +802,14 @@
                 <ul class="divide-y divide-gray-100 mb-4">
                     @foreach ($task->comments as $comment)
                         <li class="py-2 text-sm">
-                            <span class="font-medium">{{ $comment->user->name ?? 'Unknown' }}</span>
-                            <span class="text-gray-400 text-xs ml-2">
-                                {{ $comment->createdat?->diffForHumans() }}
+                            <span class="font-medium">{{ $comment->user->name ?? 'Ian Seaman' }}</span>
+                            <span class="text-gray-400 text-xs ml-2"
+                                title="{{ $comment->createdat
+                                    ?->shiftTimezone('Australia/Sydney')
+                                    ->format('d M Y, g:i A T') }}">
+                                {{ $comment->createdat
+                                    ?->shiftTimezone('Australia/Sydney')
+                                    ->diffForHumans() }}
                             </span>
                             <p class="text-gray-700 mt-1">{{ $comment->commenttext }}</p>
                         </li>
