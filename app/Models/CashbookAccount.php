@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\BudgetLine;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -74,5 +75,10 @@ class CashbookAccount extends Model
     public function defaultUnallocatedPaymentCategory(): BelongsTo
     {
         return $this->belongsTo(CashbookCategory::class, 'defaultunallocatedpaymentcategoryid');
+    }
+
+    public function budgetLines(): HasMany
+    {
+        return $this->hasMany(BudgetLine::class, 'accountid');
     }
 }

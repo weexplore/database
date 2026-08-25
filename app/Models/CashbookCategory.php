@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+
+use App\Models\BudgetLine;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -59,5 +61,27 @@ class CashbookCategory extends Model
     public function transactionLines(): HasMany
     {
         return $this->hasMany(CashbookTransactionLine::class, 'categoryid');
+    }
+
+    public function budgetLines(): HasMany
+    {
+        return $this->hasMany(BudgetLine::class, 'categoryid');
+    }
+
+    /**
+     * Return ancestor categories from the root down to this category's parent.
+     * The current category is not included.
+     */
+    public function ancestors(): \Illuminate\Support\Collection
+    {
+        $ancestors = collect();
+        $category = $this->parentCategory;
+
+        while ($category) {
+            $ancestors->prepend($category);
+            $category = $category->parentCategory;
+        }
+
+        return $ancestors;
     }
 }

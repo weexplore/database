@@ -67,6 +67,18 @@
                             <label for="hideclosed" class="text-xs font-medium text-gray-600">
                                 Hide closed tasks
                             </label>
+
+                            <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                <input type="hidden" name="templatesonly" value="0">
+
+                                <input type="checkbox"
+                                    name="templatesonly"
+                                    value="1"
+                                    class="rounded border-gray-300 text-indigo-600 shadow-sm"
+                                    @checked($templatesOnly)>
+
+                                <span>Show recurring tasks</span>
+                            </label>
                         </div>
 
                         <div class="md:col-span-4 flex gap-2 justify-end">
@@ -138,11 +150,11 @@
                                     <td class="px-3 py-2">
                                         <div class="flex flex-wrap items-center gap-2">
                                             <a href="{{ route('tasks.show', [
-                                                'task' => $task,
-                                                'from' => 'alltasks',
-                                                'return' => request()->fullUrl(),
-                                            ]) }}"
-                                            class="hover:underline">
+                                                    'task' => $task,
+                                                    'from' => 'alltasks',
+                                                    'return' => url()->full(),
+                                                ]) }}"
+                                            class="text-indigo-700 hover:underline">
                                                 {{ $task->tasktitle }}
                                             </a>
 
@@ -189,17 +201,19 @@
                                             @if ($task->subtasks_count > 0)
                                                 <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold shadow-sm"
                                                     style="border-color: #38bdf8; background-color: #f0f9ff; color: #075985;"
-                                                    title="{{ $task->subtasks_count }} subtask{{ $task->subtasks_count === 1 ? '' : 's' }}">
+                                                    title="{{ $task->open_subtasks_count }} open of {{ $task->subtasks_count }} total subtask{{ $task->subtasks_count === 1 ? '' : 's' }}">
                                                     <svg xmlns="http://www.w3.org/2000/svg"
                                                         class="h-3.5 w-3.5"
                                                         viewBox="0 0 20 20"
                                                         fill="currentColor"
                                                         aria-hidden="true">
                                                         <path fill-rule="evenodd"
-                                                            d="M5.5 3.75A2.75 2.75 0 0 1 8.25 1h6A2.75 2.75 0 0 1 17 3.75v4.5A2.75 2.75 0 0 1 14.25 11H9.5v2.25A2.75 2.75 0 0 1 6.75 16H5.06l-1.53 1.53A.75.75 0 0 1 2.25 17v-4.75A2.75 2.75 0 0 1 5 9.5h.5v-5.75Zm2.75-1.25A1.25 1.25 0 0 0 7 3.75V9.5h7.25a2.75 2.75 0 0 1 1.25.3V3.75a1.25 1.25 0 0 0-1.25-1.25h-6ZM5 11a1.25 1.25 0 0 0-1.25 1.25v2.94l.47-.47A.75.75 0 0 1 4.75 14.5h2A1.25 1.25 0 0 0 8 13.25V11H5Z"
+                                                            d="M3.75 3.5A1.25 1.25 0 0 1 5 2.25h9A1.25 1.25 0 0 1 15.25 3.5v4A1.25 1.25 0 0 1 14 8.75H9v1.5h5.25A1.75 1.75 0 0 1 16 12v3.25A1.75 1.75 0 0 1 14.25 17h-2.5A1.75 1.75 0 0 1 10 15.25V12A1.75 1.75 0 0 1 11.75 10.25H7.5V8.75H5A1.25 1.25 0 0 1 3.75 7.5v-4ZM5 3.75a.25.25 0 0 0-.25.25v3a.25.25 0 0 0 .25.25h9a.25.25 0 0 0 .25-.25V4a.25.25 0 0 0-.25-.25H5Zm6.75 7.75a.25.25 0 0 0-.25.25v3.5c0 .138.112.25.25.25h2.5a.25.25 0 0 0 .25-.25v-3.5a.25.25 0 0 0-.25-.25h-2.5Z"
                                                             clip-rule="evenodd" />
                                                     </svg>
-                                                    {{ $task->subtasks_count }} subtask{{ $task->subtasks_count === 1 ? '' : 's' }}
+
+                                                    {{ $task->open_subtasks_count }} of {{ $task->subtasks_count }}
+                                                    open subtask{{ $task->subtasks_count === 1 ? '' : 's' }}
                                                 </span>
                                             @endif
                                         </div>

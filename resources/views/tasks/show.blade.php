@@ -13,24 +13,36 @@
 
             @php
                 $from = request('from');
-                $returnUrl = request('return'); // may be null
+
+                // Use one consistent parameter name for inbound links and submitted forms.
+                $returnUrl = request('return_url');
+
+                // The current Task page is useful as the return target for navigating
+                // between parent, child and dependency Task detail pages.
+                $currentTaskUrl = request()->fullUrl();
+            @endphp
+            @php
+                $hasRecurrence = $task->recurrence !== null;
+                $hasSubtasks = $task->subtasks->isNotEmpty();
+                $hasDependencies = $task->dependencies->isNotEmpty();
             @endphp
 
             
 
-            @if ($from === 'alltasks')
-                <button type="button"
-                        onclick="window.location.href='{{ $returnUrl ?: route('tasksall.all') }}'"
-                        class="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded border border-gray-300 hover:bg-gray-200">
-                    ← Back to All Tasks
-                </button>
-            @else
-                <button type="button"
-                        onclick="window.location.href='{{ route('tasks.index', $task->projectid) }}'"
-                        class="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded border border-gray-300 hover:bg-gray-200">
-                    ← Back to Tasks
-                </button>
-            @endif
+            @php
+                $backUrl = $returnUrl ?: route('tasks.index', $task->projectid);
+
+                $backLabel = match ($from) {
+                    'alltasks' => '← Back to All Tasks',
+                    'outlook' => '← Back to Task Outlook',
+                    default => '← Back to Tasks',
+                };
+            @endphp
+
+            <a href="{{ $backUrl }}"
+            class="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded border border-gray-300 hover:bg-gray-200">
+                {{ $backLabel }}
+            </a>
 
             {{-- Main edit card --}}
             <div class="bg-white shadow-sm rounded-lg p-6 space-y-4">
@@ -40,6 +52,20 @@
                     <input type="hidden" name="from" value="{{ $from }}">
                     <input type="hidden" name="return_url" value="{{ $returnUrl }}">
 
+                    @if ($task->parentTask)
+                        <div class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                            <span class="block text-xs font-medium text-gray-500">Parent task</span>
+
+                            <a href="{{ route('tasks.show', [
+                                    'task' => $task->parentTask,
+                                    'from' => $from,
+                                    'return_url' => $currentTaskUrl,
+                                ]) }}"
+                            class="mt-1 inline-block text-sm font-medium text-indigo-700 hover:underline">
+                                {{ $task->parentTask->tasktitle }}
+                            </a>
+                        </div>
+                    @endif
 
                     <div>
                         <label class="block text-xs font-medium text-gray-600">Title</label>
@@ -51,6 +77,17 @@
                         <label class="block text-xs font-medium text-gray-600">Description</label>
                         <textarea name="description" rows="4"
                                   class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm">{{ $task->description }}</textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600">
+                            Expected outcome or constraints
+                        </label>
+
+                        <textarea name="taskexpectation"
+                                rows="3"
+                                placeholder="What does done look like? Include constraints, dependencies, access notes, or acceptance criteria."
+                                class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('taskexpectation', $task->taskexpectation) }}</textarea>
                     </div>
 
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -85,12 +122,52 @@
                             <input type="date" name="duedate" value="{{ $task->duedate?->format('Y-m-d') }}"
                                    class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm">
                         </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">
+                                Estimated effort (hours)
+                            </label>
+
+                            <input type="number"
+                                name="estimatedefforthours"
+                                min="0"
+                                max="9999.99"
+                                step="0.25"
+                                value="{{ old('estimatedefforthours', $task->estimatedefforthours) }}"
+                                class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">
+                                Actual effort (hours)
+                            </label>
+
+                            <input type="number"
+                                name="actualefforthours"
+                                min="0"
+                                max="9999.99"
+                                step="0.25"
+                                value="{{ old('actualefforthours', $task->actualefforthours) }}"
+                                class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600">
+                            Status comment
+                        </label>
+
+                        <textarea name="statuscomment"
+                                rows="2"
+                                placeholder="Current progress, blocker, next action, or reason for delay."
+                                class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('statuscomment', $task->statuscomment) }}</textarea>
                     </div>
 
                     {{-- Labels summary + panel --}}
                     <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="block text-xs font-medium text-gray-600">Labels</label>
+                        <div class="flex items-center gap-2 mb-2">
+                            <label class="block text-xs font-medium text-gray-600">
+                                Labels
+                            </label>
 
                             {{-- Only show the toggle when at least one label is already selected --}}
                             @if ($task->labels->isNotEmpty())
@@ -147,19 +224,62 @@
                     </div>
                 </form>
             </div>
+            {{-- Comments control --}}
+             <div class="bg-white shadow-sm rounded-lg p-6">
+                <h3 class="text-sm font-semibold mb-3">Comments</h3>
 
-            {{-- Toggle Recurring settings --}}
-            <div class="flex items-center justify-end mb-2">
+                <ul class="divide-y divide-gray-100 mb-4">
+                    @foreach ($task->comments as $comment)
+                        <li class="py-2 text-sm">
+                            <span class="font-medium">{{ $comment->user->name ?? 'Ian Seaman' }}</span>
+                            <span class="text-gray-400 text-xs ml-2"
+                                title="{{ $comment->createdat
+                                    ?->shiftTimezone('Australia/Sydney')
+                                    ->format('d M Y, g:i A T') }}">
+                                {{ $comment->createdat
+                                    ?->shiftTimezone('Australia/Sydney')
+                                    ->diffForHumans() }}
+                            </span>
+                            <p class="text-gray-700 mt-1">{{ $comment->commenttext }}</p>
+                        </li>
+                    @endforeach
+                </ul>
+
+                <form method="POST"
+                      action="{{ route('task-comments.store', $task) }}"
+                      class="flex gap-2">
+                    @csrf
+
+                        <input type="hidden" name="from" value="{{ $from }}">
+                        <input type="hidden"
+                            name="return_url"
+                            value="{{ $returnUrl ?: $currentTaskUrl }}">
+
+
+                    <input type="text"
+                           name="commenttext"
+                           required
+                           placeholder="Add a comment..."
+                           class="flex-1 border-gray-300 rounded-md shadow-sm text-sm">
+                    <button type="submit"
+                            class="px-4 py-2 bg-gray-600 text-white text-sm rounded hover:bg-gray-700">
+                        Post
+                    </button>
+                </form>
+            </div>
+
+            {{-- Recurring settings control --}}
+            <div class="flex items-center justify-start mb-2">
                 <button type="button"
                         id="toggle-recurring-panel"
                         class="text-xs px-3 py-1 rounded border border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100">
-                    Recurring settings
+                    {{ $hasRecurrence ? 'Hide recurring settings' : 'Recurring settings' }}
                 </button>
             </div>
 
             {{-- Recurring panel --}}
             <div id="recurring-panel"
-                 class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-slate-200 hidden">
+                class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-slate-200 {{ $hasRecurrence ? '' : 'hidden' }}">
                 <div class="px-4 py-3 border-b border-slate-200 bg-slate-50">
                     <h3 class="text-sm font-semibold text-slate-800">Recurring Task</h3>
                     <p class="mt-1 text-xs text-slate-700">
@@ -308,6 +428,35 @@
                                 “Last day” automatically adjusts for 28/30/31‑day months.
                             </p>
                         </div>
+                        @php
+                            $nextOccurrence = $task->recurrence?->nextScheduledDate();
+                        @endphp
+
+                        @if ($task->recurrence)
+                            <div class="mx-4 mt-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                                @if (! $task->recurrence->isactive)
+                                    <span class="font-semibold text-amber-700">Paused.</span>
+                                    This recurrence is inactive and will not generate tasks.
+                                @elseif ($nextOccurrence)
+                                    @php
+                                        $nextDueDate = $task->recurrence->nextScheduledDate();
+                                        $nextGenerationDate = $task->recurrence->nextGenerationDate();
+                                    @endphp
+
+                                    <span class="font-semibold text-slate-900">Next generated:</span>
+                                    {{ $nextGenerationDate?->format('l, j F Y') }}
+
+                                    @if ($nextDueDate)
+                                        <span class="ml-2 text-slate-600">
+                                            Due {{ $nextDueDate->format('l, j F Y') }}
+                                        </span>
+                                    @endif
+                                @else
+                                    <span class="font-semibold text-red-700">Not scheduled.</span>
+                                    Set a frequency and start date.
+                                @endif
+                            </div>
+                        @endif
 
                         <div class="flex items-center justify-between pt-2 border-t border-gray-200">
                             <p class="text-xs text-gray-500">
@@ -322,92 +471,41 @@
                 </div>
             </div>
 
-            {{-- Delete panel, matching Destination Items style --}}
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-red-200">
-                <div class="px-4 py-3 border-b border-red-200 bg-red-50">
-                    <h3 class="text-sm font-semibold text-red-800">Delete Task</h3>
-                    <p class="mt-1 text-xs text-red-700">
-                        This permanently removes the task and any recurrence/template links. This cannot be undone.
-                    </p>
+            @php
+                $directSubtaskEstimatedHours = $task->subtasks
+                    ->sum(fn ($subtask) => (float) ($subtask->estimatedefforthours ?? 0));
+
+                $directSubtaskActualHours = $task->subtasks
+                    ->sum(fn ($subtask) => (float) ($subtask->actualefforthours ?? 0));
+            @endphp
+
+            @if ($task->subtasks->isNotEmpty())
+                <div class="mb-4 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+                    <span class="font-semibold">Direct subtask effort:</span>
+                    Estimated {{ rtrim(rtrim(number_format($directSubtaskEstimatedHours, 2), '0'), '.') }}h
+                    · Actual {{ rtrim(rtrim(number_format($directSubtaskActualHours, 2), '0'), '.') }}h
+
+                    <span class="ml-2 text-sky-700">
+                        Parent task effort is separate and is not included in these totals.
+                    </span>
                 </div>
+            @endif
 
-                <div class="p-4">
-                    <form method="POST"
-                          action="{{ route('tasks.destroy', $task) }}"
-                          onsubmit="return confirm('Delete this task? This cannot be undone.');">
-                        @csrf
-                        @method('DELETE')
-
-                        <input type="hidden" name="from" value="{{ $from }}">
-                        <input type="hidden" name="return_url" value="{{ $returnUrl }}">
-
-
-                        <div class="flex items-center justify-end">
-                            <button type="submit"
-                                    class="inline-flex items-center px-4 py-2 border border-red-300 rounded-md text-xs font-semibold text-red-700 bg-white uppercase tracking-widest hover:bg-red-50">
-                                Delete Task
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            {{-- Move Task to another project --}}
-            {{-- Toggle for Move Task panel --}}
-            <div class="flex items-center justify-end mb-2">
+            
+            {{-- Sub-tasks control --}}
+            <div class="flex items-center justify-start mb-2">
                 <button type="button"
-                        id="toggle-move-task-panel"
-                        class="text-xs px-3 py-1 rounded border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
-                    Move task to another project
+                        id="toggle-subtasks-panel"
+                        class="text-xs px-3 py-1 rounded border border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100">
+                    {{ $hasSubtasks
+                        ? 'Hide sub-tasks ('.$task->subtasks->count().')'
+                        : 'Show sub-tasks' }}
                 </button>
             </div>
 
-            {{-- Move Task panel (hidden by default) --}}
-            <div id="move-task-panel"
-                 class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-indigo-200 hidden">
-                <div class="px-4 py-3 border-b border-indigo-200 bg-indigo-50">
-                    <h3 class="text-sm font-semibold text-indigo-800">Move Task to Another Project</h3>
-                    <p class="mt-1 text-xs text-indigo-700">
-                        Choose a target project. The task will be moved and its status mapped where possible.
-                    </p>
-                </div>
-
-                <div class="p-4">
-                    <form method="POST"
-                          action="{{ route('tasks.move-project', $task) }}"
-                          onsubmit="return confirm('Move this task to a different project?');">
-                        @csrf
-
-                        <input type="hidden" name="from" value="{{ $from }}">
-                        <input type="hidden" name="return_url" value="{{ $returnUrl }}">
-
-
-                        <div class="flex flex-wrap gap-3 items-end">
-                            <div class="flex-1 min-w-[220px]">
-                                <label class="block text-xs font-medium text-gray-600">Target project</label>
-                                <select name="projectid"
-                                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                        required>
-                                    @foreach ($projects as $proj)
-                                        <option value="{{ $proj->id }}"
-                                                @selected($proj->id === $task->projectid)>
-                                            {{ $proj->projectname }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <button type="submit"
-                                    class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-md hover:bg-indigo-700">
-                                Move Task
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            {{-- Sub-tasks --}}
-            <div class="bg-white shadow-sm rounded-lg p-6">
+            {{-- Sub-tasks panel --}}
+            <div id="subtasks-panel"
+                class="bg-white shadow-sm rounded-lg p-6 {{ $hasSubtasks ? '' : 'hidden' }}">
                 <div class="flex items-center justify-between gap-3 mb-4">
                     <div>
                         <h3 class="text-sm font-semibold text-gray-900">Sub-tasks</h3>
@@ -426,7 +524,7 @@
                     <input type="hidden" name="projectid" value="{{ $task->projectid }}">
                     <input type="hidden" name="parenttaskid" value="{{ $task->id }}">
                     <input type="hidden" name="from" value="{{ $from }}">
-                    <input type="hidden" name="return_url" value="{{ $returnUrl }}">
+                    <input type="hidden" name="return_url" value="{{ $currentTaskUrl }}">
                 </form>
 
                 <div class="overflow-x-auto">
@@ -532,7 +630,7 @@
                                     @method('PATCH')
 
                                     <input type="hidden" name="from" value="{{ $from }}">
-                                    <input type="hidden" name="return_url" value="{{ url()->full() }}">
+                                    <input type="hidden" name="return_url" value="{{ $currentTaskUrl }}">
                                 </form>
 
                                 <tr class="hover:bg-gray-50 align-top">
@@ -614,7 +712,8 @@
                                         <a href="{{ route('tasks.show', [
                                                 'task' => $sub,
                                                 'from' => $from,
-                                                'return' => $returnUrl,
+                                                'return_url' => $currentTaskUrl,
+                                                    
                                             ]) }}"
                                         class="ml-1 inline-flex items-center px-3 py-1.5 border border-gray-300 bg-white text-gray-700 text-xs font-semibold rounded hover:bg-gray-50">
                                             View
@@ -633,8 +732,20 @@
                 </div>
             </div>
 
-            {{-- Dependencies --}}
-            <div class="bg-white shadow-sm rounded-lg border border-indigo-200">
+            {{-- Dependencies control --}}
+            <div class="flex items-center justify-start mb-2">
+                <button type="button"
+                        id="toggle-dependencies-panel"
+                        class="text-xs px-3 py-1 rounded border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                    {{ $hasDependencies
+                        ? 'Hide dependencies ('.$task->dependencies->count().')'
+                        : 'Show dependencies' }}
+                </button>
+            </div>
+
+            {{-- Dependencies panel --}}
+            <div id="dependencies-panel"
+                class="bg-white shadow-sm rounded-lg border border-indigo-200 {{ $hasDependencies ? '' : 'hidden' }}">
                 <div class="px-4 py-3 border-b border-indigo-200 bg-indigo-50">
                     <h3 class="text-sm font-semibold text-indigo-900">Dependencies</h3>
                     <p class="mt-1 text-xs text-indigo-700">
@@ -728,7 +839,7 @@
                                                 <a href="{{ route('tasks.show', [
                                                         'task' => $dependency->dependsOnTask,
                                                         'from' => $from,
-                                                        'return' => url()->full(),
+                                                        'return_url' => $currentTaskUrl,
                                                     ]) }}"
                                                 class="hover:underline">
                                                     {{ $dependency->dependsOnTask->tasktitle }}
@@ -796,46 +907,230 @@
                 </div>
             </div>
 
-            <div class="bg-white shadow-sm rounded-lg p-6">
-                <h3 class="text-sm font-semibold mb-3">Comments</h3>
+           
+            {{-- Make this task a subtask --}}
+            @if (
+                $task->parenttaskid === null
+                && $task->subtasks->isEmpty()
+            )
+                @php
+                    $eligibleParentTasks = $projectTasks
+                        ->filter(function ($candidate) use ($task) {
+                            return (int) $candidate->id !== (int) $task->id
+                                && $candidate->parenttaskid === null;
+                        });
+                @endphp
 
-                <ul class="divide-y divide-gray-100 mb-4">
-                    @foreach ($task->comments as $comment)
-                        <li class="py-2 text-sm">
-                            <span class="font-medium">{{ $comment->user->name ?? 'Ian Seaman' }}</span>
-                            <span class="text-gray-400 text-xs ml-2"
-                                title="{{ $comment->createdat
-                                    ?->shiftTimezone('Australia/Sydney')
-                                    ->format('d M Y, g:i A T') }}">
-                                {{ $comment->createdat
-                                    ?->shiftTimezone('Australia/Sydney')
-                                    ->diffForHumans() }}
-                            </span>
-                            <p class="text-gray-700 mt-1">{{ $comment->commenttext }}</p>
-                        </li>
-                    @endforeach
-                </ul>
+                @if ($eligibleParentTasks->isNotEmpty())
+                    <div class="flex items-center justify-start mb-2">
+                        <button type="button"
+                                id="toggle-make-subtask-panel"
+                                class="text-xs px-3 py-1 rounded border border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100">
+                            Make this task a subtask
+                        </button>
+                    </div>
 
-                <form method="POST"
-                      action="{{ route('task-comments.store', $task) }}"
-                      class="flex gap-2">
-                    @csrf
+                    <div id="make-subtask-panel"
+                        class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-violet-200 hidden">
+                        <div class="px-4 py-3 border-b border-violet-200 bg-violet-50">
+                            <h3 class="text-sm font-semibold text-violet-800">
+                                Make This Task a Subtask
+                            </h3>
+
+                            <p class="mt-1 text-xs text-violet-700">
+                                Attach this task beneath another top-level task in the same project.
+                                Tasks cannot be attached beneath existing subtasks.
+                            </p>
+                        </div>
+
+                        <div class="p-4">
+                            <form method="POST"
+                                action="{{ route('tasks.make-subtask', $task) }}"
+                                onsubmit="return confirm('Make this task a subtask?');">
+                                @csrf
+
+                                <input type="hidden" name="from" value="{{ $from }}">
+                                <input type="hidden" name="return_url" value="{{ $returnUrl }}">
+
+                                <div class="flex flex-wrap gap-3 items-end">
+                                    <div class="flex-1 min-w-[260px]">
+                                        <label class="block text-xs font-medium text-gray-600">
+                                            Parent task
+                                        </label>
+
+                                        <select name="parenttaskid"
+                                                required
+                                                class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                            <option value="">
+                                                Select a top-level task
+                                            </option>
+
+                                            @foreach ($eligibleParentTasks as $candidate)
+                                                <option value="{{ $candidate->id }}">
+                                                    {{ $candidate->tasktitle }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    <button type="submit"
+                                            class="inline-flex items-center px-4 py-2 bg-violet-600 text-white text-xs font-semibold rounded-md hover:bg-violet-700">
+                                        Make Subtask
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                @endif
+            @endif
+            {{-- Duplicate Task --}}
+            @if ($task->parenttaskid === null)
+                <div class="flex items-center justify-start mb-2">
+                    <button type="button"
+                            id="toggle-duplicate-task-panel"
+                            class="text-xs px-3 py-1 rounded border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100">
+                        Duplicate task
+                    </button>
+                </div>
+
+                <div id="duplicate-task-panel"
+                    class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-emerald-200 hidden">
+                    <div class="px-4 py-3 border-b border-emerald-200 bg-emerald-50">
+                        <h3 class="text-sm font-semibold text-emerald-800">Duplicate Task</h3>
+                        <p class="mt-1 text-xs text-emerald-700">
+                            The copy starts as an open task with no dates, completed date, actual effort, or recurrence.
+                        </p>
+                    </div>
+
+                    <div class="p-4">
+                        <form method="POST"
+                            action="{{ route('tasks.duplicate', $task) }}"
+                            class="space-y-4">
+                            @csrf
+
+                            <input type="hidden" name="from" value="{{ $from }}">
+                            <input type="hidden" name="return_url" value="{{ $returnUrl }}">
+
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600">
+                                    New task title
+                                </label>
+
+                                <input type="text"
+                                    name="tasktitle"
+                                    value="Copy of {{ $task->tasktitle }}"
+                                    maxlength="200"
+                                    class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
+                            </div>
+
+                            @if ($task->subtasks->isNotEmpty())
+                                <label class="flex items-center gap-2 text-sm text-gray-700">
+                                    <input type="hidden" name="copy_subtasks" value="0">
+
+                                    <input type="checkbox"
+                                        name="copy_subtasks"
+                                        value="1"
+                                        class="rounded border-gray-300 text-emerald-600 shadow-sm">
+
+                                    Copy {{ $task->subtasks->count() }}
+                                    subtask{{ $task->subtasks->count() === 1 ? '' : 's' }}
+                                </label>
+                            @endif
+
+                            <div class="flex justify-end">
+                                <button type="submit"
+                                        class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-md hover:bg-emerald-700">
+                                    Create Copy
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            @endif
+            {{-- Move Task to another project --}}
+            {{-- Toggle for Move Task panel --}}
+            <div class="flex items-center justify-start mb-2">
+                <button type="button"
+                        id="toggle-move-task-panel"
+                        class="text-xs px-3 py-1 rounded border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                    Move task to another project
+                </button>
+            </div>
+
+            {{-- Move Task panel (hidden by default) --}}
+            <div id="move-task-panel"
+                 class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-indigo-200 hidden">
+                <div class="px-4 py-3 border-b border-indigo-200 bg-indigo-50">
+                    <h3 class="text-sm font-semibold text-indigo-800">Move Task to Another Project</h3>
+                    <p class="mt-1 text-xs text-indigo-700">
+                        Choose a target project. The task will be moved and its status mapped where possible.
+                    </p>
+                </div>
+
+                <div class="p-4">
+                    <form method="POST"
+                          action="{{ route('tasks.move-project', $task) }}"
+                          onsubmit="return confirm('Move this task to a different project?');">
+                        @csrf
 
                         <input type="hidden" name="from" value="{{ $from }}">
                         <input type="hidden" name="return_url" value="{{ $returnUrl }}">
 
 
-                    <input type="text"
-                           name="commenttext"
-                           required
-                           placeholder="Add a comment..."
-                           class="flex-1 border-gray-300 rounded-md shadow-sm text-sm">
-                    <button type="submit"
-                            class="px-4 py-2 bg-gray-600 text-white text-sm rounded hover:bg-gray-700">
-                        Post
-                    </button>
-                </form>
+                        <div class="flex flex-wrap gap-3 items-end">
+                            <div class="flex-1 min-w-[220px]">
+                                <label class="block text-xs font-medium text-gray-600">Target project</label>
+                                <select name="projectid"
+                                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                        required>
+                                    @foreach ($projects as $proj)
+                                        <option value="{{ $proj->id }}"
+                                                @selected($proj->id === $task->projectid)>
+                                            {{ $proj->projectname }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <button type="submit"
+                                    class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-md hover:bg-indigo-700">
+                                Move Task
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
+            {{-- Delete panel, matching Destination Items style --}}
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-red-200">
+                <div class="px-4 py-3 border-b border-red-200 bg-red-50">
+                    <h3 class="text-sm font-semibold text-red-800">Delete Task</h3>
+                    <p class="mt-1 text-xs text-red-700">
+                        This permanently removes the task and any recurrence/template links. This cannot be undone.
+                    </p>
+                </div>
+
+                <div class="p-4">
+                    <form method="POST"
+                          action="{{ route('tasks.destroy', $task) }}"
+                          onsubmit="return confirm('Delete this task? This cannot be undone.');">
+                        @csrf
+                        @method('DELETE')
+
+                        <input type="hidden" name="from" value="{{ $from }}">
+                        <input type="hidden" name="return_url" value="{{ $returnUrl }}">
+
+
+                        <div class="flex items-center justify-end">
+                            <button type="submit"
+                                    class="inline-flex items-center px-4 py-2 border border-red-300 rounded-md text-xs font-semibold text-red-700 bg-white uppercase tracking-widest hover:bg-red-50">
+                                Delete Task
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            
         </div>
     </div>
 
@@ -865,73 +1160,91 @@
     </script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const toggleButton = document.getElementById('toggle-task-labels-panel');
-            const panel = document.getElementById('task-labels-panel');
-            const summary = document.getElementById('selected-task-labels-summary');
+    document.addEventListener('DOMContentLoaded', function () {
+        const toggleButton = document.getElementById('toggle-task-labels-panel');
+        const panel = document.getElementById('task-labels-panel');
+        const summary = document.getElementById('selected-task-labels-summary');
 
-            if (!panel) {
+        if (!panel) {
+            return;
+        }
+
+        const checkboxes = Array.from(
+            document.querySelectorAll('.task-label-checkbox')
+        );
+
+        function getLabelDetails(checkbox) {
+            const labelChip = checkbox
+                .closest('label')
+                ?.querySelector('span');
+
+            if (!labelChip) {
+                return null;
+            }
+
+            return {
+                text: labelChip.textContent.trim(),
+                colour: labelChip.style.background || '#6b7280',
+            };
+        }
+
+        function updateSummary() {
+            if (!summary) {
                 return;
             }
 
-            const checkboxes = Array.from(
-                document.querySelectorAll('.task-label-checkbox')
-            );
+            const selectedLabels = checkboxes
+                .filter(checkbox => checkbox.checked)
+                .map(getLabelDetails)
+                .filter(Boolean);
 
-            function getLabelText(checkbox) {
-                return checkbox
-                    .closest('label')
-                    ?.querySelector('span')
-                    ?.textContent
-                    ?.trim() || '';
+            summary.innerHTML = '';
+
+            if (selectedLabels.length === 0) {
+                summary.classList.add('hidden');
+                return;
             }
 
-            function updateSummary() {
-                const selectedLabels = checkboxes
-                    .filter(cb => cb.checked)
-                    .map(getLabelText)
-                    .filter(Boolean);
+            summary.classList.remove('hidden');
 
-                summary.innerHTML = '';
+            selectedLabels.forEach(label => {
+                const chip = document.createElement('span');
 
-                if (selectedLabels.length === 0) {
-                    summary.classList.add('hidden');
-                    return;
-                }
+                chip.className =
+                    'inline-flex items-center px-2.5 py-1 rounded-full text-white text-xs font-medium';
 
-                summary.classList.remove('hidden');
+                chip.style.background = label.colour;
+                chip.textContent = label.text;
 
-                selectedLabels.forEach(label => {
-                    const chip = document.createElement('span');
-                    chip.className =
-                        'inline-flex items-center px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium border border-blue-200';
-                    chip.textContent = label;
-                    summary.appendChild(chip);
-                });
+                summary.appendChild(chip);
+            });
+        }
+
+        function updateToggleLabel() {
+            if (!toggleButton) {
+                return;
             }
 
-            if (toggleButton) {
-                function updateToggleLabel() {
-                    toggleButton.textContent = panel.classList.contains('hidden')
-                        ? 'Add or change labels'
-                        : 'Hide labels';
-                }
+            toggleButton.textContent = panel.classList.contains('hidden')
+                ? 'Add or change labels'
+                : 'Hide labels';
+        }
 
-                toggleButton.addEventListener('click', function () {
-                    panel.classList.toggle('hidden');
-                    updateToggleLabel();
-                });
-
+        if (toggleButton) {
+            toggleButton.addEventListener('click', function () {
+                panel.classList.toggle('hidden');
                 updateToggleLabel();
-            }
+            });
+        }
 
-            checkboxes.forEach(cb => cb.addEventListener('change', updateSummary));
-
-            // initial state
-            updateSummary();
-            updateToggleLabel();
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateSummary);
         });
-    </script>
+
+        updateSummary();
+        updateToggleLabel();
+    });
+</script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -940,7 +1253,9 @@
             const freqSelect = document.getElementById('recurrence-frequency');
             const monthlyBlock = document.getElementById('monthly-pattern-block');
 
-            if (!toggleBtn || !panel || !freqSelect || !monthlyBlock) return;
+            if (!toggleBtn || !panel || !freqSelect || !monthlyBlock) {
+                return;
+            }
 
             function updateRecurringLabel() {
                 toggleBtn.textContent = panel.classList.contains('hidden')
@@ -949,11 +1264,10 @@
             }
 
             function updateMonthlyVisibility() {
-                if (freqSelect.value === 'monthly') {
-                    monthlyBlock.classList.remove('hidden');
-                } else {
-                    monthlyBlock.classList.add('hidden');
-                }
+                monthlyBlock.classList.toggle(
+                    'hidden',
+                    freqSelect.value !== 'monthly'
+                );
             }
 
             toggleBtn.addEventListener('click', function () {
@@ -963,9 +1277,93 @@
 
             freqSelect.addEventListener('change', updateMonthlyVisibility);
 
-            // initial state
             updateRecurringLabel();
             updateMonthlyVisibility();
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const toggleButton = document.getElementById('toggle-make-subtask-panel');
+            const panel = document.getElementById('make-subtask-panel');
+
+            if (!toggleButton || !panel) {
+                return;
+            }
+
+            function updateLabel() {
+                toggleButton.textContent = panel.classList.contains('hidden')
+                    ? 'Make this task a subtask'
+                    : 'Hide subtask options';
+            }
+
+            toggleButton.addEventListener('click', function () {
+                panel.classList.toggle('hidden');
+                updateLabel();
+            });
+
+            updateLabel();
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const toggleButton = document.getElementById('toggle-duplicate-task-panel');
+            const panel = document.getElementById('duplicate-task-panel');
+
+            if (!toggleButton || !panel) {
+                return;
+            }
+
+            function updateLabel() {
+                toggleButton.textContent = panel.classList.contains('hidden')
+                    ? 'Duplicate task'
+                    : 'Hide duplicate options';
+            }
+
+            toggleButton.addEventListener('click', function () {
+                panel.classList.toggle('hidden');
+                updateLabel();
+            });
+
+            updateLabel();
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            function setupToggle(buttonId, panelId, showLabel, hideLabel) {
+                const button = document.getElementById(buttonId);
+                const panel = document.getElementById(panelId);
+
+                if (!button || !panel) {
+                    return;
+                }
+
+                function updateLabel() {
+                    button.textContent = panel.classList.contains('hidden')
+                        ? showLabel
+                        : hideLabel;
+                }
+
+                button.addEventListener('click', function () {
+                    panel.classList.toggle('hidden');
+                    updateLabel();
+                });
+
+                updateLabel();
+            }
+
+            setupToggle(
+                'toggle-subtasks-panel',
+                'subtasks-panel',
+                'Show sub-tasks',
+                'Hide sub-tasks{{ $hasSubtasks ? ' ('.$task->subtasks->count().')' : '' }}'
+            );
+
+            setupToggle(
+                'toggle-dependencies-panel',
+                'dependencies-panel',
+                'Show dependencies',
+                'Hide dependencies{{ $hasDependencies ? ' ('.$task->dependencies->count().')' : '' }}'
+            );
         });
     </script>
 </x-app-layout>

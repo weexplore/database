@@ -364,14 +364,20 @@ public function bulkSave(Request $request): RedirectResponse
         }
     });
 
-    return redirect()->route('knowledge-categories.index', [
-        'domainid' => $request->input('domainid'),
-        'categoryid' => $request->input('categoryid'),
-        'search' => $request->input('search'),
-        'knowledgeitemtypeid' => $request->input('knowledgeitemtypeid'),
-        'itemstatus' => $request->input('itemstatus'),
-        'show_child_categories' => $request->boolean('show_child_categories') ? 1 : 0,
-    ])->with('success', 'Knowledge categories saved successfully.');
+    return redirect()
+        ->route('knowledge-categories.index', [
+            'domainid' => (int) $validated['domainid'],
+            'categoryid' => (int) $request->input('categoryid'),
+            'search' => $request->input('search'),
+            'knowledgeitemtypeid' => $request->input('knowledgeitemtypeid'),
+            'itemstatus' => $request->input('itemstatus'),
+
+            // bulkSave is the child-category quick-entry workflow:
+            // always return to the selected parent and keep its child table open.
+            'showchildcategories' => 1,
+            'showselectedcategorypanel' => 1,
+        ])
+        ->with('success', 'Child categories saved successfully.');
 }
     public function create(Request $request): View
     {

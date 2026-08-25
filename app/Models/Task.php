@@ -25,12 +25,20 @@ class Task extends Model
         'sortorder',
         'isrecurringtemplate',
         'generatedfromtemplateid',
+        'estimatedefforthours',
+        'actualefforthours',
+        'taskexpectation',
+        'statuscomment',
+        'completedat',
+        'recurrencerootid',
     ];
 
     protected $casts = [
         'startdate' => 'date',
         'duedate' => 'date',
         'completedat' => 'datetime',
+        'estimatedefforthours' => 'decimal:2',
+        'actualefforthours' => 'decimal:2',
     ];
 
     public function project()
@@ -91,5 +99,15 @@ class Task extends Model
     public function dependentTasks()
     {
         return $this->hasMany(TaskDependency::class, 'dependsontaskid');
+    }
+    public function openSubtasks()
+    {
+        return $this->subtasks()
+            ->where(function ($query) {
+                $query->whereHas('status', function ($statusQuery) {
+                    $statusQuery->where('iscompletedstatus', false);
+                })
+                ->orWhereNull('statusid');
+            });
     }
 }

@@ -109,8 +109,12 @@
                                              draggable="true"
                                              data-task-id="{{ $task->id }}"
                                              data-status-id="{{ $status->id }}">
-                                            <a href="{{ route('tasks.show', $task) }}"
-                                               class="block bg-white rounded-md shadow-sm p-3 text-sm hover:shadow-md transition">
+                                            <a href="{{ route('tasks.show', [
+                                                        'task' => $task,
+                                                        'from' => 'projecttasks',
+                                                        'return' => url()->full(),
+                                                    ]) }}"
+                                                class="block bg-white rounded-md shadow-sm p-3 text-sm hover:shadow-md transition">
                                                 <div class="font-medium">{{ $task->tasktitle }}</div>
                                                 @if ($task->startdate)
                                                     <div class="text-xs text-gray-500 mt-1">
@@ -194,7 +198,7 @@
                                                         @if ($task->subtasks_count > 0)
                                                             <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold shadow-sm"
                                                                 style="border-color: #38bdf8; background-color: #f0f9ff; color: #075985;"
-                                                                title="{{ $task->subtasks_count }} subtask{{ $task->subtasks_count === 1 ? '' : 's' }}">
+                                                                title="{{ $task->open_subtasks_count }} open of {{ $task->subtasks_count }} total subtask{{ $task->subtasks_count === 1 ? '' : 's' }}">
                                                                 <svg xmlns="http://www.w3.org/2000/svg"
                                                                     class="h-3.5 w-3.5"
                                                                     viewBox="0 0 20 20"
@@ -204,7 +208,9 @@
                                                                         d="M3.75 3.5A1.25 1.25 0 0 1 5 2.25h9A1.25 1.25 0 0 1 15.25 3.5v4A1.25 1.25 0 0 1 14 8.75H9v1.5h5.25A1.75 1.75 0 0 1 16 12v3.25A1.75 1.75 0 0 1 14.25 17h-2.5A1.75 1.75 0 0 1 10 15.25V12A1.75 1.75 0 0 1 11.75 10.25H7.5V8.75H5A1.25 1.25 0 0 1 3.75 7.5v-4ZM5 3.75a.25.25 0 0 0-.25.25v3a.25.25 0 0 0 .25.25h9a.25.25 0 0 0 .25-.25V4a.25.25 0 0 0-.25-.25H5Zm6.75 7.75a.25.25 0 0 0-.25.25v3.5c0 .138.112.25.25.25h2.5a.25.25 0 0 0 .25-.25v-3.5a.25.25 0 0 0-.25-.25h-2.5Z"
                                                                         clip-rule="evenodd" />
                                                                 </svg>
-                                                                {{ $task->subtasks_count }} subtask{{ $task->subtasks_count === 1 ? '' : 's' }}
+
+                                                                {{ $task->open_subtasks_count }} of {{ $task->subtasks_count }}
+                                                                open subtask{{ $task->subtasks_count === 1 ? '' : 's' }}
                                                             </span>
                                                         @endif
                                                         @if ($task->parentTask)

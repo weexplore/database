@@ -91,6 +91,13 @@ class AdminDashboardController extends Controller
                             'description' => 'Your private corkboard for quick personal notes.',
                             'route' => route('stickies.index'),
                         ],
+                                            
+                        [
+                            'title' => 'Task Outlook',
+                            'description' => 'Review overdue tasks, work due today, and the next seven days. Update dates, status, effort, and progress notes.',
+                            'route' => route('tasks.outlook'),
+                        ],
+                
                     ],
                 ],
                 [
@@ -122,6 +129,7 @@ class AdminDashboardController extends Controller
                             'route' => route('knowledge.item-types.index'),
                         ],
                     ],
+
                 ],
                 [
                     'title' => 'Investments',

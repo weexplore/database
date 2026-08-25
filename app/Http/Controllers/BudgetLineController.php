@@ -8,103 +8,166 @@ use App\Models\BudgetLineMonth;
 use App\Models\CashbookAccount;
 use App\Models\CashbookCategory;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
-use App\Models\CashbookTransaction;
-
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class BudgetLineController extends Controller
 {
-    // FY month sequence: 1=Jul ... 12=Jun
+    // Financial-year sequence: 1=Jul ... 12=Jun.
     private const FY_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-    // -------------------------------------------------------------------------
-    // Main workflow page — all lines with month grid
-    // -------------------------------------------------------------------------
+    public function index(Request $request, BudgetHeader $budget)
+    {
+        session(['active_legal_entity_id' => $budget->legalentityid]);
+        $this->authoriseEntity($budget);
 
-public function index(Request $request, BudgetHeader $budget)
-{
-    session(['active_legal_entity_id' => $budget->legalentityid]);
-    $this->authoriseEntity($budget);
+        $budget->load('legalEntity');
+        $legalEntityId = (int) $budget->legalentityid;
+        $monthLabels = BudgetLineMonth::MONTH_LABELS;
 
-    $legalEntityId = session('active_legal_entity_id');
+        $lines = $budget->budgetLines()
+            ->with([
+                'account.accountType',
+                'category.categoryType',
+                'category.parentCategory.parentCategory.parentCategory',
+                'months',
+            ])
+            ->get();
 
-    $lines = $budget->budgetLines()
-        ->with(['account', 'category', 'months'])
-        ->orderBy('sortorder')
-        ->get();
+        $lines = $this->orderBudgetLines($lines, $legalEntityId);
 
-    // Financial year date range: 1 Jul (year-1) to 30 Jun (year)
-    $startOfYear = Carbon::create($budget->financialyear - 1, 7, 1)->startOfDay();
-    $endOfYear   = Carbon::create($budget->financialyear, 6, 30)->endOfDay();
+        $startOfYear = Carbon::create($budget->financialyear - 1, 7, 1)->toDateString();
+        $endOfYear = Carbon::create($budget->financialyear, 6, 30)->toDateString();
 
-    // Adjust field names for your schema:
-    // - 'transactiondate' is the date column
-    // - 'amount' is the signed amount (income positive, expense negative) or net column you want to budget against
-    $txns = CashbookTransaction::where('legalentityid', $legalEntityId)
-        ->whereBetween('transactiondate', [$startOfYear, $endOfYear])
-        ->get();
+        /*
+         * Category-row actuals are display amounts. Payments remain positive
+         * expenses because payment transaction-line values are stored positive.
+         * Transfers retain their recorded signs.
+         */
+        $actualRows = DB::table('cashbook_transaction_lines as line')
+    ->join('cashbook_transactions as txn', 'txn.id', '=', 'line.transactionid')
+    ->join('cashbook_categories as category', 'category.id', '=', 'line.categoryid')
+    ->join('cashbook_category_types as categoryType', 'categoryType.id', '=', 'category.categorytypeid')
+    ->where('txn.legalentityid', $legalEntityId)
+    ->whereBetween('txn.transactiondate', [$startOfYear, $endOfYear])
+    ->whereNotNull('line.categoryid')
+    ->selectRaw('
+        line.categoryid,
+        MONTH(txn.transactiondate) AS calendar_month,
+        SUM(
+            CASE
+                WHEN LOWER(categoryType.typecode) = "transfer"
+                     AND txn.transactionkind = "payment"
+                    THEN -1 * line.amount
+                ELSE line.amount
+            END
+        ) AS total
+    ')
+    ->groupBy(
+        'line.categoryid',
+        DB::raw('MONTH(txn.transactiondate)')
+    )
+    ->get();
 
-    $actualMap = [];
+        $actualMap = [];
 
-    foreach ($txns as $txn) {
-        $month = Carbon::parse($txn->transactiondate)->month; // 1–12
-        $key   = $txn->accountid . '|' . $txn->categoryid;
-
-        // Replace 'amount' with your actual amount field or debit-credit logic
-        $actualMap[$key][$month] = ($actualMap[$key][$month] ?? 0) + $txn->amount;
-    }
-
-    $lineActuals = [];
-
-    foreach ($lines as $line) {
-        $key = $line->accountid . '|' . $line->categoryid;
-
-        if (!isset($actualMap[$key])) {
-            continue;
+        foreach ($actualRows as $row) {
+            $fyMonthNo = $this->calendarMonthToFyMonth((int) $row->calendar_month);
+            $actualMap[(int) $row->categoryid][$fyMonthNo] = (float) $row->total;
         }
 
-        foreach ($actualMap[$key] as $month => $total) {
-            $lineActuals[$line->id][$month] = $total;
+        $lineActuals = [];
+
+        foreach ($lines as $line) {
+            if (isset($actualMap[$line->categoryid])) {
+                $lineActuals[$line->id] = $actualMap[$line->categoryid];
+            }
         }
+
+        $nextYearHeader = BudgetHeader::forEntity($legalEntityId)
+            ->forYear($budget->financialyear + 1)
+            ->with(['budgetLines.months'])
+            ->first();
+
+        $accounts = CashbookAccount::query()
+            ->where('legalentityid', $legalEntityId)
+            ->where('isactive', 1)
+            ->orderBy('accountname')
+            ->get();
+
+        $categories = $this->postingCategoriesForEntity($legalEntityId);
+
+        $budgetSectionTotals = [];
+
+        foreach ($lines as $line) {
+            $typeCode = strtolower(trim((string) ($line->category?->categoryType?->typecode ?? 'other')));
+
+            if (!isset($budgetSectionTotals[$typeCode])) {
+                $budgetSectionTotals[$typeCode] = [
+                    'label' => $line->category?->categoryType?->typename ?? ucfirst($typeCode),
+                    'adopted' => array_fill(1, 12, 0.00),
+                    'revised' => array_fill(1, 12, 0.00),
+                    'actuals' => array_fill(1, 12, 0.00),
+                ];
+            }
+
+            foreach ($line->months as $month) {
+                $monthNo = (int) $month->monthno;
+
+                $budgetSectionTotals[$typeCode]['adopted'][$monthNo] += (float) $month->adoptedamount;
+                $budgetSectionTotals[$typeCode]['revised'][$monthNo] += (float) $month->effectiveRevisedAmount();
+                $budgetSectionTotals[$typeCode]['actuals'][$monthNo] += (float) ($lineActuals[$line->id][$monthNo] ?? 0.00);
+            }
+        }
+
+        $budgetOverallTotals = [
+            'adopted' => array_fill(1, 12, 0.00),
+            'revised' => array_fill(1, 12, 0.00),
+            'actuals' => array_fill(1, 12, 0.00),
+        ];
+
+        $budgetNetMovementTotals = [
+            'adopted' => array_fill(1, 12, 0.00),
+            'revised' => array_fill(1, 12, 0.00),
+            'actuals' => array_fill(1, 12, 0.00),
+        ];
+
+        foreach ($budgetSectionTotals as $typeCode => $section) {
+            $multiplier = $this->entityNetMovementMultiplier($typeCode);
+
+            foreach ($monthLabels as $monthNo => $label) {
+                foreach (['adopted', 'revised', 'actuals'] as $field) {
+                    $amount = (float) ($section[$field][$monthNo] ?? 0.00);
+                    $budgetOverallTotals[$field][$monthNo] += $amount;
+                    $budgetNetMovementTotals[$field][$monthNo] += $multiplier * $amount;
+                }
+            }
+        }
+
+        $editLineId = $request->query('edit_line');
+        $editField = $request->query('edit_field', 'adopted');
+        $methodLineId = $request->query('line');
+        $methodField = $request->query('field', 'adopted');
+
+        return view('budgets.lines.index', compact(
+            'budget',
+            'lines',
+            'nextYearHeader',
+            'accounts',
+            'categories',
+            'monthLabels',
+            'methodLineId',
+            'methodField',
+            'lineActuals',
+            'editLineId',
+            'editField',
+            'budgetSectionTotals',
+            'budgetOverallTotals',
+            'budgetNetMovementTotals',
+        ));
     }
-
-    $nextYearHeader = BudgetHeader::forEntity($legalEntityId)
-        ->forYear($budget->financialyear + 1)
-        ->with(['budgetLines.months'])
-        ->first();
-
-    $accounts = CashbookAccount::where('legalentityid', $legalEntityId)
-        ->where('isactive', 1)
-        ->orderBy('accountname')
-        ->get();
-
-    $categories = CashbookCategory::where('legalentityid', $legalEntityId)
-        ->where('isactive', 1)
-        ->where('allowposting', 1)
-        ->orderBy('categoryname')
-        ->get();
-
-    $monthLabels   = BudgetLineMonth::MONTH_LABELS;
-    $methodLineId  = $request->query('line');
-    $methodField   = $request->query('field', 'adopted');
-
-    return view('budgets.lines.index', compact(
-        'budget',
-        'lines',
-        'nextYearHeader',
-        'accounts',
-        'categories',
-        'monthLabels',
-        'methodLineId',
-        'methodField',
-        'lineActuals',
-    ));
-}
-
-    // -------------------------------------------------------------------------
-    // Store a new budget line and seed 12 blank month rows
-    // -------------------------------------------------------------------------
 
     public function store(Request $request, BudgetHeader $budget)
     {
@@ -112,36 +175,66 @@ public function index(Request $request, BudgetHeader $budget)
         abort_unless($budget->isDraft(), 403, 'Lines can only be added to draft budgets.');
 
         $validated = $request->validate([
-            'accountid'  => 'required|integer|exists:cashbook_accounts,id',
-            'categoryid' => 'required|integer|exists:cashbook_categories,id',
-            'sortorder'  => 'nullable|integer|min:0',
+            'accountid' => ['required', 'integer'],
+            'categoryid' => ['required', 'integer'],
+            'sortorder' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        $exists = BudgetLine::where('budgetheaderid', $budget->id)
-            ->where('accountid', $validated['accountid'])
-            ->where('categoryid', $validated['categoryid'])
+        $account = CashbookAccount::query()
+            ->whereKey($validated['accountid'])
+            ->where('legalentityid', $budget->legalentityid)
+            ->where('isactive', 1)
+            ->first();
+
+        if (!$account) {
+            throw ValidationException::withMessages([
+                'accountid' => 'Choose an active account belonging to this legal entity.',
+            ]);
+        }
+
+        $category = CashbookCategory::query()
+            ->whereKey($validated['categoryid'])
+            ->where('isactive', 1)
+            ->where('allowposting', 1)
+            ->where(function ($query) use ($budget) {
+                $query->whereNull('legalentityid')
+                    ->orWhere('legalentityid', $budget->legalentityid);
+            })
+            ->first();
+
+        if (!$category) {
+            throw ValidationException::withMessages([
+                'categoryid' => 'Choose an active posting category available to this legal entity.',
+            ]);
+        }
+
+        $exists = BudgetLine::query()
+            ->where('budgetheaderid', $budget->id)
+            ->where('accountid', $account->id)
+            ->where('categoryid', $category->id)
             ->exists();
 
         if ($exists) {
             return back()->withErrors([
-                'accountid' => 'This account/category combination already exists on this budget.'
-            ]);
+                'categoryid' => 'This account/category combination already exists on this budget.',
+            ])->withInput();
         }
 
-        DB::transaction(function () use ($budget, $validated) {
+        DB::transaction(function () use ($budget, $account, $category, $validated) {
             $line = BudgetLine::create([
                 'budgetheaderid' => $budget->id,
-                'accountid'      => $validated['accountid'],
-                'categoryid'     => $validated['categoryid'],
-                'sortorder'      => $validated['sortorder'] ?? null,
+                'accountid' => $account->id,
+                'categoryid' => $category->id,
+                'sortorder' => $validated['sortorder'] ?? $category->sortorder,
             ]);
 
             foreach (self::FY_MONTHS as $monthNo) {
                 BudgetLineMonth::create([
-                    'budgetlineid'  => $line->id,
-                    'monthno'       => $monthNo,
+                    'budgetlineid' => $line->id,
+                    'monthno' => $monthNo,
                     'adoptedamount' => 0.00,
                     'revisedamount' => null,
+                    'revisedisactual' => false,
                 ]);
             }
         });
@@ -151,11 +244,6 @@ public function index(Request $request, BudgetHeader $budget)
             ->with('success', 'Budget line added.');
     }
 
-    // -------------------------------------------------------------------------
-    // Save month amounts for a single line
-    // field: 'adopted' or 'revised'
-    // -------------------------------------------------------------------------
-
     public function updateMonths(Request $request, BudgetHeader $budget, BudgetLine $line)
     {
         $this->authoriseEntity($budget);
@@ -163,22 +251,36 @@ public function index(Request $request, BudgetHeader $budget)
 
         $field = $request->input('field', 'adopted');
 
-        if ($field === 'adopted' && $budget->isAdoptedLocked()) {
-            return back()->withErrors(['field' => 'Adopted budget is locked and cannot be edited.']);
+        if ($field === 'adopted') {
+            abort_unless($budget->isDraft(), 403, 'Adopted amounts can only be edited in a draft budget.');
+        }
+
+        if ($field === 'revised') {
+            abort_unless($budget->isRevised(), 403, 'Revised amounts can only be edited while the budget is being revised.');
         }
 
         $validated = $request->validate([
-            'amounts'   => 'required|array|size:12',
-            'amounts.*' => 'required|numeric|min:0|max:99999999.99',
+            'amounts' => ['required', 'array', 'size:12'],
+            'amounts.*' => ['required', 'numeric', 'between:-99999999.99,99999999.99'],
         ]);
 
         $dbField = $field === 'revised' ? 'revisedamount' : 'adoptedamount';
 
         DB::transaction(function () use ($line, $validated, $dbField) {
             foreach (self::FY_MONTHS as $index => $monthNo) {
-                BudgetLineMonth::where('budgetlineid', $line->id)
+                $changes = [
+                    $dbField => $validated['amounts'][$index],
+                ];
+
+                if ($dbField === 'revisedamount') {
+                    // A manual revision is no longer a value locked from actuals.
+                    $changes['revisedisactual'] = false;
+                }
+
+                BudgetLineMonth::query()
+                    ->where('budgetlineid', $line->id)
                     ->where('monthno', $monthNo)
-                    ->update([$dbField => $validated['amounts'][$index]]);
+                    ->update($changes);
             }
         });
 
@@ -187,62 +289,105 @@ public function index(Request $request, BudgetHeader $budget)
             ->with('success', 'Budget amounts saved.');
     }
 
-    // -------------------------------------------------------------------------
-    // Apply a preparation method to a line
-    // method: equal | proportioned | lock_actuals
-    // field:  adopted | revised
-    // -------------------------------------------------------------------------
-
     public function applyMethod(Request $request, BudgetHeader $budget, BudgetLine $line)
     {
         $this->authoriseEntity($budget);
         abort_unless($line->budgetheaderid === $budget->id, 403);
 
         $validated = $request->validate([
-            'method'          => 'required|in:equal,proportioned,lock_actuals',
-            'field'           => 'required|in:adopted,revised',
-            'total'           => 'required_unless:method,lock_actuals|nullable|numeric|min:0',
-            'lock_thru_month' => 'required_if:method,lock_actuals|nullable|integer|between:1,12',
+            'method' => ['required', 'in:equal,prior_year_adjusted,copy_prior_year_actuals,lock_actuals'],
+            'field' => ['required', 'in:adopted,revised'],
+            'total' => ['nullable', 'numeric', 'between:-99999999.99,99999999.99'],
+            'percentage_adjustment' => ['nullable', 'numeric', 'between:-100,1000'],
+            'lock_thru_month' => ['required_if:method,lock_actuals', 'nullable', 'integer', 'between:1,12'],
         ]);
 
-        $field   = $validated['field'];
+        $field = $validated['field'];
         $dbField = $field === 'revised' ? 'revisedamount' : 'adoptedamount';
 
-        if ($field === 'adopted' && $budget->isAdoptedLocked()) {
-            return back()->withErrors(['field' => 'Adopted budget is locked.']);
+        if ($field === 'adopted') {
+            abort_unless($budget->isDraft(), 403, 'Adopted preparation methods can only be used in a draft budget.');
+        }
+
+        if ($field === 'revised') {
+            abort_unless($budget->isRevised(), 403, 'Revised preparation methods can only be used while the budget is being revised.');
+        }
+
+        if ($validated['method'] === 'lock_actuals') {
+            abort_unless($dbField === 'revisedamount', 422, 'Lock Actuals is only available for a revised budget.');
+        }
+
+        if ($validated['method'] === 'equal' && !array_key_exists('total', $validated)) {
+            throw ValidationException::withMessages([
+                'total' => 'Enter an annual total for Equal allocation.',
+            ]);
         }
 
         $line->load('months');
 
         DB::transaction(function () use ($validated, $line, $budget, $dbField) {
-
             switch ($validated['method']) {
-
                 case 'equal':
                     $line->distributeEqual((float) $validated['total'], $dbField);
+
+                    if ($dbField === 'revisedamount') {
+                        $this->clearRevisedActualFlags($line);
+                    }
                     break;
 
-                case 'proportioned':
-                    $priorActuals = $this->getPriorYearActuals(
+                case 'prior_year_adjusted':
+                    $priorActuals = $this->getActualsForFinancialYear(
                         $budget->legalentityid,
-                        $line->accountid,
                         $line->categoryid,
                         $budget->financialyear - 1
                     );
-                    $line->distributeProportioned(
-                        (float) $validated['total'],
-                        $priorActuals,
-                        $dbField
+
+                    $priorTotal = array_sum($priorActuals);
+
+                    if (abs($priorTotal) < 0.005) {
+                        throw ValidationException::withMessages([
+                            'method' => 'No usable prior-year actuals are available for this category. Use Equal allocation or enter monthly values manually.',
+                        ]);
+                    }
+
+                    $percentageAdjustment = (float) ($validated['percentage_adjustment'] ?? 0.00);
+                    $newTotal = round($priorTotal * (1 + ($percentageAdjustment / 100)), 2);
+
+                    $line->distributeProportioned($newTotal, $priorActuals, $dbField);
+
+                    if ($dbField === 'revisedamount') {
+                        $this->clearRevisedActualFlags($line);
+                    }
+                    break;
+
+                case 'copy_prior_year_actuals':
+                    $priorActuals = $this->getActualsForFinancialYear(
+                        $budget->legalentityid,
+                        $line->categoryid,
+                        $budget->financialyear - 1
                     );
+
+                    if (abs(array_sum($priorActuals)) < 0.005) {
+                        throw ValidationException::withMessages([
+                            'method' => 'No usable prior-year actuals are available for this category.',
+                        ]);
+                    }
+
+                    foreach ($line->months as $month) {
+                        $month->$dbField = $priorActuals[$month->monthno] ?? 0.00;
+
+                        if ($dbField === 'revisedamount') {
+                            $month->revisedisactual = false;
+                        }
+
+                        $month->save();
+                    }
                     break;
 
                 case 'lock_actuals':
-                    abort_unless($dbField === 'revisedamount', 422, 'Lock Actuals is only available for Revised Budget.');
-
                     $thruMonth = (int) $validated['lock_thru_month'];
-                    $actuals   = $this->getCurrentYearActuals(
+                    $actuals = $this->getActualsForFinancialYear(
                         $budget->legalentityid,
-                        $line->accountid,
                         $line->categoryid,
                         $budget->financialyear
                     );
@@ -261,10 +406,6 @@ public function index(Request $request, BudgetHeader $budget)
             ->with('success', 'Preparation method applied.');
     }
 
-    // -------------------------------------------------------------------------
-    // Delete a budget line (month rows cascade automatically)
-    // -------------------------------------------------------------------------
-
     public function destroy(BudgetHeader $budget, BudgetLine $line)
     {
         $this->authoriseEntity($budget);
@@ -278,72 +419,211 @@ public function index(Request $request, BudgetHeader $budget)
             ->with('success', 'Budget line removed.');
     }
 
-    // -------------------------------------------------------------------------
-    // Private: fetch prior-year Cashbook actuals by FY month number
-    // Returns array keyed 1..12 (1=Jul) => total amount
-    // NOTE: Update the table/column names below to match your cashbook_transactions schema
-    // -------------------------------------------------------------------------
-
-    private function getPriorYearActuals(int $legalEntityId, int $accountId, int $categoryId, int $financialYear): array
-    {
+    private function getActualsForFinancialYear(
+        int $legalEntityId,
+        int $categoryId,
+        int $financialYear
+    ): array {
         $startDate = ($financialYear - 1) . '-07-01';
-        $endDate   = $financialYear . '-06-30';
+        $endDate = $financialYear . '-06-30';
 
-        $rows = DB::table('cashbook_transactions')
-            ->where('legalentityid', $legalEntityId)
-            ->where('accountid', $accountId)
-            ->where('categoryid', $categoryId)
-            ->whereBetween('transactiondate', [$startDate, $endDate])
-            ->selectRaw('MONTH(transactiondate) AS cal_month, YEAR(transactiondate) AS cal_year, SUM(amount) AS total')
-            ->groupBy('cal_year', 'cal_month')
-            ->get();
+        /*
+         * Return raw category display values:
+         * receipts positive, payments positive, transfers retain stored signs.
+         */
+       $rows = DB::table('cashbook_transaction_lines as line')
+    ->join('cashbook_transactions as txn', 'txn.id', '=', 'line.transactionid')
+    ->join('cashbook_categories as category', 'category.id', '=', 'line.categoryid')
+    ->join('cashbook_category_types as categoryType', 'categoryType.id', '=', 'category.categorytypeid')
+    ->where('txn.legalentityid', $legalEntityId)
+    ->where('line.categoryid', $categoryId)
+    ->whereBetween('txn.transactiondate', [$startDate, $endDate])
+    ->selectRaw('
+        MONTH(txn.transactiondate) AS cal_month,
+        SUM(
+            CASE
+                WHEN LOWER(categoryType.typecode) = "transfer"
+                     AND txn.transactionkind = "payment"
+                    THEN -1 * line.amount
+                ELSE line.amount
+            END
+        ) AS total
+    ')
+    ->groupBy(DB::raw('MONTH(txn.transactiondate)'))
+    ->get();
 
-        return $this->mapToFyMonths($rows, $financialYear);
+        return $this->mapToFyMonths($rows);
     }
 
-    private function getCurrentYearActuals(int $legalEntityId, int $accountId, int $categoryId, int $financialYear): array
-    {
-        $startDate = ($financialYear - 1) . '-07-01';
-        $endDate   = $financialYear . '-06-30';
-
-        $rows = DB::table('cashbook_transactions')
-            ->where('legalentityid', $legalEntityId)
-            ->where('accountid', $accountId)
-            ->where('categoryid', $categoryId)
-            ->whereBetween('transactiondate', [$startDate, $endDate])
-            ->selectRaw('MONTH(transactiondate) AS cal_month, YEAR(transactiondate) AS cal_year, SUM(amount) AS total')
-            ->groupBy('cal_year', 'cal_month')
-            ->get();
-
-        return $this->mapToFyMonths($rows, $financialYear);
-    }
-
-    /**
-     * Map calendar {year, month, total} rows to FY month numbers (1=Jul ... 12=Jun).
-     */
-    private function mapToFyMonths($rows, int $financialYear): array
+    private function mapToFyMonths(iterable $rows): array
     {
         $result = array_fill(1, 12, 0.00);
 
         foreach ($rows as $row) {
-            $fyMonthNo = $row->cal_month >= 7
-                ? $row->cal_month - 6   // Jul=1 ... Dec=6
-                : $row->cal_month + 6;  // Jan=7 ... Jun=12
-
+            $fyMonthNo = $this->calendarMonthToFyMonth((int) $row->cal_month);
             $result[$fyMonthNo] = (float) $row->total;
         }
 
         return $result;
     }
 
-    // -------------------------------------------------------------------------
-    // Private helpers
-    // -------------------------------------------------------------------------
+    private function calendarMonthToFyMonth(int $calendarMonth): int
+    {
+        return $calendarMonth >= 7
+            ? $calendarMonth - 6
+            : $calendarMonth + 6;
+    }
+
+    private function entityNetMovementMultiplier(string $categoryTypeCode): int
+    {
+        return match (strtolower(trim($categoryTypeCode))) {
+            'receipt' => 1,
+            'payment' => -1,
+            // Transfers are normally internal to the legal entity and do not
+            // affect entity-level net movement. Their signed activity remains visible.
+            'transfer' => 0,
+            default => 1,
+        };
+    }
+
+    private function clearRevisedActualFlags(BudgetLine $line): void
+    {
+        BudgetLineMonth::query()
+            ->where('budgetlineid', $line->id)
+            ->update(['revisedisactual' => false]);
+    }
+
+    private function postingCategoriesForEntity(int $legalEntityId): Collection
+    {
+        return CashbookCategory::query()
+            ->where('isactive', 1)
+            ->where('allowposting', 1)
+            ->where(function ($query) use ($legalEntityId) {
+                $query->whereNull('legalentityid')
+                    ->orWhere('legalentityid', $legalEntityId);
+            })
+            ->orderBy('sortorder')
+            ->orderBy('categoryname')
+            ->get();
+    }
+
+    private function orderBudgetLines(Collection $lines, int $legalEntityId): Collection
+    {
+        if ($lines->isEmpty()) {
+            return $lines;
+        }
+
+        $categories = CashbookCategory::query()
+            ->with('categoryType')
+            ->where('isactive', 1)
+            ->where(function ($query) use ($legalEntityId) {
+                $query->whereNull('legalentityid')
+                    ->orWhere('legalentityid', $legalEntityId);
+            })
+            ->get();
+
+        $ordered = collect();
+
+        /*
+         * Existing budget lines retain account IDs for schema compatibility.
+         * Ordering remains stable across account groups, while actuals and totals
+         * are deliberately legal-entity and category based.
+         */
+        $accountGroups = $lines
+            ->groupBy('accountid')
+            ->sortBy(function (Collection $accountLines) {
+                $account = $accountLines->first()->account;
+
+                return sprintf(
+                    '%06d|%s|%010d',
+                    (int) ($account?->accountType?->sortorder ?? 999999),
+                    mb_strtolower($account?->accountname ?? ''),
+                    (int) ($account?->id ?? 0)
+                );
+            });
+
+        foreach ($accountGroups as $accountLines) {
+            $ordered = $ordered->concat(
+                $this->orderAccountBudgetLinesByFullCategoryTree($accountLines, $categories)
+            );
+        }
+
+        return $ordered->values();
+    }
+
+    private function budgetCategoryTypeRank(?string $typeCode): int
+    {
+        return match (strtolower(trim((string) $typeCode))) {
+            'receipt' => 1,
+            'payment' => 2,
+            'transfer' => 3,
+            default => 99,
+        };
+    }
+
+    private function orderAccountBudgetLinesByFullCategoryTree(
+        Collection $accountLines,
+        Collection $allCategories
+    ): Collection {
+        $accountLinesByCategory = $accountLines->groupBy('categoryid');
+
+        $categoriesByParent = $allCategories
+            ->sortBy(function (CashbookCategory $category) {
+                return sprintf(
+                    '%03d|%010d|%s|%010d',
+                    $this->budgetCategoryTypeRank($category->categoryType?->typecode),
+                    (int) ($category->sortorder ?? 999999999),
+                    mb_strtolower($category->categoryname ?? ''),
+                    (int) $category->id
+                );
+            })
+            ->groupBy(fn (CashbookCategory $category) => $category->parentcategoryid ?: 0);
+
+        $ordered = collect();
+        $visitedCategoryIds = collect();
+        $addedLineIds = collect();
+
+        $walk = function (int $parentCategoryId) use (
+            &$walk,
+            $categoriesByParent,
+            $accountLinesByCategory,
+            &$ordered,
+            &$visitedCategoryIds,
+            &$addedLineIds
+        ): void {
+            foreach ($categoriesByParent->get($parentCategoryId, collect()) as $category) {
+                if ($visitedCategoryIds->contains($category->id)) {
+                    continue;
+                }
+
+                $visitedCategoryIds->push($category->id);
+
+                foreach ($accountLinesByCategory->get($category->id, collect())->sortBy('id') as $line) {
+                    if (!$addedLineIds->contains($line->id)) {
+                        $ordered->push($line);
+                        $addedLineIds->push($line->id);
+                    }
+                }
+
+                $walk($category->id);
+            }
+        };
+
+        $walk(0);
+
+        foreach ($accountLines->sortBy('id') as $line) {
+            if (!$addedLineIds->contains($line->id)) {
+                $ordered->push($line);
+            }
+        }
+
+        return $ordered->values();
+    }
 
     private function authoriseEntity(BudgetHeader $budget): void
     {
         abort_unless(
-            $budget->legalentityid == session('active_legal_entity_id'),
+            (int) $budget->legalentityid === (int) session('active_legal_entity_id'),
             403
         );
     }

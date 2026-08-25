@@ -34,15 +34,13 @@
 
     @php
         $showSelectedCategoryPanel = (bool) old(
-            'show_selected_category_panel',
-            request()->boolean('show_selected_category_panel', false)
+            'showselectedcategorypanel',
+            request()->boolean('showselectedcategorypanel', false)
         );
 
         $showChildCategories = (bool) old(
-            'show_child_categories',
-            request()->boolean('show_child_categories', false)
-        ) || collect($errors->keys())->contains(
-            fn ($key) => str_starts_with($key, 'existing.') || str_starts_with($key, 'new.')
+            'showchildcategories',
+            request()->boolean('showchildcategories', false)
         );
     @endphp
 
@@ -363,17 +361,35 @@
                                 <div class="px-5 pb-5">
                                     <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
                                         <form method="POST"
-                                              action="{{ route('knowledge-categories.bulk-save') }}"
-                                              id="knowledge-child-categories-form">
+                                            action="{{ route('knowledge-categories.bulk-save') }}"
+                                            id="knowledge-child-categories-form">
                                             @csrf
 
                                             <input type="hidden" name="domainid" value="{{ $selectedCategory->domainid }}">
                                             <input type="hidden" name="categoryid" value="{{ $selectedCategory->id }}">
                                             <input type="hidden" name="search" value="{{ $filters['search'] ?? '' }}">
-                                            <input type="hidden" name="knowledgeitemtypeid" value="{{ $filters['knowledgeitemtypeid'] ?? '' }}">
-                                            <input type="hidden" name="itemstatus" value="{{ $filters['itemstatus'] ?? '' }}">
-                                            <input type="hidden" name="show_child_categories" value="0">
-                                            <input type="hidden" name="show_selected_category_panel" id="show-selected-category-panel-child" value="{{ $showSelectedCategoryPanel ? 1 : 0 }}">
+                                            <input type="hidden"
+                                                name="knowledgeitemtypeid"
+                                                value="{{ $filters['knowledgeitemtypeid'] ?? '' }}">
+                                            <input type="hidden"
+                                                name="itemstatus"
+                                                value="{{ $filters['itemstatus'] ?? '' }}">
+
+                                            {{-- This form is a quick-entry workflow: return to it after saving. --}}
+                                            <input
+                                                type="hidden"
+                                                name="showchildcategories"
+                                                id="show-child-categories-input"
+                                                value="1"
+                                            >
+
+                                            {{-- Saving children must also keep the containing category panel visible. --}}
+                                            <input
+                                                type="hidden"
+                                                name="showselectedcategorypanel"
+                                                id="show-selected-category-panel-child"
+                                                value="1"
+                                            >
 
                                             <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-3">
                                                 <div>
@@ -386,12 +402,12 @@
                                                 </div>
 
                                                 <label class="inline-flex items-center gap-2 text-sm text-gray-700 whitespace-nowrap">
-                                                    <input type="checkbox"
-                                                           id="toggle-child-categories"
-                                                           name="show_child_categories"
-                                                           value="1"
-                                                           class="rounded border-gray-300 text-blue-600 shadow-sm"
-                                                           @checked($showChildCategories)>
+                                                    <input
+                                                        type="checkbox"
+                                                        id="toggle-child-categories"
+                                                        class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                                        @checked($showChildCategories)
+                                                    >
                                                     Show child categories
                                                 </label>
                                             </div>

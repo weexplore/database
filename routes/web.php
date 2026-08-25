@@ -677,7 +677,6 @@ Route::resource('projects', ProjectController::class)->only(['index', 'store', '
 Route::patch('projects/bulk-update', [ProjectController::class, 'update'])->name('projects.update');
 
 Route::get('projects/{project}/tasks', [TaskController::class, 'index'])->name('tasks.index');
-Route::resource('tasks', TaskController::class)->only(['show', 'store', 'update', 'destroy']);
 
 // routes/web.php
 
@@ -692,22 +691,80 @@ Route::post('/stickies/create-and-edit', [StickyController::class, 'createAndEdi
 Route::post('/stickies/{sticky}/position', [StickyController::class, 'updatePosition'])
     ->name('stickies.update-position');
 
+/*
+|--------------------------------------------------------------------------
+| Task management
+|--------------------------------------------------------------------------
+*/
+
+// All Tasks register and bulk editing.
 Route::get('/tasksall/all', [TaskController::class, 'allIndex'])
     ->name('tasksall.all');
-Route::post('tasks/bulk-update', [TaskController::class, 'bulkUpdate'])
-    ->name('tasks.bulk-update');    
-Route::post('tasks/{task}/comments', [TaskCommentController::class, 'store'])->name('task-comments.store');
-Route::delete('task-comments/{comment}', [TaskCommentController::class, 'destroy'])->name('task-comments.destroy');
+
+Route::post('/tasks/bulk-update', [TaskController::class, 'bulkUpdate'])
+    ->name('tasks.bulk-update');
+
+// Task Outlook must be before any /tasks/{task} GET route.
+Route::get('/tasks/outlook', [TaskController::class, 'outlook'])
+    ->name('tasks.outlook');
+
+// Standard task creation.
+Route::post('/tasks', [TaskController::class, 'store'])
+    ->name('tasks.store');
+
+// Task-specific actions.
+Route::post('/tasks/{task}/comments', [TaskCommentController::class, 'store'])
+    ->whereNumber('task')
+    ->name('task-comments.store');
+
 Route::post('/tasks/{task}/move-status', [TaskController::class, 'moveStatus'])
+    ->whereNumber('task')
     ->name('tasks.move-status');
+
 Route::post('/tasks/{task}/move-project', [TaskController::class, 'moveProject'])
+    ->whereNumber('task')
     ->name('tasks.move-project');
+
 Route::post('/tasks/{task}/recurrence', [TaskController::class, 'updateRecurrence'])
+    ->whereNumber('task')
     ->name('tasks.update-recurrence');
 
-
 Route::post('/tasks/{task}/dependencies', [TaskDependencyController::class, 'store'])
+    ->whereNumber('task')
     ->name('tasks.dependencies.store');
 
 Route::delete('/tasks/{task}/dependencies/{dependency}', [TaskDependencyController::class, 'destroy'])
+    ->whereNumber('task')
+    ->whereNumber('dependency')
     ->name('tasks.dependencies.destroy');
+
+Route::patch('/tasks/{task}/outlook', [TaskController::class, 'updateFromOutlook'])
+    ->whereNumber('task')
+    ->name('tasks.outlook.update');
+
+Route::post('/tasks/{task}/make-subtask', [TaskController::class, 'makeSubtask'])
+    ->whereNumber('task')
+    ->name('tasks.make-subtask');
+
+Route::post('/tasks/{task}/duplicate', [TaskController::class, 'duplicate'])
+    ->whereNumber('task')
+    ->name('tasks.duplicate');
+
+// Comments are addressed directly by comment ID.
+Route::delete('/task-comments/{comment}', [TaskCommentController::class, 'destroy'])
+    ->whereNumber('comment')
+    ->name('task-comments.destroy');
+
+// Keep generic task resource-style routes last.
+// These must appear after fixed task URLs such as /tasks/outlook.
+Route::get('/tasks/{task}', [TaskController::class, 'show'])
+    ->whereNumber('task')
+    ->name('tasks.show');
+
+Route::patch('/tasks/{task}', [TaskController::class, 'update'])
+    ->whereNumber('task')
+    ->name('tasks.update');
+
+Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])
+    ->whereNumber('task')
+    ->name('tasks.destroy');
