@@ -162,29 +162,33 @@
                                 <h3 class="text-lg font-medium text-gray-900">Editorial Overview</h3>
                             </div>
 
-                            <x-forms.markdown-field
+                            <x-forms.markdown-display-editor
                                 name="overview"
                                 id="overview"
-                                label="Overview"
                                 :value="old('overview', $destination->overview)"
-                                rows="6"
-                                minRows="4"
-                                maxRows="16"
+                                label="Overview"
+                                :rows="6"
                                 placeholder="Write an editorial overview for this destination..."
-                                help="Markdown supported. Use Show preview to view formatted content."
+                                help="Markdown supported. Click Edit to change the content."
+                                preview-title="Overview Preview"
                             />
 
-                            <x-forms.markdown-field
+                            <x-forms.markdown-display-editor
                                 name="travelnotes"
                                 id="travelnotes"
-                                label="Travel Notes"
                                 :value="old('travelnotes', $destination->travelnotes)"
-                                rows="6"
-                                minRows="4"
-                                maxRows="16"
+                                label="Travel Notes"
+                                :rows="6"
                                 placeholder="Add travel notes, route thoughts, timing, or practical commentary..."
-                                help="Markdown supported. Use Show preview to view formatted content."
+                                help="Markdown supported. Click Edit to change the content."
+                                preview-title="Travel Notes Preview"
                             />
+                                'value' => old('travelnotes', $destination->travelnotes),
+                                'rows' => 6,
+                                'placeholder' => 'Add travel notes, route thoughts, timing, or practical commentary...',
+                                'help' => 'Markdown supported. Click Edit to change the content.',
+                                'previewTitle' => 'Travel Notes Preview',
+                            ])
                         </div>
 
                         <div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-6">
@@ -192,29 +196,27 @@
                                 <h3 class="text-lg font-medium text-gray-900">Suitability and Access</h3>
                             </div>
 
-                            <x-forms.markdown-field
+                            <x-forms.markdown-display-editor
                                 name="suitability"
                                 id="suitability"
-                                label="Suitability"
                                 :value="old('suitability', $destination->suitability)"
-                                rows="5"
-                                minRows="4"
-                                maxRows="14"
+                                label="Suitability"
+                                :rows="5"
                                 placeholder="Describe who this destination suits..."
-                                help="Markdown supported. Use Show preview to view formatted content."
+                                help="Markdown supported. Click Edit to change the content."
+                                preview-title="Suitability Preview"
                             />
 
-                            <x-forms.markdown-field
+                            <x-forms.markdown-display-editor
                                 name="accessnotes"
                                 id="accessnotes"
-                                label="Access Notes"
                                 :value="old('accessnotes', $destination->accessnotes)"
-                                rows="5"
-                                minRows="4"
-                                maxRows="14"
+                                label="Access Notes"
+                                :rows="5"
                                 placeholder="Record access conditions, roads, gates, turning areas, or cautions..."
-                                help="Markdown supported. Use Show preview to view formatted content."
-                            />
+                                help="Markdown supported. Click Edit to change the content."
+                                preview-title="Access Notes Preview"
+                            ])
                         </div>
 
                         <div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-6">
@@ -222,16 +224,15 @@
                                 <h3 class="text-lg font-medium text-gray-900">Personal Commentary</h3>
                             </div>
 
-                            <x-forms.markdown-field
+                            <x-forms.markdown-display-editor
                                 name="personalcommentary"
                                 id="personalcommentary"
-                                label="Personal Commentary"
                                 :value="old('personalcommentary', $destination->personalcommentary)"
-                                rows="7"
-                                minRows="5"
-                                maxRows="18"
+                                label="Personal Commentary"
+                                :rows="7"
                                 placeholder="Add personal reflections, impressions, and revisit thoughts..."
-                                help="Markdown supported. Use Show preview to view formatted content."
+                                help="Markdown supported. Click Edit to change the content."
+                                preview-title="Personal Commentary Preview"
                             />
                         </div>
 
@@ -750,7 +751,7 @@
         </div>
     </div>
 
-    @include('partials.forms.markdown-field-scripts')
+    @include('partials.markdown.markdown-styles')
 
     <script>
 

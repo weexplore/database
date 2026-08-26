@@ -352,30 +352,27 @@
                             </div>
 
                             <div class="grid grid-cols-1 gap-6">
-                                <x-forms.markdown-field
+                                <x-forms.markdown-display-editor
                                     name="accessnotes"
                                     id="accessnotes"
                                     :value="old('accessnotes', $place->accessnotes)"
                                     label="Access notes"
-                                    rows="5"
-                                    min-rows="5"
+                                    :rows="5"
                                     placeholder="Access details, approach notes, vehicle restrictions, gate codes, arrival tips, or check-in instructions"
                                     help="Markdown supported, including headings, lists, links, emphasis, and tables."
                                     preview-title="Access Notes Preview"
                                 />
 
-                                <x-forms.markdown-field
+                                <x-forms.markdown-display-editor
                                     name="generalnotes"
                                     id="generalnotes"
                                     :value="old('generalnotes', $place->generalnotes)"
                                     label="General notes"
-                                    rows="5"
-                                    min-rows="5"
+                                    :rows="5"
                                     placeholder="General notes about the place, suitability, facilities, nearby context, or planning remarks"
                                     help="Markdown supported, including headings, lists, links, emphasis, and tables."
                                     preview-title="General Notes Preview"
                                 />
-                            </div>
 
 <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
     <a href="{{ $returnTo }}"
@@ -722,7 +719,6 @@
     </div>
 
     @include('partials.markdown.markdown-styles')
-    @include('partials.forms.markdown-field-scripts')
 
     <link
         rel="stylesheet"

@@ -2,10 +2,30 @@
     $knowledgeAttachment = $knowledgeAttachment ?? null;
     $knowledgeItem = $knowledgeItem ?? $knowledgeAttachment?->item;
 
-    $currentAttachmentType = old('attachmenttype', $knowledgeAttachment->attachmenttype ?? 'document');
-    $currentDescription = old('description', $knowledgeAttachment->description ?? '');
-    $currentUploadedBy = old('uploadedby', $knowledgeAttachment->uploadedby ?? '');
-    $currentIsPrimary = old('isprimary', $knowledgeAttachment->isprimary ?? false);
+    $currentAttachmentType = old(
+        'attachmenttype',
+        $knowledgeAttachment->attachmenttype ?? 'document'
+    );
+
+    $currentDescription = old(
+        'description',
+        $knowledgeAttachment?->pivot?->description ?? ''
+    );
+
+    $currentExpiryDate = old(
+        'expirydate',
+        optional($knowledgeAttachment?->pivot?->expirydate)->format('Y-m-d')
+    );
+
+    $currentUploadedBy = old(
+        'uploadedby',
+        $knowledgeAttachment->uploadedby ?? ''
+    );
+
+    $currentIsPrimary = old(
+        'isprimary',
+        $knowledgeAttachment?->pivot?->isprimary ?? false
+    );
 @endphp
 
 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -53,9 +73,33 @@
     @endif
 </div>
 
-<div class="mt-4">
-    <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-    <textarea id="description" name="description" rows="3" class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ $currentDescription }}</textarea>
+<div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="md:col-span-2">
+        <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+            Description
+        </label>
+
+        <textarea id="description"
+                  name="description"
+                  rows="3"
+                  class="w-full rounded-md border-gray-300 shadow-sm text-sm">{{ $currentDescription }}</textarea>
+    </div>
+
+    <div>
+        <label for="expirydate" class="block text-sm font-medium text-gray-700 mb-1">
+            Expiry date
+        </label>
+
+        <input type="date"
+               id="expirydate"
+               name="expirydate"
+               value="{{ $currentExpiryDate }}"
+               class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+
+        <p class="mt-1 text-xs text-gray-500">
+            Optional. Appears in Task Outlook within 14 days of expiry.
+        </p>
+    </div>
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">

@@ -141,30 +141,28 @@
     </div>
 
     <div class="md:col-span-2">
-        <x-forms.markdown-field
+    <x-forms.markdown-display-editor
             name="shortdescription"
             id="shortdescription"
             label="Short description"
             :value="$currentShortDescription"
-            rows="3"
-            minRows="3"
-            maxRows="10"
+            :rows="3"
             placeholder="Concise summary of this destination item..."
             help="Markdown supported. Keep this brief — it’s used in lists and quick overviews."
+            preview-title="Short Description Preview"
         />
     </div>
 
     <div class="md:col-span-2">
-        <x-forms.markdown-field
+        <x-forms.markdown-display-editor
             name="notes"
             id="notes"
             label="Notes"
             :value="$currentNotes"
-            rows="5"
-            minRows="4"
-            maxRows="16"
+            :rows="5"
             placeholder="Add notes, context, and commentary for this item..."
-            help="Markdown supported. Use Show preview to view formatted content."
+            help="Markdown supported. Click Edit to change the content."
+            preview-title="Notes Preview"
         />
     </div>
 
@@ -215,30 +213,28 @@
     </div>
 
     <div class="md:col-span-2">
-        <x-forms.markdown-field
+        <x-forms.markdown-display-editor
             name="caravanaccessnotes"
             id="caravanaccessnotes"
             label="Caravan access notes"
             :value="$currentCaravanAccessNotes"
-            rows="4"
-            minRows="3"
-            maxRows="14"
+            :rows="4"
             placeholder="Record turning circles, road width, gradients, low branches, or other caravan-specific details..."
             help="Markdown supported. Use bullets for checklists or key cautions."
+            preview-title="Caravan Access Notes Preview"
         />
     </div>
 
     <div class="md:col-span-2">
-        <x-forms.markdown-field
+        <x-forms.markdown-display-editor
             name="disabilityaccessnotes"
             id="disabilityaccessnotes"
             label="Disability access notes"
             :value="$currentDisabilityAccessNotes"
-            rows="4"
-            minRows="3"
-            maxRows="14"
+            :rows="4"
             placeholder="Describe accessibility, surfaces, ramps, steps, handrails, toilets, and any limitations..."
             help="Markdown supported. Use lists or headings to make access details easy to scan."
+            preview-title="Disability Access Notes Preview"
         />
     </div>
 

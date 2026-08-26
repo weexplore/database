@@ -4,34 +4,41 @@ namespace App\Http\Controllers;
 
 use App\Models\KnowledgeItem;
 use App\Models\KnowledgeRelationship;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Mail\Markdown;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class KnowledgeItemRelationshipController extends Controller
 {
-    public function store(Request $request, KnowledgeItem $knowledgeItem): RedirectResponse
+    public function store(Request $request, KnowledgeItem $knowledgeItem)
     {
         $validated = $request->validate([
             'toitemid' => [
                 'required',
                 'integer',
-                'different:fromitemid',
                 Rule::exists('knowledgeitems', 'id'),
             ],
-            'relationshiptype' => ['required', 'string', Rule::in(KnowledgeRelationship::typeValues())],
+            'relationshiptype' => [
+                'required',
+                'string',
+                Rule::in(KnowledgeRelationship::typeValues()),
+            ],
             'effective_date' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
             'sortorder' => ['nullable', 'integer', 'min:0'],
         ]);
 
         if ((int) $validated['toitemid'] === (int) $knowledgeItem->id) {
-            return back()
-                ->withErrors(['toitemid' => 'A knowledge item cannot relate to itself.'])
-                ->withInput();
+            return response()->json([
+                'message' => 'A knowledge item cannot relate to itself.',
+                'errors' => [
+                    'toitemid' => ['A knowledge item cannot relate to itself.'],
+                ],
+            ], 422);
         }
 
-        KnowledgeRelationship::create([
+        $relationship = KnowledgeRelationship::create([
             'fromitemid' => $knowledgeItem->id,
             'toitemid' => $validated['toitemid'],
             'relationshiptype' => $validated['relationshiptype'],
@@ -41,75 +48,87 @@ class KnowledgeItemRelationshipController extends Controller
             'inboundsortorder' => 0,
         ]);
 
-        return redirect()
-            ->route('knowledge.items.edit', [
-                'knowledgeItem' => $knowledgeItem,
-                'tab' => 'relationships',
-            ])
-            ->with('success', 'Relationship added successfully.');
+        $relationship->load('toItem.primaryCategory');
+
+        return response()->json([
+            'relationship' => $this->relationshipPayload(
+                $relationship,
+                $knowledgeItem
+            ),
+        ], 201);
     }
 
     public function update(
         Request $request,
         KnowledgeItem $knowledgeItem,
         KnowledgeRelationship $knowledgeRelationship
-    ): RedirectResponse {
+    ) {
         $isOutgoing = $knowledgeRelationship->isOutgoingFor($knowledgeItem);
         $isIncoming = $knowledgeRelationship->isIncomingFor($knowledgeItem);
 
         abort_unless($isOutgoing || $isIncoming, 404);
 
         $validated = $request->validate([
-            'fromitemid' => ['nullable', 'integer', Rule::exists('knowledgeitems', 'id')],
-            'toitemid' => ['nullable', 'integer', Rule::exists('knowledgeitems', 'id')],
-            'relationshiptype' => ['required', 'string', Rule::in(KnowledgeRelationship::typeValues())],
+            'relateditemid' => [
+                'required',
+                'integer',
+                Rule::exists('knowledgeitems', 'id'),
+            ],
+            'relationshiptype' => [
+                'required',
+                'string',
+                Rule::in(KnowledgeRelationship::typeValues()),
+            ],
             'effective_date' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
             'sortorder' => ['nullable', 'integer', 'min:0'],
         ]);
 
+        $relatedItemId = (int) $validated['relateditemid'];
+
+        if ($relatedItemId === (int) $knowledgeItem->id) {
+            return response()->json([
+                'message' => 'A knowledge item cannot relate to itself.',
+                'errors' => [
+                    'relateditemid' => ['A knowledge item cannot relate to itself.'],
+                ],
+            ], 422);
+        }
+
         if ($isOutgoing) {
-            $newToItemId = (int) ($validated['toitemid'] ?? 0);
-
-            if ($newToItemId <= 0 || $newToItemId === (int) $knowledgeItem->id) {
-                return back()
-                    ->withErrors(['toitemid' => 'A knowledge item cannot relate to itself.'])
-                    ->withInput();
-            }
-
-            $knowledgeRelationship->toitemid = $newToItemId;
+            $knowledgeRelationship->toitemid = $relatedItemId;
         }
 
         if ($isIncoming) {
-            $newFromItemId = (int) ($validated['fromitemid'] ?? 0);
-
-            if ($newFromItemId <= 0 || $newFromItemId === (int) $knowledgeItem->id) {
-                return back()
-                    ->withErrors(['fromitemid' => 'A knowledge item cannot relate to itself.'])
-                    ->withInput();
-            }
-
-            $knowledgeRelationship->fromitemid = $newFromItemId;
+            $knowledgeRelationship->fromitemid = $relatedItemId;
         }
 
         $knowledgeRelationship->relationshiptype = $validated['relationshiptype'];
         $knowledgeRelationship->effective_date = $validated['effective_date'] ?? null;
         $knowledgeRelationship->notes = $validated['notes'] ?? null;
-        $knowledgeRelationship->setSortOrderFor($knowledgeItem, (int) ($validated['sortorder'] ?? 0));
+        $knowledgeRelationship->setSortOrderFor(
+            $knowledgeItem,
+            (int) ($validated['sortorder'] ?? 0)
+        );
         $knowledgeRelationship->save();
 
-        return redirect()
-            ->route('knowledge.items.edit', [
-                'knowledgeItem' => $knowledgeItem,
-                'tab' => 'relationships',
-            ])
-            ->with('success', 'Relationship updated successfully.');
+        $knowledgeRelationship->load([
+            'fromItem.primaryCategory',
+            'toItem.primaryCategory',
+        ]);
+
+        return response()->json([
+            'relationship' => $this->relationshipPayload(
+                $knowledgeRelationship,
+                $knowledgeItem
+            ),
+        ]);
     }
 
     public function destroy(
         KnowledgeItem $knowledgeItem,
         KnowledgeRelationship $knowledgeRelationship
-    ): RedirectResponse {
+    ) {
         abort_unless(
             $knowledgeRelationship->isOutgoingFor($knowledgeItem)
             || $knowledgeRelationship->isIncomingFor($knowledgeItem),
@@ -118,22 +137,20 @@ class KnowledgeItemRelationshipController extends Controller
 
         $knowledgeRelationship->delete();
 
-        return redirect()
-            ->route('knowledge.items.edit', [
-                'knowledgeItem' => $knowledgeItem,
-                'tab' => 'relationships',
-            ])
-            ->with('success', 'Relationship deleted successfully.');
+        return response()->noContent();
     }
 
-    public function reorder(Request $request, KnowledgeItem $knowledgeItem): RedirectResponse
+    public function reorder(Request $request, KnowledgeItem $knowledgeItem)
     {
         $validated = $request->validate([
             'relationship_order' => ['required', 'array'],
             'relationship_order.*' => ['required', 'integer', 'min:1'],
         ]);
 
-        $relationshipIds = array_map('intval', array_keys($validated['relationship_order']));
+        $relationshipIds = array_map(
+            'intval',
+            array_keys($validated['relationship_order'])
+        );
 
         $relationships = KnowledgeRelationship::query()
             ->where(function ($query) use ($knowledgeItem) {
@@ -144,23 +161,59 @@ class KnowledgeItemRelationshipController extends Controller
             ->get()
             ->keyBy('id');
 
-        foreach ($validated['relationship_order'] as $relationshipId => $sortOrder) {
-            $relationshipId = (int) $relationshipId;
-            $relationship = $relationships->get($relationshipId);
+        DB::transaction(function () use (
+            $validated,
+            $relationships,
+            $knowledgeItem
+        ) {
+            foreach ($validated['relationship_order'] as $relationshipId => $sortOrder) {
+                $relationship = $relationships->get((int) $relationshipId);
 
-            if (!$relationship) {
-                continue;
+                if (! $relationship) {
+                    continue;
+                }
+
+                $relationship->setSortOrderFor(
+                    $knowledgeItem,
+                    (int) $sortOrder
+                );
+
+                $relationship->save();
             }
+        });
 
-            $relationship->setSortOrderFor($knowledgeItem, (int) $sortOrder);
-            $relationship->save();
-        }
+        return response()->noContent();
+    }
 
-        return redirect()
-            ->route('knowledge.items.edit', [
-                'knowledgeItem' => $knowledgeItem,
-                'tab' => 'relationships',
-            ])
-            ->with('success', 'Relationship order updated successfully.');
+    private function relationshipPayload(
+        KnowledgeRelationship $relationship,
+        KnowledgeItem $knowledgeItem
+    ): array {
+        $isOutgoing = $relationship->isOutgoingFor($knowledgeItem);
+        $relatedItem = $isOutgoing
+            ? $relationship->toItem
+            : $relationship->fromItem;
+
+        $relationshipTypeLabel = $isOutgoing
+            ? $relationship->relationshipTypeLabel()
+            : $relationship->inverseRelationshipTypeLabel();
+
+        return [
+            'id' => $relationship->id,
+            'direction' => $isOutgoing ? 'outgoing' : 'incoming',
+            'relateditemid' => $relatedItem?->id,
+            'relateditemname' => $relatedItem?->itemname ?? 'Missing related item',
+            'relateditemcategory' => $relatedItem?->primaryCategory?->categoryname
+                ?? 'Uncategorised',
+            'relationshiptype' => $relationship->relationshiptype,
+            'relationshiptype_label' => $relationshipTypeLabel,
+            'effective_date' => $relationship->effective_date?->format('Y-m-d'),
+            'effective_date_display' => $relationship->effective_date?->format('d M Y'),
+            'notes' => $relationship->notes ?? '',
+            'notes_html' => app(Markdown::class)
+                ->parse($relationship->notes ?? '')
+                ->toHtml(),
+            'sortorder' => (int) ($relationship->sortOrderFor($knowledgeItem) ?? 0),
+        ];
     }
 }

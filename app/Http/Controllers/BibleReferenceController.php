@@ -4,21 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\BibleBook;
 use App\Models\BibleReference;
-use App\Models\BibleVersion;
 use App\Models\KnowledgeItem;
 use App\Services\ApiBibleService;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Mail\Markdown;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
 
 class BibleReferenceController extends Controller
 {
-    public function store(Request $request, KnowledgeItem $knowledgeItem): RedirectResponse
+    public function store(Request $request, KnowledgeItem $knowledgeItem)
     {
         $data = $this->validateData($request);
 
-        BibleReference::create([
+        $bibleReference = BibleReference::create([
             'knowledgeitemid' => $knowledgeItem->id,
             'versionid' => $data['versionid'] ?? null,
             'bookid' => $data['bookid'],
@@ -32,53 +30,21 @@ class BibleReferenceController extends Controller
                 $data['versefrom'] ?? null,
                 $data['chapterto'] ?? null,
                 $data['verseto'] ?? null,
-                $data['referencelabel'] ?? null
+                $data['referencelabel'] ?? null,
             ),
             'notes' => $data['notes'] ?? null,
         ]);
 
-        return redirect()
-            ->route('knowledge.items.edit', [
-                'knowledgeItem' => $knowledgeItem,
-                'tab' => 'bible-references',
-            ])
-            ->with('success', 'Bible reference added.');
+        $bibleReference->load(['book', 'version']);
+
+        return response()->json([
+            'reference' => $this->referencePayload($bibleReference),
+        ], 201);
     }
 
-    public function edit(BibleReference $bibleReference): View
-    {
-        $bibleReference->load(['item.primaryCategory.domain', 'book', 'version']);
-
-        return view('knowledge.items.bible-references.edit', [
-            'bibleReference' => $bibleReference,
-            'knowledgeItem' => $bibleReference->item,
-            'books' => BibleBook::query()
-                ->orderBy('sortorder')
-                ->orderBy('bookname')
-                ->get(),
-            'versions' => BibleVersion::query()
-                ->where('isactive', 1)
-                ->orderBy('versionname')
-                ->get(),
-            'returnTo' => route('knowledge.items.edit', [
-                'knowledgeItem' => $bibleReference->knowledgeitemid,
-                'tab' => 'bible-references',
-            ]),
-        ]);
-    }
-
-    public function update(Request $request, BibleReference $bibleReference): RedirectResponse
+    public function update(Request $request, BibleReference $bibleReference)
     {
         $data = $this->validateData($request);
-
-        $newReferenceLabel = $this->buildReferenceLabel(
-            $data['bookid'],
-            $data['chapterfrom'],
-            $data['versefrom'] ?? null,
-            $data['chapterto'] ?? null,
-            $data['verseto'] ?? null,
-            $data['referencelabel'] ?? null
-        );
 
         $referenceChanged =
             (int) $bibleReference->versionid !== (int) ($data['versionid'] ?? null) ||
@@ -95,7 +61,14 @@ class BibleReferenceController extends Controller
             'versefrom' => $data['versefrom'] ?? null,
             'chapterto' => $data['chapterto'] ?? null,
             'verseto' => $data['verseto'] ?? null,
-            'referencelabel' => $newReferenceLabel,
+            'referencelabel' => $this->buildReferenceLabel(
+                $data['bookid'],
+                $data['chapterfrom'],
+                $data['versefrom'] ?? null,
+                $data['chapterto'] ?? null,
+                $data['verseto'] ?? null,
+                $data['referencelabel'] ?? null,
+            ),
             'notes' => $data['notes'] ?? null,
         ];
 
@@ -109,36 +82,27 @@ class BibleReferenceController extends Controller
         }
 
         $bibleReference->update($updateData);
+        $bibleReference->load(['book', 'version']);
 
-        return redirect()
-            ->route('knowledge.items.edit', [
-                'knowledgeItem' => $bibleReference->knowledgeitemid,
-                'tab' => 'bible-references',
-            ])
-            ->with(
-                'success',
-                $referenceChanged
-                    ? 'Bible reference updated. Cached passage cleared because the reference changed.'
-                    : 'Bible reference updated.'
-            );
+        return response()->json([
+            'reference' => $this->referencePayload($bibleReference),
+            'message' => $referenceChanged
+                ? 'Bible reference updated. Cached passage cleared because the reference changed.'
+                : 'Bible reference updated.',
+        ]);
     }
 
-    public function destroy(BibleReference $bibleReference): RedirectResponse
+    public function destroy(BibleReference $bibleReference)
     {
-        $knowledgeItemId = $bibleReference->knowledgeitemid;
-
         $bibleReference->delete();
 
-        return redirect()
-            ->route('knowledge.items.edit', [
-                'knowledgeItem' => $knowledgeItemId,
-                'tab' => 'bible-references',
-            ])
-            ->with('success', 'Bible reference deleted.');
+        return response()->noContent();
     }
 
-    public function fetchPassage(BibleReference $bibleReference, ApiBibleService $apiBibleService): RedirectResponse
-    {
+    public function fetchPassage(
+        BibleReference $bibleReference,
+        ApiBibleService $apiBibleService
+    ) {
         try {
             $apiBibleService->fetchAndStorePassage($bibleReference);
 
@@ -148,13 +112,13 @@ class BibleReferenceController extends Controller
                     'tab' => 'bible-references',
                 ])
                 ->with('success', 'Bible passage fetched successfully.');
-        } catch (\Throwable $e) {
+        } catch (\Throwable $exception) {
             return redirect()
                 ->route('knowledge.items.edit', [
                     'knowledgeItem' => $bibleReference->knowledgeitemid,
                     'tab' => 'bible-references',
                 ])
-                ->with('error', $e->getMessage());
+                ->with('error', $exception->getMessage());
         }
     }
 
@@ -171,18 +135,21 @@ class BibleReferenceController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        if (!empty($data['chapterto']) && (int) $data['chapterto'] < (int) $data['chapterfrom']) {
+        if (
+            !empty($data['chapterto'])
+            && (int) $data['chapterto'] < (int) $data['chapterfrom']
+        ) {
             throw ValidationException::withMessages([
                 'chapterto' => 'The ending chapter must be greater than or equal to the starting chapter.',
             ]);
         }
 
         if (
-            !empty($data['chapterto']) &&
-            (int) $data['chapterto'] === (int) $data['chapterfrom'] &&
-            !empty($data['versefrom']) &&
-            !empty($data['verseto']) &&
-            (int) $data['verseto'] < (int) $data['versefrom']
+            !empty($data['chapterto'])
+            && (int) $data['chapterto'] === (int) $data['chapterfrom']
+            && !empty($data['versefrom'])
+            && !empty($data['verseto'])
+            && (int) $data['verseto'] < (int) $data['versefrom']
         ) {
             throw ValidationException::withMessages([
                 'verseto' => 'The ending verse must be greater than or equal to the starting verse when the chapter is the same.',
@@ -198,14 +165,13 @@ class BibleReferenceController extends Controller
         ?int $verseFrom,
         ?int $chapterTo,
         ?int $verseTo,
-        ?string $manualLabel
+        ?string $manualLabel,
     ): string {
-        if (!empty(trim((string) $manualLabel))) {
+        if (filled(trim((string) $manualLabel))) {
             return trim((string) $manualLabel);
         }
 
-        $book = BibleBook::find($bookId);
-        $bookName = $book?->bookname ?: 'Book';
+        $bookName = BibleBook::find($bookId)?->bookname ?? 'Book';
 
         $from = $chapterFrom . ($verseFrom ? ':' . $verseFrom : '');
         $to = null;
@@ -217,5 +183,28 @@ class BibleReferenceController extends Controller
         }
 
         return $to ? "{$bookName} {$from}-{$to}" : "{$bookName} {$from}";
+    }
+
+    private function referencePayload(BibleReference $reference): array
+    {
+        return [
+            'id' => $reference->id,
+            'versionid' => $reference->versionid,
+            'versionname' => $reference->version?->versionname ?? '—',
+            'bookid' => $reference->bookid,
+            'bookname' => $reference->book?->bookname ?? 'Book',
+            'chapterfrom' => (int) $reference->chapterfrom,
+            'versefrom' => $reference->versefrom ? (int) $reference->versefrom : null,
+            'chapterto' => $reference->chapterto ? (int) $reference->chapterto : null,
+            'verseto' => $reference->verseto ? (int) $reference->verseto : null,
+            'referencelabel' => $reference->referencelabel,
+            'notes' => $reference->notes ?? '',
+            'notes_html' => filled($reference->notes)
+                ? app(Markdown::class)->parse($reference->notes)->toHtml()
+                : '',
+            'cachedpassagetext' => $reference->cachedpassagetext ?? '',
+            'cachedreferencetext' => $reference->cachedreferencetext ?? '',
+            'passagefetchedat' => $reference->passagefetchedat?->format('d M Y H:i'),
+        ];
     }
 }

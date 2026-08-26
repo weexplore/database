@@ -157,12 +157,16 @@
         </div>
 
 
-            <x-forms.markdown-field
-                name="notes"
-                label="Notes"
-                :value="old('notes', $tripPlanItem->notes)"
-                help="Use Markdown for planning notes, reminders, linked destination details, or activity planning."
-            />
+        <x-forms.markdown-display-editor
+            name="notes"
+            id="notes"
+            label="Notes"
+            :value="old('notes', $tripPlanItem->notes)"
+            :rows="5"
+            placeholder="Add planning notes, reminders, linked destination details, or activity planning..."
+            help="Use Markdown for planning notes, reminders, linked destination details, or activity planning."
+            preview-title="Planning Notes Preview"
+        />
 
 
         <div class="mt-6">
@@ -418,6 +422,7 @@
         </div>
     </div>
 </div>
+@include('partials.markdown.markdown-styles')
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {

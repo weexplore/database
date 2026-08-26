@@ -92,15 +92,14 @@
             </div>
 
             <div class="md:col-span-2">
-                <x-forms.markdown-field
+               <x-forms.markdown-display-editor
                     name="summary"
                     id="summary"
                     label="Summary"
-                    :value="old('summary', $knowledgeItem->summary ?? '')"
-                    rows="3"
-                    min-rows="3"
+                    :value="$knowledgeItem->summary ?? ''"
+                    rows="4"
                     placeholder="Short overview of the knowledge item"
-                    help="Markdown supported, including headings, lists, emphasis, and tables."
+                    help="A concise overview of this knowledge item."
                 />
             </div>
         </div>
@@ -113,38 +112,34 @@
         </p>
 
         <div class="mt-4 space-y-5">
-            <x-forms.markdown-field
+            <x-forms.markdown-display-editor
                 name="detailednotes"
                 id="detailednotes"
                 label="Detailed Notes"
-                :value="old('detailednotes', $knowledgeItem->detailednotes ?? '')"
-                rows="8"
-                min-rows="8"
+                :value="$knowledgeItem->detailednotes ?? ''"
+                rows="12"
                 placeholder="Full notes, observations, or structured research detail"
-                help="Markdown supported, including headings, lists, emphasis, links, and tables."
-                :startCollapsed="true"
+                help="Long-form research, observations, or structured background detail."
             />
 
-            <x-forms.markdown-field
+            <x-forms.markdown-display-editor
                 name="significance"
                 id="significance"
                 label="Significance"
-                :value="old('significance', $knowledgeItem->significance ?? '')"
-                rows="4"
-                min-rows="4"
+                :value="$knowledgeItem->significance ?? ''"
+                rows="6"
                 placeholder="Why this item matters"
-                help="Markdown supported for structured commentary and summaries."
+                help="Why this item matters, implications, and decision relevance."
             />
 
-            <x-forms.markdown-field
+            <x-forms.markdown-display-editor
                 name="reviewnotes"
                 id="reviewnotes"
                 label="Review Notes"
-                :value="old('reviewnotes', $knowledgeItem->reviewnotes ?? '')"
-                rows="4"
-                min-rows="4"
+                :value="$knowledgeItem->reviewnotes ?? ''"
+                rows="6"
                 placeholder="Review comments, follow-up actions, or quality notes"
-                help="Markdown supported for follow-up actions, checklists, and review commentary."
+                help="Follow-up actions, checks, and quality commentary."
             />
         </div>
     </div>
@@ -254,7 +249,6 @@
 
 @if(($activeTab ?? 'details') === 'details')
     @include('partials.markdown.markdown-styles')
-    @include('partials.forms.markdown-field-scripts')
 
     @include('partials.admin.dirty-form-script', [
         'formId' => 'knowledge-item-form',

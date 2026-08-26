@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class KnowledgeAttachment extends Model
 {
@@ -14,20 +15,17 @@ class KnowledgeAttachment extends Model
     protected $table = 'knowledgeattachments';
 
     protected $fillable = [
-        'knowledgeitemid',
         'attachmenttype',
         'filename',
         'originalfilename',
         'mimetype',
         'filesizebytes',
-        'description',
         'uploadedat',
         'uploadedby',
         'isprimary',
     ];
 
     protected $casts = [
-        'knowledgeitemid' => 'integer',
         'filesizebytes' => 'integer',
         'uploadedat' => 'datetime',
         'isprimary' => 'boolean',
@@ -40,17 +38,20 @@ class KnowledgeAttachment extends Model
     {
         return $this->belongsTo(KnowledgeItem::class, 'knowledgeitemid');
     }
-    public function items()
-{
-    return $this->belongsToMany(
-        KnowledgeItem::class,
-        'knowledgeitem_attachments',
-        'knowledgeattachmentid',
-        'knowledgeitemid'
-    )->withPivot([
-        'description',
-        'isprimary',
-        'sortorder',
-    ]);
-}
+    public function items(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            KnowledgeItem::class,
+            'knowledgeitem_attachments',
+            'knowledgeattachmentid',
+            'knowledgeitemid'
+        )
+            ->withPivot([
+                'description',
+                'expirydate',
+                'isprimary',
+                'sortorder',
+            ])
+            ->withTimestamps('created_at', 'updated_at');
+    }
 }

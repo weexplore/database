@@ -204,8 +204,6 @@
             @if(($activeTab ?? 'details') === 'notes')
                 @include('knowledge.items.partials.notes-panel', [
                     'knowledgeItem' => $knowledgeItem,
-                    'editingNoteId' => $editingNoteId ?? null,
-                    'showAddNote' => $showAddNote ?? false,
                     'noteTypeOptions' => $noteTypeOptions ?? [],
                 ])
             @endif
@@ -213,8 +211,6 @@
             @if(($activeTab ?? 'details') === 'sources')
                 @include('knowledge.items.partials.sources-panel', [
                     'knowledgeItem' => $knowledgeItem,
-                    'editingSourceId' => $editingSourceId ?? null,
-                    'showAddSource' => $showAddSource ?? false,
                     'sourceTypeOptions' => $sourceTypeOptions ?? [],
                 ])
             @endif
@@ -222,8 +218,6 @@
             @if(($activeTab ?? 'details') === 'review-logs')
                 @include('knowledge.items.partials.review-logs-panel', [
                     'knowledgeItem' => $knowledgeItem,
-                    'editingReviewLogId' => $editingReviewLogId ?? null,
-                    'showAddReviewLog' => $showAddReviewLog ?? false,
                     'reviewTypeOptions' => $reviewTypeOptions ?? [],
                 ])
             @endif
@@ -231,8 +225,6 @@
             @if(($activeTab ?? 'details') === 'relationships')
                 @include('knowledge.items.partials.relationships-panel', [
                     'knowledgeItem' => $knowledgeItem,
-                    'editingRelationshipId' => $editingRelationshipId ?? null,
-                    'showAddRelationship' => $showAddRelationship ?? false,
                     'relationshipItems' => $relationshipItems ?? collect(),
                     'relationshipTypeOptions' => $relationshipTypeOptions ?? [],
                 ])
@@ -243,9 +235,11 @@
                     'knowledgeItem' => $knowledgeItem,
                 ])
             @endif
-            @if(($activeTab ?? 'details') === 'bible-references' && !empty($hasBibleTools))
+            @if(($activeTab ?? 'details') === 'bible-references')
                 @include('knowledge.items.partials.bible-references-panel', [
                     'knowledgeItem' => $knowledgeItem,
+                    'books' => $books ?? collect(),
+                    'versions' => $versions ?? collect(),
                 ])
             @endif
             @if(($activeTab ?? 'details') === 'investments' && !empty($hasInvestmentTools))

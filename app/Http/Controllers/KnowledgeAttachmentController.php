@@ -31,6 +31,7 @@ class KnowledgeAttachmentController extends Controller
     $data = $request->validate([
         'attachmenttype' => ['nullable', Rule::in($attachmentTypeOptions)],
         'description' => ['nullable', 'string'],
+        'expirydate' => ['nullable', 'date'],
         'uploadedby' => ['nullable', 'string', 'max:100'],
         'isprimary' => ['nullable', 'boolean'],
         'sortorder' => ['nullable', 'integer', 'min:0'],
@@ -60,11 +61,13 @@ class KnowledgeAttachmentController extends Controller
 
     $knowledgeItem->attachments()->attach($attachment->id, [
         'description' => $data['description'] ?? null,
+        'expirydate' => $data['expirydate'] ?? null,
         'isprimary' => !empty($data['isprimary']),
         'sortorder' => $data['sortorder'] ?? 0,
         'created_at' => now(),
         'updated_at' => now(),
     ]);
+
 
     return redirect($data['return_to'] ?: route('knowledge.items.edit', [
         'knowledgeItem' => $knowledgeItem,
@@ -140,6 +143,7 @@ class KnowledgeAttachmentController extends Controller
 
     $knowledgeItem->attachments()->updateExistingPivot($knowledgeAttachment->id, [
         'description' => $data['description'] ?? null,
+        'expirydate' => $data['expirydate'] ?? null,
         'isprimary' => !empty($data['isprimary']),
         'sortorder' => $data['sortorder'] ?? 0,
         'updated_at' => now(),
@@ -203,6 +207,7 @@ class KnowledgeAttachmentController extends Controller
     $data = $request->validate([
         'knowledgeattachmentid' => ['required', 'integer', Rule::exists('knowledgeattachments', 'id')],
         'description' => ['nullable', 'string'],
+        'expirydate' => ['nullable', 'date'],
         'isprimary' => ['nullable', 'boolean'],
         'sortorder' => ['nullable', 'integer', 'min:0'],
         'return_to' => ['nullable', 'string'],
@@ -227,8 +232,9 @@ class KnowledgeAttachmentController extends Controller
             ->update(['isprimary' => false]);
     }
 
-    $knowledgeItem->attachments()->attach($attachmentId, [
+   $knowledgeItem->attachments()->attach($attachmentId, [
         'description' => $data['description'] ?? null,
+        'expirydate' => $data['expirydate'] ?? null,
         'isprimary' => !empty($data['isprimary']),
         'sortorder' => $data['sortorder'] ?? 0,
     ]);

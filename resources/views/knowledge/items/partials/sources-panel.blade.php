@@ -1,538 +1,592 @@
 {{-- resources/views/knowledge/items/partials/sources-panel.blade.php --}}
-<div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-    <div class="px-6 py-4 border-b border-gray-200">
-        <div class="flex items-center justify-between gap-4">
+
+@php
+    $sourcesPayload = $knowledgeItem->sources
+        ->sortBy(fn ($source) => mb_strtolower($source->sourcetitle ?? ''))
+        ->values()
+        ->map(function ($source) {
+            return [
+                'id' => $source->id,
+                'sourcetype' => $source->sourcetype,
+                'sourcetype_label' => \App\Models\KnowledgeSource::typeOptions()[$source->sourcetype]
+                    ?? $source->sourcetype
+                    ?? 'Source',
+                'sourceurl' => $source->sourceurl ?? '',
+                'sourcetitle' => $source->sourcetitle ?? '',
+                'sourcepublisher' => $source->sourcepublisher ?? '',
+                'retrievedon' => $source->retrievedon?->format('Y-m-d'),
+                'retrievedon_display' => $source->retrievedon?->format('d M Y'),
+                'importedsummary' => $source->importedsummary ?? '',
+                'importedsummary_html' => app(\Illuminate\Mail\Markdown::class)
+                    ->parse($source->importedsummary ?? '')
+                    ->toHtml(),
+                'importednotes' => $source->importednotes ?? '',
+                'importednotes_html' => app(\Illuminate\Mail\Markdown::class)
+                    ->parse($source->importednotes ?? '')
+                    ->toHtml(),
+                'importstatus' => $source->importstatus ?? '',
+                'reviewedon' => $source->reviewedon?->format('Y-m-d'),
+                'reviewedon_display' => $source->reviewedon?->format('d M Y'),
+                'reviewedby' => $source->reviewedby ?? '',
+                'internalnotes' => $source->internalnotes ?? '',
+                'internalnotes_html' => app(\Illuminate\Mail\Markdown::class)
+                    ->parse($source->internalnotes ?? '')
+                    ->toHtml(),
+            ];
+        });
+
+    /*
+     * fetchFromInternet() redirects back with old input. The initial Alpine
+     * state detects this payload and immediately opens a prefilled Add Source
+     * editor, replacing the old show_add_source URL workflow.
+     */
+    $fetchedSourceDraft = [
+        'sourcetype' => old('sourcetype'),
+        'sourcetitle' => old('sourcetitle'),
+        'sourceurl' => old('sourceurl'),
+        'sourcepublisher' => old('sourcepublisher'),
+        'retrievedon' => old('retrievedon'),
+        'importstatus' => old('importstatus'),
+        'importedsummary' => old('importedsummary'),
+        'importednotes' => old('importednotes'),
+        'reviewedon' => old('reviewedon'),
+        'reviewedby' => old('reviewedby'),
+        'internalnotes' => old('internalnotes'),
+    ];
+
+    $hasFetchedSourceDraft = collect($fetchedSourceDraft)
+        ->filter(fn ($value) => filled($value))
+        ->isNotEmpty();
+@endphp
+
+<script id="knowledge-sources-initial-data" type="application/json">
+{!! json_encode([
+    'sources' => $sourcesPayload,
+    'storeUrl' => route('knowledge.items.sources.store', $knowledgeItem),
+    'baseUrl' => url('/knowledge/items/'.$knowledgeItem->id.'/sources'),
+    'csrfToken' => csrf_token(),
+    'sourceTypes' => $sourceTypeOptions ?? [],
+    'fetchSourceDraft' => $hasFetchedSourceDraft ? $fetchedSourceDraft : null,
+], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}
+</script>
+
+<div class="bg-white overflow-hidden shadow-sm sm:rounded-lg"
+     x-data="knowledgeSourcesPanel()">
+
+    {{-- Header --}}
+    <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
+        <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
                 <h3 class="text-sm font-semibold text-gray-900">Sources</h3>
                 <p class="mt-1 text-sm text-gray-500">
-                    Track the articles, books, and links backing this knowledge item.
+                    Track articles, books, documents, and web pages supporting this knowledge item.
                 </p>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
                 <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
-                    {{ $knowledgeItem->sources->count() }} total
+                    <span x-text="sources.length"></span> total
                 </span>
 
-                @if(!($showFetchSource ?? false))
-                    <a href="{{ route('knowledge.items.edit', [
-                            'knowledgeItem' => $knowledgeItem,
-                            'tab' => 'sources',
-                            'show_fetch_source' => 1,
-                        ]) }}"
-                       class="inline-flex items-center px-3 py-1.5 bg-slate-700 text-white rounded text-sm hover:bg-slate-800">
-                        Fetch from Internet
-                    </a>
-                @endif
+                <button type="button"
+                        @click="toggleFetchPanel()"
+                        class="inline-flex items-center px-3 py-1.5 bg-slate-700 text-white rounded text-sm hover:bg-slate-800">
+                    <span x-text="showFetchPanel ? 'Hide fetch' : 'Fetch from Internet'"></span>
+                </button>
 
-                @if(!($showAddSource ?? false))
-                    <a href="{{ route('knowledge.items.edit', [
-                            'knowledgeItem' => $knowledgeItem,
-                            'tab' => 'sources',
-                            'show_add_source' => 1,
-                        ]) }}"
-                       class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
-                        Add Source
-                    </a>
-                @endif
+                <button type="button"
+                        @click="startNewSource()"
+                        class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+                    + Add Source
+                </button>
             </div>
         </div>
     </div>
 
-    @if($showFetchSource ?? false)
-        <div class="p-6 border-b border-gray-200 space-y-4 bg-slate-50">
-            <div class="flex items-center justify-between gap-4">
+    {{-- Error display --}}
+    <template x-if="errorMessage">
+        <div class="mx-4 sm:mx-6 mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+             x-text="errorMessage">
+        </div>
+    </template>
+
+    {{-- Retained normal server-side fetch workflow --}}
+    <div x-show="showFetchPanel"
+         x-cloak
+         class="border-b border-gray-200 bg-slate-50 p-4 sm:p-6">
+        <div class="mb-4 flex items-start justify-between gap-3">
+            <div>
+                <h4 class="text-sm font-semibold text-gray-900">Fetch Source from Internet</h4>
+                <p class="mt-1 text-sm text-gray-500">
+                    Fetch page metadata and imported text, then review it in the new source editor before saving.
+                </p>
+            </div>
+
+            <button type="button"
+                    @click="showFetchPanel = false"
+                    class="inline-flex shrink-0 items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs hover:bg-gray-300">
+                Cancel
+            </button>
+        </div>
+
+        <form method="POST"
+              action="{{ route('knowledge.items.sources.fetch', $knowledgeItem) }}"
+              class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            @csrf
+
+            <div class="md:col-span-4">
+                <label for="fetch_url" class="block text-sm font-medium text-gray-700 mb-1">
+                    Page URL
+                </label>
+
+                <input type="url"
+                       name="fetch_url"
+                       id="fetch_url"
+                       value="{{ old('fetch_url') }}"
+                       placeholder="https://"
+                       required
+                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+            </div>
+
+            <div class="flex items-end">
+                <button type="submit"
+                        class="inline-flex items-center justify-center w-full px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 text-sm">
+                    Fetch
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {{-- New source editor --}}
+    <template x-if="newSource">
+        <div class="m-4 sm:m-6 rounded-lg border border-blue-200 bg-blue-50 p-4 sm:p-5">
+            <div class="mb-4 flex items-start justify-between gap-3">
                 <div>
-                    <h4 class="text-sm font-semibold text-gray-900">Fetch Source from Internet</h4>
-                    <p class="mt-1 text-sm text-gray-500">
-                        Fetch page metadata and imported notes for review before saving.
+                    <h4 class="text-sm font-semibold text-blue-900">Add Source</h4>
+                    <p class="mt-1 text-xs text-blue-700">
+                        Markdown is rendered after saving. Imported content can be edited before it is retained.
                     </p>
                 </div>
 
-                <a href="{{ route('knowledge.items.edit', [
-                    'knowledgeItem' => $knowledgeItem,
-                    'tab' => 'sources',
-                ]) }}"
-                   class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-sm hover:bg-gray-300">
+                <button type="button"
+                        @click="cancelNewSource()"
+                        class="inline-flex shrink-0 items-center px-3 py-1.5 bg-white text-gray-700 border border-gray-300 rounded text-xs hover:bg-gray-50">
                     Cancel
-                </a>
+                </button>
             </div>
 
-            <form method="POST"
-                  action="{{ route('knowledge.items.sources.fetch', $knowledgeItem) }}"
-                  class="space-y-4">
-                @csrf
-
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div class="md:col-span-4">
-                        <label for="fetch_url" class="block text-sm font-medium text-gray-700 mb-1">
-                            Page URL
-                        </label>
-                        <input type="url"
-                               name="fetch_url"
-                               id="fetch_url"
-                               value="{{ old('fetch_url') }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                               placeholder="https://"
-                               required>
-                    </div>
-
-                    <div class="flex items-end">
-                        <button type="submit"
-                                class="inline-flex items-center justify-center w-full px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 text-sm">
-                            Fetch
-                        </button>
-                    </div>
-                </div>
-            </form>
+            @include('knowledge.items.partials.source-inline-editor', [
+                'draftReference' => 'newSource',
+                'saveAction' => 'saveNewSource()',
+                'cancelAction' => 'cancelNewSource()',
+                'saveLabel' => 'Save New Source',
+            ])
         </div>
-    @endif
+    </template>
 
-    @if($showAddSource ?? false)
-        <div class="p-6 border-b border-gray-200 space-y-4">
-            <div class="flex items-center justify-between gap-4">
-                <h4 class="text-sm font-semibold text-gray-900">Add Source</h4>
-
-                <a href="{{ route('knowledge.items.edit', [
-                    'knowledgeItem' => $knowledgeItem,
-                    'tab' => 'sources',
-                ]) }}"
-                   class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-sm hover:bg-gray-300">
-                    Cancel
-                </a>
-            </div>
-
-            <form method="POST"
-                  action="{{ route('knowledge.items.sources.store', $knowledgeItem) }}"
-                  class="space-y-4">
-                @csrf
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label for="source_sourcetype" class="block text-sm font-medium text-gray-700 mb-1">
-                            Source Type
-                        </label>
-                        <select name="sourcetype"
-                                id="source_sourcetype"
-                                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                required>
-                            <option value="">Select source type</option>
-                            @foreach($sourceTypeOptions as $value => $label)
-                                <option value="{{ $value }}" @selected(old('sourcetype') === $value)>
-                                    {{ $label }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label for="source_sourcetitle" class="block text-sm font-medium text-gray-700 mb-1">
-                            Title
-                        </label>
-                        <input type="text"
-                               name="sourcetitle"
-                               id="source_sourcetitle"
-                               value="{{ old('sourcetitle') }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                               maxlength="255"
-                               required>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="md:col-span-2">
-                        <label for="source_sourceurl" class="block text-sm font-medium text-gray-700 mb-1">
-                            URL
-                        </label>
-                        <input type="url"
-                               name="sourceurl"
-                               id="source_sourceurl"
-                               value="{{ old('sourceurl') }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                               placeholder="https://">
-                    </div>
-
-                    <div>
-                        <label for="source_sourcepublisher" class="block text-sm font-medium text-gray-700 mb-1">
-                            Publisher / Source
-                        </label>
-                        <input type="text"
-                               name="sourcepublisher"
-                               id="source_sourcepublisher"
-                               value="{{ old('sourcepublisher') }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label for="source_retrievedon" class="block text-sm font-medium text-gray-700 mb-1">
-                            Retrieved On
-                        </label>
-                        <input type="date"
-                               name="retrievedon"
-                               id="source_retrievedon"
-                               value="{{ old('retrievedon') }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                    </div>
-
-                    <div>
-                        <label for="source_importstatus" class="block text-sm font-medium text-gray-700 mb-1">
-                            Import Status
-                        </label>
-                        <input type="text"
-                               name="importstatus"
-                               id="source_importstatus"
-                               value="{{ old('importstatus') }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                               placeholder="new, reviewed, rejected">
-                    </div>
-
-                    <div>
-                        <label for="source_reviewedon" class="block text-sm font-medium text-gray-700 mb-1">
-                            Reviewed On
-                        </label>
-                        <input type="date"
-                               name="reviewedon"
-                               id="source_reviewedon"
-                               value="{{ old('reviewedon') }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                    </div>
-                </div>
-
-                <x-forms.markdown-field
-                    name="importedsummary"
-                    id="source_importedsummary"
-                    :value="old('importedsummary')"
-                    label="Imported Summary"
-                    rows="3"
-                    min-rows="3"
-                    placeholder="Short imported summary from the source"
-                    help="Markdown supported, including headings, lists, links, emphasis, and tables."
-                    preview-title="Imported Summary Preview"
-                />
-
-                <x-forms.markdown-field
-                    name="importednotes"
-                    id="source_importednotes"
-                    :value="old('importednotes')"
-                    label="Imported Notes"
-                    rows="4"
-                    min-rows="4"
-                    placeholder="Imported notes captured from review or fetch workflow"
-                    help="Markdown supported, including headings, lists, links, emphasis, and tables."
-                    preview-title="Imported Notes Preview"
-                />
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label for="source_reviewedby" class="block text-sm font-medium text-gray-700 mb-1">
-                            Reviewed By
-                        </label>
-                        <input type="text"
-                               name="reviewedby"
-                               id="source_reviewedby"
-                               value="{{ old('reviewedby') }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                               maxlength="100">
-                    </div>
-
-                    <div>
-                        <x-forms.markdown-field
-                            name="internalnotes"
-                            id="source_internalnotes"
-                            :value="old('internalnotes')"
-                            label="Internal Notes"
-                            rows="4"
-                            min-rows="4"
-                            placeholder="Internal curation or review notes"
-                            help="Markdown supported for internal comments, checklists, and tables."
-                            preview-title="Internal Notes Preview"
-                        />
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-end">
-                    <button type="submit"
-                            class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-                        Save New Source
-                    </button>
-                </div>
-            </form>
-        </div>
-    @endif
-
+    {{-- Source list --}}
     <div class="divide-y divide-gray-200">
-        @forelse($knowledgeItem->sources->sortBy('sourcetitle') as $source)
-            <div class="p-4 space-y-3">
-                <div class="flex items-start justify-between gap-4">
-                    <div class="space-y-1 min-w-0 flex-1">
-                        <div class="text-sm font-semibold text-gray-900">
-                            {{ $source->sourcetitle ?: 'Untitled source' }}
+        <template x-for="source in sources" :key="source.id">
+            <div class="p-4 sm:p-6">
+
+                {{-- Display mode --}}
+                <template x-if="!source.editing">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h4 class="text-sm font-semibold text-gray-900 break-words"
+                                    x-text="source.sourcetitle || 'Untitled source'">
+                                </h4>
+
+                                <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
+                                      x-text="source.sourcetype_label">
+                                </span>
+
+                                <template x-if="source.importstatus">
+                                    <span class="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700"
+                                          x-text="source.importstatus">
+                                    </span>
+                                </template>
+                            </div>
+
+                            <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                                <template x-if="source.sourcepublisher">
+                                    <span>
+                                        Publisher:
+                                        <span x-text="source.sourcepublisher"></span>
+                                    </span>
+                                </template>
+
+                                <template x-if="source.retrievedon">
+                                    <span>
+                                        Retrieved:
+                                        <span x-text="source.retrievedon_display"></span>
+                                    </span>
+                                </template>
+
+                                <template x-if="source.reviewedon">
+                                    <span>
+                                        Reviewed:
+                                        <span x-text="source.reviewedon_display"></span>
+                                    </span>
+                                </template>
+
+                                <template x-if="source.reviewedby">
+                                    <span>
+                                        By:
+                                        <span x-text="source.reviewedby"></span>
+                                    </span>
+                                </template>
+                            </div>
+
+                            <template x-if="source.sourceurl">
+                                <div class="mt-2">
+                                    <a :href="source.sourceurl"
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       class="break-all text-xs text-blue-600 hover:underline"
+                                       x-text="source.sourceurl">
+                                    </a>
+                                </div>
+                            </template>
+
+                            <template x-if="source.importedsummary_html">
+                                <div class="mt-4">
+                                    <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                        Imported summary
+                                    </p>
+
+                                    <div class="markdown-content prose prose-sm max-w-none text-gray-700"
+                                         x-html="source.importedsummary_html">
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="source.importednotes_html">
+                                <div class="mt-4">
+                                    <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                        Imported notes
+                                    </p>
+
+                                    <div class="markdown-content prose prose-sm max-w-none text-gray-700"
+                                         x-html="source.importednotes_html">
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="source.internalnotes_html">
+                                <div class="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
+                                    <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-800">
+                                        Internal notes
+                                    </p>
+
+                                    <div class="markdown-content prose prose-sm max-w-none text-amber-950"
+                                         x-html="source.internalnotes_html">
+                                    </div>
+                                </div>
+                            </template>
                         </div>
 
-                        <div class="text-xs text-gray-500">
-                            Type: {{ $source->sourcetype ?: '—' }}
-                            · Publisher: {{ $source->sourcepublisher ?: '—' }}
-                            · Status: {{ $source->importstatus ?: '—' }}
-                        </div>
-
-                        @if($source->sourceurl)
-                            <div class="text-xs">
-                                <a href="{{ $source->sourceurl }}"
-                                   target="_blank"
-                                   rel="noopener noreferrer"
-                                   class="text-blue-600 hover:underline break-all">
-                                    {{ $source->sourceurl }}
-                                </a>
-                            </div>
-                        @endif
-
-                        @if(filled($source->importedsummary))
-                            <div class="pt-1 text-sm markdown-content text-gray-700">
-                                @include('partials.markdown.rendered-block', [
-                                    'content' => $source->importedsummary,
-                                ])
-                            </div>
-                        @endif
-
-                        @if(filled($source->importednotes))
-                            <div class="pt-1 text-sm markdown-content text-gray-700">
-                                @include('partials.markdown.rendered-block', [
-                                    'content' => $source->importednotes,
-                                ])
-                            </div>
-                        @endif
-
-                        @if(filled($source->internalnotes) && ! (isset($editingSourceId) && (int) $editingSourceId === (int) $source->id))
-                            <div class="pt-1 text-sm markdown-content text-gray-700">
-                                @include('partials.markdown.rendered-block', [
-                                    'content' => $source->internalnotes,
-                                ])
-                            </div>
-                        @endif
-                    </div>
-
-                    <div class="flex flex-col items-end gap-2 text-xs text-gray-500 whitespace-nowrap shrink-0">
-                        <div>ID: {{ $source->id }}</div>
-                        <div>Retrieved: {{ $source->retrievedon?->format('d M Y') ?? '—' }}</div>
-                        <div>Reviewed: {{ $source->reviewedon?->format('d M Y') ?? '—' }}</div>
-
-                        <div class="flex items-center gap-2 mt-1">
-                            <a href="{{ route('knowledge.items.edit', [
-                                    'knowledgeItem' => $knowledgeItem,
-                                    'tab' => 'sources',
-                                    'editing_source_id' => $source->id,
-                                ]) }}"
-                               class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs hover:bg-gray-300">
+                        <div class="flex shrink-0 items-center gap-2 self-end sm:self-start">
+                            <button type="button"
+                                    @click="startEditSource(source)"
+                                    class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs hover:bg-gray-300">
                                 Edit
-                            </a>
+                            </button>
 
-                            <form method="POST"
-                                  action="{{ route('knowledge.items.sources.destroy', [$knowledgeItem, $source]) }}"
-                                  onsubmit="return confirm('Delete this source?');">
-                                @csrf
-                                @method('DELETE')
-
-                                <button type="submit"
-                                        class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white rounded text-xs hover:bg-red-700">
-                                    Delete
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
-                @if(isset($editingSourceId) && (int) $editingSourceId === (int) $source->id)
-                    <div class="mt-4 border-t border-gray-200 pt-4">
-                        <form method="POST"
-                              action="{{ route('knowledge.items.sources.update', [$knowledgeItem, $source]) }}"
-                              class="space-y-4">
-                            @csrf
-                            @method('PUT')
-
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label for="edit_source_sourcetype_{{ $source->id }}" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Source Type
-                                    </label>
-                                    <select name="sourcetype"
-                                            id="edit_source_sourcetype_{{ $source->id }}"
-                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                            required>
-                                        <option value="">Select source type</option>
-                                        @foreach($sourceTypeOptions as $value => $label)
-                                            <option value="{{ $value }}" @selected(old('sourcetype', $source->sourcetype) === $value)>
-                                                {{ $label }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <div class="md:col-span-2">
-                                    <label for="edit_source_sourcetitle_{{ $source->id }}" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Title
-                                    </label>
-                                    <input type="text"
-                                           name="sourcetitle"
-                                           id="edit_source_sourcetitle_{{ $source->id }}"
-                                           value="{{ old('sourcetitle', $source->sourcetitle) }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                           required>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div class="md:col-span-2">
-                                    <label for="edit_source_sourceurl_{{ $source->id }}" class="block text-sm font-medium text-gray-700 mb-1">
-                                        URL
-                                    </label>
-                                    <input type="url"
-                                           name="sourceurl"
-                                           id="edit_source_sourceurl_{{ $source->id }}"
-                                           value="{{ old('sourceurl', $source->sourceurl) }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                </div>
-
-                                <div>
-                                    <label for="edit_source_sourcepublisher_{{ $source->id }}" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Publisher / Source
-                                    </label>
-                                    <input type="text"
-                                           name="sourcepublisher"
-                                           id="edit_source_sourcepublisher_{{ $source->id }}"
-                                           value="{{ old('sourcepublisher', $source->sourcepublisher) }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label for="edit_source_retrievedon_{{ $source->id }}" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Retrieved On
-                                    </label>
-                                    <input type="date"
-                                           name="retrievedon"
-                                           id="edit_source_retrievedon_{{ $source->id }}"
-                                           value="{{ old('retrievedon', optional($source->retrievedon)->format('Y-m-d')) }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                </div>
-
-                                <div>
-                                    <label for="edit_source_importstatus_{{ $source->id }}" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Import Status
-                                    </label>
-                                    <input type="text"
-                                           name="importstatus"
-                                           id="edit_source_importstatus_{{ $source->id }}"
-                                           value="{{ old('importstatus', $source->importstatus) }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                </div>
-
-                                <div>
-                                    <label for="edit_source_reviewedon_{{ $source->id }}" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Reviewed On
-                                    </label>
-                                    <input type="date"
-                                           name="reviewedon"
-                                           id="edit_source_reviewedon_{{ $source->id }}"
-                                           value="{{ old('reviewedon', optional($source->reviewedon)->format('Y-m-d')) }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                </div>
-                            </div>
-
-                            <x-forms.markdown-field
-                                name="importedsummary"
-                                :id="'edit_source_importedsummary_' . $source->id"
-                                :value="old('importedsummary', $source->importedsummary)"
-                                label="Imported Summary"
-                                rows="3"
-                                min-rows="3"
-                                placeholder="Short imported summary from the source"
-                                help="Markdown supported, including headings, lists, links, emphasis, and tables."
-                                preview-title="Imported Summary Preview"
-                            />
-
-                            <x-forms.markdown-field
-                                name="importednotes"
-                                :id="'edit_source_importednotes_' . $source->id"
-                                :value="old('importednotes', $source->importednotes)"
-                                label="Imported Notes"
-                                rows="4"
-                                min-rows="4"
-                                placeholder="Imported notes captured from review or fetch workflow"
-                                help="Markdown supported, including headings, lists, links, emphasis, and tables."
-                                preview-title="Imported Notes Preview"
-                            />
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label for="edit_source_reviewedby_{{ $source->id }}" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Reviewed By
-                                    </label>
-                                    <input type="text"
-                                           name="reviewedby"
-                                           id="edit_source_reviewedby_{{ $source->id }}"
-                                           value="{{ old('reviewedby', $source->reviewedby) }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                           maxlength="100">
-                                </div>
-
-                                <div>
-                                    <x-forms.markdown-field
-                                        name="internalnotes"
-                                        :id="'edit_source_internalnotes_' . $source->id"
-                                        :value="old('internalnotes', $source->internalnotes)"
-                                        label="Internal Notes"
-                                        rows="4"
-                                        min-rows="4"
-                                        placeholder="Internal curation or review notes"
-                                        help="Markdown supported for internal comments, checklists, and tables."
-                                        preview-title="Internal Notes Preview"
-                                    />
-                                </div>
-                            </div>
-
-                            <div class="flex items-center justify-end gap-2">
-                                <a href="{{ route('knowledge.items.edit', [
-                                    'knowledgeItem' => $knowledgeItem,
-                                    'tab' => 'sources',
-                                ]) }}"
-                                   class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs hover:bg-gray-300">
-                                    Cancel
-                                </a>
-
-                                <button type="submit"
-                                        class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
-                                    Save Source
-                                </button>
-                            </div>
-                        </form>
-
-                        <form method="POST"
-                              action="{{ route('knowledge.items.sources.destroy', [$knowledgeItem, $source]) }}"
-                              class="inline">
-                            @csrf
-                            @method('DELETE')
-
-                            <button type="submit"
-                                    class="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs"
-                                    onclick="return confirm('Delete this source? This cannot be undone.');">
+                            <button type="button"
+                                    @click="deleteSource(source)"
+                                    class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white rounded text-xs hover:bg-red-700">
                                 Delete
                             </button>
-                        </form>
+                        </div>
                     </div>
-                @endif
+                </template>
+
+                {{-- Edit mode --}}
+                <template x-if="source.editing">
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                        <div class="mb-4 flex items-start justify-between gap-3">
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-900">Edit Source</h4>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    Imported and internal Markdown is rendered after saving.
+                                </p>
+                            </div>
+
+                            <button type="button"
+                                    @click="cancelEditSource(source)"
+                                    class="inline-flex shrink-0 items-center px-3 py-1.5 bg-white text-gray-700 border border-gray-300 rounded text-xs hover:bg-gray-50">
+                                Cancel
+                            </button>
+                        </div>
+
+                        @include('knowledge.items.partials.source-inline-editor', [
+                            'draftReference' => 'source.draft',
+                            'saveAction' => 'saveExistingSource(source)',
+                            'cancelAction' => 'cancelEditSource(source)',
+                            'saveLabel' => 'Save Source',
+                        ])
+                    </div>
+                </template>
             </div>
-        @empty
+        </template>
+
+        <template x-if="sources.length === 0 && !newSource">
             <div class="p-6 text-sm text-gray-500">
                 No sources recorded for this knowledge item yet.
             </div>
-        @endforelse
+        </template>
     </div>
 </div>
 
-@if(($activeTab ?? null) === 'sources')
-    @include('partials.markdown.markdown-styles')
-    @include('partials.forms.markdown-field-scripts')
-@endif
+@include('partials.markdown.markdown-styles')
+
+<script>
+    function knowledgeSourcesPanel() {
+        return {
+            sources: [],
+            sourceTypes: {},
+            storeUrl: '',
+            baseUrl: '',
+            csrfToken: '',
+            newSource: null,
+            showFetchPanel: false,
+            saving: false,
+            errorMessage: '',
+
+            init() {
+                try {
+                    const dataElement = document.getElementById('knowledge-sources-initial-data');
+                    const data = JSON.parse(dataElement.textContent);
+
+                    this.sources = (data.sources || []).map(
+                        source => this.prepareSource(source)
+                    );
+
+                    this.sourceTypes = data.sourceTypes || {};
+                    this.storeUrl = data.storeUrl;
+                    this.baseUrl = data.baseUrl;
+                    this.csrfToken = data.csrfToken;
+
+                    if (data.fetchSourceDraft) {
+                        this.newSource = {
+                            ...this.emptyDraft(),
+                            ...data.fetchSourceDraft,
+                        };
+
+                        this.showFetchPanel = false;
+                    }
+                } catch (error) {
+                    this.errorMessage = error.message || 'Unable to load sources.';
+                    console.error('Knowledge sources initialisation failed:', error);
+                }
+            },
+
+            prepareSource(source) {
+                return {
+                    ...source,
+                    editing: false,
+                    draft: null,
+                };
+            },
+
+            emptyDraft() {
+                return {
+                    sourcetype: '',
+                    sourceurl: '',
+                    sourcetitle: '',
+                    sourcepublisher: '',
+                    retrievedon: '',
+                    importedsummary: '',
+                    importednotes: '',
+                    importstatus: 'pendingreview',
+                    reviewedon: '',
+                    reviewedby: '',
+                    internalnotes: '',
+                };
+            },
+
+            toggleFetchPanel() {
+                this.errorMessage = '';
+                this.newSource = null;
+                this.closeAllEditors();
+                this.showFetchPanel = !this.showFetchPanel;
+            },
+
+            startNewSource() {
+                this.errorMessage = '';
+                this.showFetchPanel = false;
+                this.closeAllEditors();
+                this.newSource = this.emptyDraft();
+            },
+
+            cancelNewSource() {
+                this.newSource = null;
+            },
+
+            startEditSource(source) {
+                this.errorMessage = '';
+                this.showFetchPanel = false;
+                this.newSource = null;
+                this.closeAllEditors();
+
+                source.draft = {
+                    sourcetype: source.sourcetype || '',
+                    sourceurl: source.sourceurl || '',
+                    sourcetitle: source.sourcetitle || '',
+                    sourcepublisher: source.sourcepublisher || '',
+                    retrievedon: source.retrievedon || '',
+                    importedsummary: source.importedsummary || '',
+                    importednotes: source.importednotes || '',
+                    importstatus: source.importstatus || 'pendingreview',
+                    reviewedon: source.reviewedon || '',
+                    reviewedby: source.reviewedby || '',
+                    internalnotes: source.internalnotes || '',
+                };
+
+                source.editing = true;
+            },
+
+            cancelEditSource(source) {
+                source.editing = false;
+                source.draft = null;
+            },
+
+            closeAllEditors() {
+                this.sources.forEach(source => {
+                    source.editing = false;
+                    source.draft = null;
+                });
+            },
+
+            async saveNewSource() {
+                if (!this.newSource) {
+                    return;
+                }
+
+                await this.saveSource(this.newSource, null);
+            },
+
+            async saveExistingSource(source) {
+                await this.saveSource(source.draft, source);
+            },
+
+            async saveSource(payload, existingSource) {
+                this.errorMessage = '';
+
+                if (!payload.sourcetype || !payload.sourcetitle?.trim()) {
+                    this.errorMessage = 'Source type and title are required.';
+                    return;
+                }
+
+                this.saving = true;
+
+                try {
+                    const isNew = !existingSource;
+
+                    const response = await fetch(
+                        isNew ? this.storeUrl : `${this.baseUrl}/${existingSource.id}`,
+                        {
+                            method: isNew ? 'POST' : 'PUT',
+                            headers: {
+                                'X-CSRF-TOKEN': this.csrfToken,
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                ...payload,
+                                retrievedon: payload.retrievedon || null,
+                                reviewedon: payload.reviewedon || null,
+                            }),
+                        }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error(await this.responseMessage(response));
+                    }
+
+                    const data = await response.json();
+
+                    if (isNew) {
+                        this.sources.push(this.prepareSource(data.source));
+                        this.newSource = null;
+                    } else {
+                        const index = this.sources.findIndex(
+                            source => Number(source.id) === Number(existingSource.id)
+                        );
+
+                        if (index !== -1) {
+                            this.sources.splice(
+                                index,
+                                1,
+                                this.prepareSource(data.source)
+                            );
+                        }
+                    }
+
+                    this.sortSources();
+                } catch (error) {
+                    this.errorMessage = error.message || 'Unable to save the source.';
+                    console.error('Knowledge source save failed:', error);
+                } finally {
+                    this.saving = false;
+                }
+            },
+
+            async deleteSource(source) {
+                if (!window.confirm('Delete this source? This cannot be undone.')) {
+                    return;
+                }
+
+                this.errorMessage = '';
+                this.saving = true;
+
+                try {
+                    const response = await fetch(`${this.baseUrl}/${source.id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': this.csrfToken,
+                            'Accept': 'application/json',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(await this.responseMessage(response));
+                    }
+
+                    this.sources = this.sources.filter(
+                        item => Number(item.id) !== Number(source.id)
+                    );
+                } catch (error) {
+                    this.errorMessage = error.message || 'Unable to delete the source.';
+                    console.error('Knowledge source delete failed:', error);
+                } finally {
+                    this.saving = false;
+                }
+            },
+
+            sortSources() {
+                this.sources.sort((left, right) => {
+                    return String(left.sourcetitle || '').localeCompare(
+                        String(right.sourcetitle || '')
+                    );
+                });
+            },
+
+            async responseMessage(response) {
+                const data = await response.json().catch(() => null);
+
+                if (data?.message) {
+                    return data.message;
+                }
+
+                if (data?.errors) {
+                    return Object.values(data.errors).flat().join(' ');
+                }
+
+                return 'The request could not be completed.';
+            },
+        };
+    }
+</script>

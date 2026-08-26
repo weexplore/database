@@ -125,11 +125,15 @@
         </div>
 
         <div>
-            <x-forms.markdown-field
+            <x-forms.markdown-display-editor
                 name="description"
+                id="description"
                 label="Description"
                 :value="$currentDescription"
+                :rows="5"
+                placeholder="Add item details, activity summaries, inclusions, and planning context..."
                 help="Use Markdown for item details, activity summaries, inclusions, and planning context."
+                preview-title="Description Preview"
             />
         </div>
     </div>
@@ -233,14 +237,19 @@
 
     {{-- Internal notes --}}
     <div class="space-y-2">
-        <x-forms.markdown-field
+        <x-forms.markdown-display-editor
             name="notesinternal"
+            id="notesinternal"
             label="Internal notes"
             :value="$currentNotesInternal"
+            :rows="5"
+            placeholder="Add private planning notes, reminders, admin details, or follow-up actions..."
             help="Use Markdown for private planning notes, reminders, admin details, or follow-up actions."
+            preview-title="Internal Notes Preview"
         />
     </div>
 </div>
+@include('partials.markdown.markdown-styles')
 
 @push('scripts')
 <script>

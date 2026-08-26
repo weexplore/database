@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Sticky;
 use Illuminate\Http\Request;
+use Illuminate\Mail\Markdown;
 
 class StickyController extends Controller
 {
     public function index()
     {
-        $stickies = Sticky::orderByDesc('ispinned')
+        $stickies = Sticky::query()
+            ->orderByDesc('ispinned')
             ->orderByDesc('updatedat')
             ->get();
 
@@ -20,100 +22,73 @@ class StickyController extends Controller
     {
         $data = $request->validate([
             'stickytext' => ['required', 'string'],
-            'colourhex'  => ['nullable', 'string', 'max:7'],
+            'colourhex' => ['nullable', 'regex:/^#[A-Fa-f0-9]{6}$/'],
+            'positionx' => ['nullable', 'integer', 'min:0'],
+            'positiony' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        Sticky::create([
+        $sticky = Sticky::create([
             'stickytext' => $data['stickytext'],
-            'colourhex'  => $data['colourhex'] ?? '#FEF08A',
-            'positionx'  => 40,
-            'positiony'  => 40,
+            'colourhex' => $data['colourhex'] ?? '#FEF08A',
+            'positionx' => $data['positionx'] ?? 24,
+            'positiony' => $data['positiony'] ?? 24,
         ]);
 
-        return redirect()
-            ->route('stickies.index')
-            ->with('success', 'Sticky created.');
-    }
-
-    public function edit(Request $request, Sticky $sticky)
-    {
-        $return = $request->input('return'); // where to go back after save
-
-        return view('stickies.edit', compact('sticky', 'return'));
+        return response()->json([
+            'sticky' => $this->stickyPayload($sticky),
+        ], 201);
     }
 
     public function update(Request $request, Sticky $sticky)
     {
         $data = $request->validate([
             'stickytext' => ['required', 'string'],
-            'colourhex'  => ['nullable', 'string', 'max:7'],
+            'colourhex' => ['nullable', 'regex:/^#[A-Fa-f0-9]{6}$/'],
         ]);
 
         $sticky->update([
             'stickytext' => $data['stickytext'],
-            'colourhex'  => $data['colourhex'] ?? $sticky->colourhex,
+            'colourhex' => $data['colourhex'] ?? $sticky->colourhex,
         ]);
 
-        $returnUrl = $request->input('return_url');
-
-        if ($returnUrl) {
-            return redirect($returnUrl)->with('success', 'Sticky updated.');
-        }
-
-        return redirect()
-            ->route('stickies.index')
-            ->with('success', 'Sticky updated.');
+        return response()->json([
+            'sticky' => $this->stickyPayload($sticky->fresh()),
+        ]);
     }
 
     public function destroy(Sticky $sticky)
     {
         $sticky->delete();
 
-        return redirect()
-            ->route('stickies.index')
-            ->with('success', 'Sticky deleted.');
+        return response()->noContent();
     }
 
     public function updatePosition(Request $request, Sticky $sticky)
     {
         $data = $request->validate([
-            'x' => ['required', 'integer'],
-            'y' => ['required', 'integer'],
+            'x' => ['required', 'integer', 'min:0'],
+            'y' => ['required', 'integer', 'min:0'],
         ]);
 
-        $sticky->positionx = $data['x'];
-        $sticky->positiony = $data['y'];
-        $sticky->save();
+        $sticky->update([
+            'positionx' => $data['x'],
+            'positiony' => $data['y'],
+        ]);
 
         return response()->noContent();
     }
 
-    public function createAndEdit()
+    private function stickyPayload(Sticky $sticky): array
     {
-        $lastSticky = Sticky::orderByDesc('positiony')
-            ->orderByDesc('id')
-            ->first();
-
-        $positionX = 40;
-
-        // Start 40px from the top if there are no notes.
-        // Otherwise, place the next note 240px below the lowest note.
-        $positionY = $lastSticky
-            ? ((int) $lastSticky->positiony + 240)
-            : 40;
-
-        $sticky = Sticky::create([
-            'stickytext' => '',
-            'colourhex'  => '#FEF08A',
-            'positionx'  => $positionX,
-            'positiony'  => $positionY,
-        ]);
-
-        return redirect()
-            ->route('stickies.edit', [
-                'sticky' => $sticky,
-                'return' => route('stickies.index'),
-            ])
-            ->with('success', 'New sticky created. Add its content and save when ready.');
+        return [
+            'id' => $sticky->id,
+            'stickytext' => $sticky->stickytext ?? '',
+            'colourhex' => $sticky->colourhex ?? '#FEF08A',
+            'positionx' => (int) ($sticky->positionx ?? 24),
+            'positiony' => (int) ($sticky->positiony ?? 24),
+            'html' => app(Markdown::class)
+                ->parse($sticky->stickytext ?? '')
+                ->toHtml(),
+        ];
     }
 }

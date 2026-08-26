@@ -225,6 +225,568 @@
                     @endforelse
                 </div>
             </section>
+
+            <section class="overflow-hidden border border-fuchsia-200 bg-white shadow-sm sm:rounded-lg">
+                <div class="border-b border-fuchsia-200 bg-fuchsia-50 px-4 py-3">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-fuchsia-800">
+                                Recurring Tasks to Create
+                            </h3>
+
+                            <p class="mt-1 text-xs text-fuchsia-700">
+                                Recurrence templates scheduled for generation between today and {{ $weekEnd->format('d M Y') }}.
+                            </p>
+                        </div>
+
+                        <span class="text-xs font-medium text-fuchsia-800">
+                            {{ $recurringTasksToGenerate->count() }}
+                            task{{ $recurringTasksToGenerate->count() === 1 ? '' : 's' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="p-4">
+                    @forelse($recurringTasksToGenerate as $scheduled)
+                        @php
+                            $template = $scheduled['template'];
+                            $generationDate = $scheduled['generationDate'];
+                            $nextDue = $scheduled['nextDue'];
+                            $leadDays = $scheduled['leadDays'];
+
+                            $intervalCount = max(
+                                1,
+                                (int) $scheduled['recurrence']->intervalcount
+                            );
+
+                            $frequencyLabel = match ($scheduled['recurrence']->frequency) {
+                                'daily' => 'day',
+                                'weekly' => 'week',
+                                'monthly' => 'month',
+                                'yearly' => 'year',
+                                default => 'period',
+                            };
+                        @endphp
+
+                        <div class="border-b border-gray-200 py-3 last:border-b-0">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div class="min-w-[260px] flex-1">
+                                    <a href="{{ route('tasks.show', [
+                                            'task' => $template,
+                                            'from' => 'outlook',
+                                        ]) }}"
+                                    class="text-sm font-semibold text-indigo-700 hover:underline">
+                                        {{ $template->tasktitle }}
+                                    </a>
+
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        {{ $template->project?->projectname ?? 'Project not available' }}
+                                        · Every {{ $intervalCount }}
+                                        {{ \Illuminate\Support\Str::plural($frequencyLabel, $intervalCount) }}
+                                        · Due {{ $nextDue->format('d M Y') }}
+
+                                        @if($leadDays > 0)
+                                            · Created {{ $leadDays }}
+                                            day{{ $leadDays === 1 ? '' : 's' }} early
+                                        @endif
+                                    </p>
+                                </div>
+
+                                <div class="shrink-0 text-right">
+                                    <div class="text-xs font-medium text-gray-800">
+                                        Generate {{ $generationDate->format('d M Y') }}
+                                    </div>
+
+                                    @if($generationDate->isSameDay($today))
+                                        <div class="mt-1 text-[11px] font-medium text-amber-700">
+                                            Due today
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-sm text-gray-500">
+                            No recurring task occurrences are scheduled for generation in the next seven days.
+                        </p>
+                    @endforelse
+                </div>
+            </section>
+
+            <section class="overflow-hidden border border-red-200 bg-white shadow-sm sm:rounded-lg">
+                <div class="border-b border-red-200 bg-red-50 px-4 py-3">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-red-800">
+                                Recurring Task Generation Overdue
+                            </h3>
+
+                            <p class="mt-1 text-xs text-red-700">
+                                These occurrences should already have been generated. Check the scheduler if this list is unexpected.
+                            </p>
+                        </div>
+
+                        <span class="text-xs font-medium text-red-700">
+                            {{ $overdueRecurringTaskGenerations->count() }}
+                            occurrence{{ $overdueRecurringTaskGenerations->count() === 1 ? '' : 's' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="p-4">
+                    @forelse($overdueRecurringTaskGenerations as $scheduled)
+                        @php
+                            $template = $scheduled['template'];
+                        @endphp
+
+                        <div class="border-b border-gray-200 py-3 last:border-b-0">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div class="min-w-[260px] flex-1">
+                                    <a href="{{ route('tasks.show', [
+                                            'task' => $template,
+                                            'from' => 'outlook',
+                                        ]) }}"
+                                    class="text-sm font-semibold text-indigo-700 hover:underline">
+                                        {{ $template->tasktitle }}
+                                    </a>
+
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        {{ $template->project?->projectname ?? 'Project not available' }}
+                                        · Due {{ $scheduled['nextDue']->format('d M Y') }}
+                                        · Expected generation {{ $scheduled['generationDate']->format('d M Y') }}
+                                    </p>
+                                </div>
+
+                                <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-800">
+                                    Generation overdue
+                                </span>
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-sm text-gray-500">
+                            No overdue recurring task generations.
+                        </p>
+                    @endforelse
+                </div>
+            </section>
+            {{-- Knowledge Reminders --}}
+            @php
+                $overdueKnowledgeReminders = collect()
+                    ->concat($overdueKnowledgeItemReviews->map(fn ($item) => [
+                        'type' => 'item_review',
+                        'dueDate' => $item->nextreviewdate,
+                        'knowledgeItem' => $item,
+                        'title' => 'Item review',
+                        'detail' => $item->reviewnotes
+                            ? \Illuminate\Support\Str::limit(strip_tags($item->reviewnotes), 120)
+                            : null,
+                        'tab' => 'details',
+                    ]))
+                    ->concat($overdueKnowledgeNoteReviews->map(fn ($note) => [
+                        'type' => 'note_review',
+                        'dueDate' => $note->reviewdate,
+                        'knowledgeItem' => $note->knowledgeItem,
+                        'title' => 'Note review',
+                        'detail' => $note->title
+                            ?: ($note->notetype ? ucfirst($note->notetype) . ' note' : 'Knowledge note'),
+                        'tab' => 'notes',
+                    ]))
+                    ->concat($overdueKnowledgeReviewFollowUps->map(fn ($reviewLog) => [
+                        'type' => 'review_followup',
+                        'dueDate' => $reviewLog->nextreviewdate,
+                        'knowledgeItem' => $reviewLog->knowledgeItem,
+                        'title' => 'Review follow-up',
+                        'detail' => $reviewLog->reviewtype
+                            ? ucfirst(str_replace('_', ' ', $reviewLog->reviewtype))
+                            : null,
+                        'tab' => 'details',
+                    ]))
+                    ->sortBy('dueDate')
+                    ->values();
+
+                $knowledgeRemindersDueToday = collect()
+                    ->concat($knowledgeItemReviewsDueToday->map(fn ($item) => [
+                        'type' => 'item_review',
+                        'dueDate' => $item->nextreviewdate,
+                        'knowledgeItem' => $item,
+                        'title' => 'Item review',
+                        'detail' => $item->reviewnotes
+                            ? \Illuminate\Support\Str::limit(strip_tags($item->reviewnotes), 120)
+                            : null,
+                        'tab' => 'details',
+                    ]))
+                    ->concat($knowledgeNoteReviewsDueToday->map(fn ($note) => [
+                        'type' => 'note_review',
+                        'dueDate' => $note->reviewdate,
+                        'knowledgeItem' => $note->knowledgeItem,
+                        'title' => 'Note review',
+                        'detail' => $note->title
+                            ?: ($note->notetype ? ucfirst($note->notetype) . ' note' : 'Knowledge note'),
+                        'tab' => 'notes',
+                    ]))
+                    ->concat($knowledgeReviewFollowUpsDueToday->map(fn ($reviewLog) => [
+                        'type' => 'review_followup',
+                        'dueDate' => $reviewLog->nextreviewdate,
+                        'knowledgeItem' => $reviewLog->knowledgeItem,
+                        'title' => 'Review follow-up',
+                        'detail' => $reviewLog->reviewtype
+                            ? ucfirst(str_replace('_', ' ', $reviewLog->reviewtype))
+                            : null,
+                        'tab' => 'details',
+                    ]))
+                    ->sortBy('dueDate')
+                    ->values();
+
+                $upcomingKnowledgeReminders = collect()
+                    ->concat($upcomingKnowledgeItemReviews->map(fn ($item) => [
+                        'type' => 'item_review',
+                        'dueDate' => $item->nextreviewdate,
+                        'knowledgeItem' => $item,
+                        'title' => 'Item review',
+                        'detail' => $item->reviewnotes
+                            ? \Illuminate\Support\Str::limit(strip_tags($item->reviewnotes), 120)
+                            : null,
+                        'tab' => 'details',
+                    ]))
+                    ->concat($upcomingKnowledgeNoteReviews->map(fn ($note) => [
+                        'type' => 'note_review',
+                        'dueDate' => $note->reviewdate,
+                        'knowledgeItem' => $note->knowledgeItem,
+                        'title' => 'Note review',
+                        'detail' => $note->title
+                            ?: ($note->notetype ? ucfirst($note->notetype) . ' note' : 'Knowledge note'),
+                        'tab' => 'notes',
+                    ]))
+                    ->concat($upcomingKnowledgeReviewFollowUps->map(fn ($reviewLog) => [
+                        'type' => 'review_followup',
+                        'dueDate' => $reviewLog->nextreviewdate,
+                        'knowledgeItem' => $reviewLog->knowledgeItem,
+                        'title' => 'Review follow-up',
+                        'detail' => $reviewLog->reviewtype
+                            ? ucfirst(str_replace('_', ' ', $reviewLog->reviewtype))
+                            : null,
+                        'tab' => 'details',
+                    ]))
+                    ->sortBy('dueDate')
+                    ->values();
+            @endphp
+
+            {{-- Knowledge reminders --}}
+            <section class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-rose-200">
+                <div class="px-4 py-3 border-b border-rose-200 bg-rose-50">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-rose-800">
+                                Overdue Knowledge Reviews
+                            </h3>
+
+                            <p class="mt-1 text-xs text-rose-700">
+                                Knowledge items, notes, and review follow-ups due before today.
+                            </p>
+                        </div>
+
+                        <span class="text-xs font-medium text-rose-700">
+                            {{ $overdueKnowledgeReminders->count() }}
+                            reminder{{ $overdueKnowledgeReminders->count() === 1 ? '' : 's' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="p-4">
+                    @forelse($overdueKnowledgeReminders as $reminder)
+                        @include('tasks.partials.outlook-knowledge-reminder-row', [
+                            'reminder' => $reminder,
+                            'today' => $today,
+                        ])
+                    @empty
+                        <p class="text-sm text-gray-500">
+                            No overdue Knowledge reviews.
+                        </p>
+                    @endforelse
+                </div>
+            </section>
+
+            <section class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-amber-200">
+                <div class="px-4 py-3 border-b border-amber-200 bg-amber-50">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-amber-800">
+                                Knowledge Reviews Due Today
+                            </h3>
+
+                            <p class="mt-1 text-xs text-amber-700">
+                                {{ $today->format('l, j F Y') }}
+                            </p>
+                        </div>
+
+                        <span class="text-xs font-medium text-amber-800">
+                            {{ $knowledgeRemindersDueToday->count() }}
+                            reminder{{ $knowledgeRemindersDueToday->count() === 1 ? '' : 's' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="p-4">
+                    @forelse($knowledgeRemindersDueToday as $reminder)
+                        @include('tasks.partials.outlook-knowledge-reminder-row', [
+                            'reminder' => $reminder,
+                            'today' => $today,
+                        ])
+                    @empty
+                        <p class="text-sm text-gray-500">
+                            No Knowledge reviews are due today.
+                        </p>
+                    @endforelse
+                </div>
+            </section>
+
+            <section class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-sky-200">
+                <div class="px-4 py-3 border-b border-sky-200 bg-sky-50">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-sky-800">
+                                Upcoming Knowledge Reviews
+                            </h3>
+
+                            <p class="mt-1 text-xs text-sky-700">
+                                Due from {{ $today->copy()->addDay()->format('l, j F Y') }}
+                                to {{ $weekEnd->format('l, j F Y') }}.
+                            </p>
+                        </div>
+
+                        <span class="text-xs font-medium text-sky-800">
+                            {{ $upcomingKnowledgeReminders->count() }}
+                            reminder{{ $upcomingKnowledgeReminders->count() === 1 ? '' : 's' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="p-4">
+                    @forelse($upcomingKnowledgeReminders as $reminder)
+                        @include('tasks.partials.outlook-knowledge-reminder-row', [
+                            'reminder' => $reminder,
+                            'today' => $today,
+                        ])
+                    @empty
+                        <p class="text-sm text-gray-500">
+                            No Knowledge reviews are due in the next seven days.
+                        </p>
+                    @endforelse
+                </div>
+            </section>
+
+            <section class="overflow-hidden border border-indigo-200 bg-white shadow-sm sm:rounded-lg">
+                <div class="border-b border-indigo-200 bg-indigo-50 px-4 py-3">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-indigo-800">
+                                Upcoming Trips
+                            </h3>
+
+                            <p class="mt-1 text-xs text-indigo-700">
+                                Planned trips starting within the next seven days, plus active trips.
+                            </p>
+                        </div>
+
+                        <span class="text-xs font-medium text-indigo-800">
+                            {{ $upcomingTrips->count() }}
+                            trip{{ $upcomingTrips->count() === 1 ? '' : 's' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="p-4">
+                    @forelse($upcomingTrips as $trip)
+                        <div class="border-b border-gray-200 py-3 last:border-b-0">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div class="min-w-[260px] flex-1">
+                                    <a href="{{ route('trips.edit', $trip) }}"
+                                    class="text-sm font-semibold text-indigo-700 hover:underline">
+                                        {{ $trip->tripname }}
+                                    </a>
+
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        Status:
+                                        {{ ucfirst($trip->tripstatus) }}
+
+                                        · Start:
+                                        {{ $trip->startdate?->format('d M Y') ?? 'Not set' }}
+
+                                        @if($trip->enddate)
+                                            · End: {{ $trip->enddate->format('d M Y') }}
+                                        @endif
+                                    </p>
+                                </div>
+
+                                @if($trip->tripstatus === 'active')
+                                    <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800">
+                                        Active
+                                    </span>
+                                @endif
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-sm text-gray-500">
+                            No planned or active trips need attention in the next seven days.
+                        </p>
+                    @endforelse
+                </div>
+            </section>
+
+            <section class="overflow-hidden border border-cyan-200 bg-white shadow-sm sm:rounded-lg">
+                <div class="border-b border-cyan-200 bg-cyan-50 px-4 py-3">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-cyan-800">
+                                Upcoming Trip Items
+                            </h3>
+
+                            <p class="mt-1 text-xs text-cyan-700">
+                                Incomplete activities, tasks, bookings, and other Trip Items scheduled through {{ $weekEnd->format('d M Y') }}.
+                            </p>
+                        </div>
+
+                        <span class="text-xs font-medium text-cyan-800">
+                            {{ $upcomingTripItems->count() }}
+                            item{{ $upcomingTripItems->count() === 1 ? '' : 's' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="p-4">
+                    @forelse($upcomingTripItems as $tripItem)
+                        @php
+                            $location = $tripItem->place?->placename
+                                ?? $tripItem->destination?->destinationname
+                                ?? $tripItem->destinationItem?->destination?->destinationname;
+                        @endphp
+
+                        <div class="border-b border-gray-200 py-3 last:border-b-0">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div class="min-w-[260px] flex-1">
+                                    <a href="{{ route('trips.items.edit', [
+                                            'trip' => $tripItem->trip,
+                                            'tripItem' => $tripItem,
+                                        ]) }}"
+                                    class="text-sm font-semibold text-indigo-700 hover:underline">
+                                        {{ $tripItem->title }}
+                                    </a>
+
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        {{ $tripItem->trip?->tripname ?? 'Trip' }}
+                                        · {{ $tripItem->itemdate?->format('d M Y') ?? 'Date not set' }}
+                                        · {{ $tripItem->itemtype ?: 'Item' }}
+                                        · {{ ucfirst($tripItem->status) }}
+
+                                        @if($location)
+                                            · {{ $location }}
+                                        @endif
+                                    </p>
+                                </div>
+
+                                @if($tripItem->priority === 'high')
+                                    <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-800">
+                                        High priority
+                                    </span>
+                                @endif
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-sm text-gray-500">
+                            No incomplete Trip Items are scheduled in the next seven days.
+                        </p>
+                    @endforelse
+                </div>
+            </section>
+
+            <section class="overflow-hidden border border-orange-200 bg-white shadow-sm sm:rounded-lg">
+                <div class="border-b border-orange-200 bg-orange-50 px-4 py-3">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-orange-800">
+                                Expiring Knowledge Attachments
+                            </h3>
+
+                            <p class="mt-1 text-xs text-orange-700">
+                                Attachments expiring from today through
+                                {{ $today->copy()->addDays(14)->format('d M Y') }}.
+                            </p>
+                        </div>
+
+                        <span class="text-xs font-medium text-orange-800">
+                            {{ $expiringKnowledgeAttachments->count() }}
+                            attachment{{ $expiringKnowledgeAttachments->count() === 1 ? '' : 's' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="p-4">
+                    @forelse($expiringKnowledgeAttachments as $expiry)
+                        @php
+                            $expiryDate = \Illuminate\Support\Carbon::parse(
+                                $expiry->expirydate
+                            )->startOfDay();
+
+                            $daysRemaining = $today->diffInDays($expiryDate, false);
+                        @endphp
+
+                        <div class="border-b border-gray-200 py-3 last:border-b-0">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div class="min-w-[260px] flex-1">
+                                    <a href="{{ route('knowledge.items.edit', [
+                                            'knowledgeItem' => $expiry->knowledge_item_id,
+                                            'tab' => 'attachments',
+                                        ]) }}"
+                                    class="text-sm font-semibold text-indigo-700 hover:underline">
+                                        {{ $expiry->knowledge_item_name }}
+                                    </a>
+
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        {{ $expiry->category_name ?: 'Uncategorised' }}
+                                        · {{ $expiry->knowledge_item_type ?: 'Knowledge item' }}
+                                        · {{ $expiry->attachmenttype ?: 'Attachment' }}
+                                        · {{ $expiry->originalfilename ?: 'Unnamed file' }}
+                                    </p>
+
+                                    @if(filled($expiry->link_description))
+                                        <p class="mt-1 text-xs text-gray-600">
+                                            {{ \Illuminate\Support\Str::limit(
+                                                $expiry->link_description,
+                                                180
+                                            ) }}
+                                        </p>
+                                    @endif
+                                </div>
+
+                                <div class="shrink-0 text-right">
+                                    <div class="text-xs font-medium text-gray-800">
+                                        Expires {{ $expiryDate->format('d M Y') }}
+                                    </div>
+
+                                    @if($daysRemaining === 0)
+                                        <div class="mt-1 text-[11px] font-medium text-red-700">
+                                            Expires today
+                                        </div>
+                                    @elseif($daysRemaining === 1)
+                                        <div class="mt-1 text-[11px] font-medium text-amber-700">
+                                            Expires tomorrow
+                                        </div>
+                                    @else
+                                        <div class="mt-1 text-[11px] font-medium text-orange-700">
+                                            {{ $daysRemaining }} days remaining
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-sm text-gray-500">
+                            No Knowledge attachments expire in the next 14 days.
+                        </p>
+                    @endforelse
+                </div>
+            </section>
+
             {{-- Today's activity --}}
             <section class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-emerald-200">
                 <div class="px-4 py-3 border-b border-emerald-200 bg-emerald-50">

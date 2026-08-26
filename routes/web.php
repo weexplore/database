@@ -645,12 +645,21 @@ Route::prefix('knowledge-items/{knowledgeItem}/attachments')->name('knowledge.at
     
 });
 
-Route::prefix('bible-references')->name('knowledge.items.bible-references.')->group(function () {
-    Route::get('{bibleReference}/edit', [BibleReferenceController::class, 'edit'])->name('edit');
-    Route::put('{bibleReference}', [BibleReferenceController::class, 'update'])->name('update');
-    Route::delete('{bibleReference}', [BibleReferenceController::class, 'destroy'])->name('destroy');
-    Route::post('{bibleReference}/fetch-passage', [BibleReferenceController::class, 'fetchPassage'])->name('fetch-passage');
-});
+Route::prefix('bible-references')
+    ->name('knowledge.items.bible-references.')
+    ->group(function () {
+        Route::get('{bibleReference}/edit', [BibleReferenceController::class, 'edit'])
+            ->name('edit');
+
+        Route::put('{bibleReference}', [BibleReferenceController::class, 'update'])
+            ->name('update');
+
+        Route::delete('{bibleReference}', [BibleReferenceController::class, 'destroy'])
+            ->name('destroy');
+
+        Route::post('{bibleReference}/fetch-passage', [BibleReferenceController::class, 'fetchPassage'])
+            ->name('fetch-passage');
+    });
 /*
 |--------------------------------------------------------------------------
 | TASK and Project Management

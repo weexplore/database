@@ -504,12 +504,15 @@
                 </div>
 
                 <div class="md:col-span-12">
-                    <x-forms.markdown-field
+                    <x-forms.markdown-display-editor
                         name="legpoints[{{ $index }}][notes]"
                         id="legpoints_{{ $index }}_notes"
                         label="Notes"
                         :value="$point['notes'] ?? ''"
+                        :rows="4"
+                        placeholder="Add waypoint notes, stop details, and reminders..."
                         help="Use Markdown for waypoint notes, stop details, and reminders."
+                        preview-title="Leg Point Notes Preview"
                     />
                 </div>
             </div>
@@ -622,12 +625,15 @@
                             </div>
 
                             <div class="md:col-span-12">
-                                <x-forms.markdown-field
+                                <x-forms.markdown-display-editor
                                     name="legpoints[INDEX][notes]"
                                     id="legpoints_INDEX_notes"
                                     label="Notes"
                                     :value="''"
+                                    :rows="4"
+                                    placeholder="Add waypoint notes, stop details, and reminders..."
                                     help="Use Markdown for waypoint notes, stop details, and reminders."
+                                    preview-title="Leg Point Notes Preview"
                                 />
                             </div>
                         </div>
@@ -914,32 +920,48 @@
                 </div>
 
                 <div class="space-y-4">
-                    <x-forms.markdown-field
+                    <x-forms.markdown-display-editor
                         name="description"
+                        id="description"
                         label="Description"
                         :value="old('description', $tripLeg->description ?? '')"
+                        :rows="5"
+                        placeholder="Describe the leg, its route context, and overall purpose..."
                         help="Use Markdown for leg summaries, route context, and overview notes."
+                        preview-title="Description Preview"
                     />
 
-                    <x-forms.markdown-field
+                    <x-forms.markdown-display-editor
                         name="drivingnotes"
+                        id="drivingnotes"
                         label="Driving Notes"
                         :value="old('drivingnotes', $tripLeg->drivingnotes ?? '')"
+                        :rows="5"
+                        placeholder="Record driving conditions, cautions, road tips, and timing notes..."
                         help="Use Markdown for driving conditions, cautions, road tips, and timing notes."
+                        preview-title="Driving Notes Preview"
                     />
 
-                    <x-forms.markdown-field
+                    <x-forms.markdown-display-editor
                         name="planningnotes"
+                        id="planningnotes"
                         label="Planning Notes"
                         :value="old('planningnotes', $tripLeg->planningnotes ?? '')"
+                        :rows="5"
+                        placeholder="Add planning ideas, to-do items, and pre-trip reminders..."
                         help="Use Markdown for planning ideas, to-do items, and pre-trip reminders."
+                        preview-title="Planning Notes Preview"
                     />
 
-                    <x-forms.markdown-field
+                    <x-forms.markdown-display-editor
                         name="actualnotes"
+                        id="actualnotes"
                         label="Actual Notes"
                         :value="old('actualnotes', $tripLeg->actualnotes ?? '')"
+                        :rows="5"
+                        placeholder="Record what actually happened, lessons learned, and post-trip notes..."
                         help="Use Markdown for what actually happened on the leg, lessons learned, and post-trip notes."
+                        preview-title="Actual Notes Preview"
                     />
                 </div>
             </div>
@@ -957,6 +979,7 @@
             Save Trip Leg
         </button>
     </div>
+    @include('partials.markdown.markdown-styles')
 </div>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
 <script>

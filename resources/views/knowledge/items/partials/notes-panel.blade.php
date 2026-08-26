@@ -1,24 +1,50 @@
 {{-- resources/views/knowledge/items/partials/notes-panel.blade.php --}}
 
-<style>
-    .knowledge-note-content {
-        position: relative;
-        overflow: hidden;
-    }
+@php
+    $notesPayload = $knowledgeItem->notes
+        ->sortBy(fn ($note) => [
+            (int) ($note->sortorder ?? 0),
+            (int) $note->id,
+        ])
+        ->values()
+        ->map(function ($note) {
+            return [
+                'id' => $note->id,
+                'notetype' => $note->notetype,
+                'notetype_label' => \App\Models\KnowledgeNote::typeOptions()[$note->notetype]
+                    ?? $note->notetype
+                    ?? 'Note',
+                'title' => $note->title ?? '',
+                'notecontent' => $note->notecontent ?? '',
+                'notecontent_html' => app(\Illuminate\Mail\Markdown::class)
+                    ->parse($note->notecontent ?? '')
+                    ->toHtml(),
+                'stance' => $note->stance ?? '',
+                'convictionlevel' => $note->convictionlevel,
+                'reviewdate' => $note->reviewdate?->format('Y-m-d'),
+                'reviewdate_display' => $note->reviewdate?->format('d M Y'),
+                'isprivate' => (bool) $note->isprivate,
+                'sortorder' => (int) ($note->sortorder ?? 0),
+            ];
+        });
+@endphp
 
-    .knowledge-note-content[data-collapsed="true"] {
-        max-height: 10rem; /* adjust as needed */
-    }
+<script id="knowledge-notes-initial-data" type="application/json">
+{!! json_encode([
+    'notes' => $notesPayload,
+    'storeUrl' => route('knowledge.items.notes.store', $knowledgeItem),
+    'baseUrl' => url('/knowledge/items/'.$knowledgeItem->id.'/notes'),
+    'reorderUrl' => route('knowledge.items.notes.reorder', $knowledgeItem),
+    'csrfToken' => csrf_token(),
+    'noteTypes' => $noteTypeOptions ?? [],
+], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}
+</script>
 
-    .knowledge-note-content[data-collapsed="false"] {
-        max-height: none;
-    }
+<div class="bg-white overflow-hidden shadow-sm sm:rounded-lg"
+     x-data="knowledgeNotesPanel()">
 
-</style>
-
-<div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-    <div class="px-6 py-4 border-b border-gray-200">
-        <div class="flex items-center justify-between gap-4">
+    <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
+        <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
                 <h3 class="text-sm font-semibold text-gray-900">Notes</h3>
                 <p class="mt-1 text-sm text-gray-500">
@@ -28,320 +54,70 @@
 
             <div class="flex items-center gap-2">
                 <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
-                    {{ $knowledgeItem->notes->count() }} total
+                    <span x-text="notes.length"></span> total
                 </span>
 
-                @if(!($showAddNote ?? false))
-                    <a href="{{ route('knowledge.items.edit', [
-                            'knowledgeItem' => $knowledgeItem,
-                            'tab' => 'notes',
-                            'show_add_note' => 1,
-                        ]) }}"
-                       class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
-                        Add Note
-                    </a>
-                @endif
+                <button type="button"
+                        @click="startNewNote()"
+                        class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+                    + Add Note
+                </button>
             </div>
         </div>
     </div>
 
-    @if($showAddNote ?? false)
-        <div class="p-6 border-b border-gray-200 space-y-4">
-            <div class="flex items-center justify-between gap-4">
-                <h4 class="text-sm font-semibold text-gray-900">Add Note</h4>
+    <template x-if="errorMessage">
+        <div class="mx-4 sm:mx-6 mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+             x-text="errorMessage">
+        </div>
+    </template>
 
-                <a href="{{ route('knowledge.items.edit', [
-                        'knowledgeItem' => $knowledgeItem,
-                        'tab' => 'notes',
-                    ]) }}"
-                   class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-sm hover:bg-gray-300">
+    {{-- Add note --}}
+    <template x-if="newNote">
+        <div class="m-4 sm:m-6 rounded-lg border border-blue-200 bg-blue-50 p-4 sm:p-5">
+            <div class="mb-4 flex items-center justify-between gap-3">
+                <div>
+                    <h4 class="text-sm font-semibold text-blue-900">Add Note</h4>
+                    <p class="mt-1 text-xs text-blue-700">
+                        Use Markdown in the note content. It will be rendered after saving.
+                    </p>
+                </div>
+
+                <button type="button"
+                        @click="cancelNewNote()"
+                        class="inline-flex items-center px-3 py-1.5 bg-white text-gray-700 border border-gray-300 rounded text-xs hover:bg-gray-50">
                     Cancel
-                </a>
+                </button>
             </div>
 
-            <form method="POST"
-                  action="{{ route('knowledge.items.notes.store', $knowledgeItem) }}"
-                  class="space-y-4">
-                @csrf
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label for="note_notetype" class="block text-sm font-medium text-gray-700 mb-1">
-                            Note Type
-                        </label>
-                        <select name="notetype"
-                                id="note_notetype"
-                                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                required>
-                            <option value="">Select note type</option>
-                            @foreach($noteTypeOptions as $value => $label)
-                                <option value="{{ $value }}" @selected(old('notetype') === $value)>
-                                    {{ $label }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label for="note_title" class="block text-sm font-medium text-gray-700 mb-1">
-                            Title
-                        </label>
-                        <input type="text"
-                               name="title"
-                               id="note_title"
-                               value="{{ old('title') }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                               maxlength="255"
-                               placeholder="Optional note title">
-                    </div>
-                </div>
-
-                <div>
-                    <x-forms.markdown-field
-                        name="notecontent"
-                        id="note_notecontent"
-                        label="Note Content"
-                        :value="old('notecontent', '')"
-                        rows="8"
-                        minRows="4"
-                        maxRows="18"
-                        placeholder="Write the note content in Markdown..."
-                        help="Markdown supported, including headings, lists, emphasis, links, and tables."
-                        :startCollapsed="false"
-                    />
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                        <label for="note_stance" class="block text-sm font-medium text-gray-700 mb-1">
-                            Stance
-                        </label>
-                        <input type="text"
-                               name="stance"
-                               id="note_stance"
-                               value="{{ old('stance') }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                    </div>
-
-                    <div>
-                        <label for="note_convictionlevel" class="block text-sm font-medium text-gray-700 mb-1">
-                            Conviction
-                        </label>
-                        <input type="number"
-                               name="convictionlevel"
-                               id="note_convictionlevel"
-                               value="{{ old('convictionlevel') }}"
-                               min="1"
-                               max="5"
-                               class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                    </div>
-
-                    <div>
-                        <label for="note_reviewdate" class="block text-sm font-medium text-gray-700 mb-1">
-                            Review Date
-                        </label>
-                        <input type="date"
-                               name="reviewdate"
-                               id="note_reviewdate"
-                               value="{{ old('reviewdate') }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                    </div>
-
-                    <div>
-                        <label for="note_sortorder" class="block text-sm font-medium text-gray-700 mb-1">
-                            Sort Order
-                        </label>
-                        <input type="number"
-                               name="sortorder"
-                               id="note_sortorder"
-                               value="{{ old('sortorder', 0) }}"
-                               min="0"
-                               class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-between gap-4">
-                    <label class="inline-flex items-center gap-2 text-sm text-gray-700">
-                        <input type="hidden" name="isprivate" value="0">
-                        <input type="checkbox"
-                               name="isprivate"
-                               value="1"
-                               class="rounded border-gray-300 text-blue-600 shadow-sm"
-                               @checked(old('isprivate', false))>
-                        Private note
-                    </label>
-
-                    <button type="submit"
-                            class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-                        Save New Note
-                    </button>
-                </div>
-            </form>
+            @include('knowledge.items.partials.note-inline-editor', [
+                'draftReference' => 'newNote',
+                'saveAction' => 'saveNewNote()',
+                'cancelAction' => 'cancelNewNote()',
+                'saveLabel' => 'Save New Note',
+            ])
         </div>
-    @endif
+    </template>
 
-    <div id="knowledge-notes-list" class="divide-y divide-gray-200">
-        @forelse($knowledgeItem->notes->sortBy('sortorder') as $note)
-            @if(isset($editingNoteId) && (int) $editingNoteId === (int) $note->id)
-                <div class="p-4 bg-blue-50/40 space-y-4">
-                    <div class="flex items-center justify-between gap-4">
-                        <div>
-                            <h4 class="text-sm font-semibold text-gray-900">Edit Note</h4>
-                            <p class="text-xs text-gray-500">
-                                Updating note: {{ $note->title ?: 'Untitled note' }}
-                            </p>
-                        </div>
+    <div id="knowledge-notes-list"
+         class="divide-y divide-gray-200"
+         x-ref="notesList">
 
-                        <a href="{{ route('knowledge.items.edit', [
-                                'knowledgeItem' => $knowledgeItem,
-                                'tab' => 'notes',
-                            ]) }}"
-                           class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs hover:bg-gray-300">
-                            Cancel
-                        </a>
-                    </div>
+        <template x-for="note in notes" :key="note.id">
+            <div class="p-4 sm:p-6 knowledge-note-row"
+                 :data-note-id="note.id">
 
-                    <form method="POST"
-                          action="{{ route('knowledge.items.notes.update', [$knowledgeItem, $note]) }}"
-                          class="space-y-4">
-                        @csrf
-                        @method('PUT')
-
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Note Type</label>
-                                <select name="notetype"
-                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                        required>
-                                    <option value="">Select note type</option>
-                                    @foreach($noteTypeOptions as $value => $label)
-                                        <option value="{{ $value }}" @selected(old('notetype', $note->notetype) === $value)>
-                                            {{ $label }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                                <input type="text"
-                                       name="title"
-                                       value="{{ old('title', $note->title) }}"
-                                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                            </div>
-                        </div>
-
-                        <div>
-                            <x-forms.markdown-field
-                                name="notecontent"
-                                id="note_notecontent_{{ $note->id }}"
-                                label="Note Content"
-                                :value="old('notecontent', $note->notecontent ?? '')"
-                                rows="8"
-                                minRows="4"
-                                maxRows="18"
-                                placeholder="Write the note content in Markdown..."
-                                help="Markdown supported, including headings, lists, emphasis, links, and tables."
-                                :startCollapsed="false"
-                            />
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Stance</label>
-                                <input type="text"
-                                       name="stance"
-                                       value="{{ old('stance', $note->stance) }}"
-                                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Conviction</label>
-                                <input type="number"
-                                       name="convictionlevel"
-                                       value="{{ old('convictionlevel', $note->convictionlevel) }}"
-                                       min="1"
-                                       max="5"
-                                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Review Date</label>
-                                <input type="date"
-                                       name="reviewdate"
-                                       value="{{ old('reviewdate', optional($note->reviewdate)->format('Y-m-d')) }}"
-                                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
-                                <input type="number"
-                                       name="sortorder"
-                                       value="{{ old('sortorder', $note->sortorder ?? 0) }}"
-                                       min="0"
-                                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                            </div>
-                        </div>
-
-                        <div class="flex items-center justify-between gap-4">
-                            <label class="inline-flex items-center gap-2 text-sm text-gray-700">
-                                <input type="hidden" name="isprivate" value="0">
-                                <input type="checkbox"
-                                       name="isprivate"
-                                       value="1"
-                                       class="rounded border-gray-300 text-blue-600 shadow-sm"
-                                       @checked(old('isprivate', $note->isprivate))>
-                                Private note
-                            </label>
-
-                            <div class="flex items-center gap-2">
-                                <a href="{{ route('knowledge.items.edit', [
-                                        'knowledgeItem' => $knowledgeItem,
-                                        'tab' => 'notes',
-                                    ]) }}"
-                                   class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs hover:bg-gray-300">
-                                    Cancel
-                                </a>
-
-                                <button type="submit"
-                                        class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
-                                    Save Note
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            @else
-                @php
-                    $raw = $note->notecontent ?? '';
-                    $normalised = str_replace(["\r\n", "\r"], "\n", $raw);
-                    $contentId = 'knowledge-note-content-' . $note->id;
-                    $previewText = trim($normalised);
-
-                    $looksComplex =
-                        str_contains($previewText, '|') ||
-                        str_contains($previewText, '```') ||
-                        preg_match('/^\s*#{1,6}\s+/m', $previewText) ||
-                        preg_match('/^\s*[-*+]\s+/m', $previewText) ||
-                        preg_match('/^\s*\d+\.\s+/m', $previewText) ||
-                        preg_match('/^\s*>\s+/m', $previewText);
-
-                    $contentClass = $looksComplex
-                        ? 'knowledge-note-content knowledge-note-content--complex markdown-content text-gray-700'
-                        : 'knowledge-note-content markdown-content text-gray-700';
-
-                    $startCollapsed = 'true';
-                @endphp
-
-                <div class="p-4 space-y-3 knowledge-note-row" data-note-id="{{ $note->id }}">
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="flex items-start gap-3 min-w-0 flex-1">
+                {{-- Display mode --}}
+                <template x-if="!note.editing">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div class="flex min-w-0 flex-1 items-start gap-3">
                             <button type="button"
-                                    class="knowledge-note-drag-handle inline-flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 cursor-move shrink-0 mt-0.5"
+                                    class="knowledge-note-drag-handle inline-flex h-8 w-8 shrink-0 touch-none select-none cursor-grab items-center justify-center text-gray-400 hover:text-gray-600 active:cursor-grabbing"
+                                    style="touch-action: none;"
                                     title="Drag to reorder"
                                     aria-label="Drag to reorder">
                                 <svg xmlns="http://www.w3.org/2000/svg"
-                                     class="w-5 h-5"
+                                     class="h-5 w-5"
                                      viewBox="0 0 20 20"
                                      fill="currentColor"
                                      aria-hidden="true">
@@ -349,210 +125,448 @@
                                 </svg>
                             </button>
 
-                            <div class="space-y-2 min-w-0 flex-1">
-                                <div class="text-sm font-semibold text-gray-900">
-                                    {{ $note->title ?: 'Untitled note' }}
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <h4 class="text-sm font-semibold text-gray-900 break-words"
+                                        x-text="note.title || 'Untitled note'">
+                                    </h4>
+
+                                    <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
+                                          x-text="note.notetype_label">
+                                    </span>
+
+                                    <template x-if="note.isprivate">
+                                        <span class="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                            Private
+                                        </span>
+                                    </template>
                                 </div>
 
-                                <div class="text-xs text-gray-500">
-                                    Type: {{ $note->notetype ?: '—' }}
-                                    · Sort: <span class="knowledge-note-sort-label">{{ $note->sortorder ?? 0 }}</span>
-                                    · {{ $note->isprivate ? 'Private' : 'Shared' }}
+                                <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                                    <template x-if="note.stance">
+                                        <span>
+                                            Stance:
+                                            <span x-text="note.stance"></span>
+                                        </span>
+                                    </template>
+
+                                    <template x-if="note.convictionlevel">
+                                        <span>
+                                            Conviction:
+                                            <span x-text="`${note.convictionlevel}/5`"></span>
+                                        </span>
+                                    </template>
+
+                                    <template x-if="note.reviewdate">
+                                        <span>
+                                            Review:
+                                            <span x-text="note.reviewdate_display"></span>
+                                        </span>
+                                    </template>
+
+                                    <span>
+                                        Sort:
+                                        <span x-text="note.sortorder"></span>
+                                    </span>
                                 </div>
 
-                                <div id="{{ $contentId }}"
-                                    class="{{ $contentClass }}"
-                                    data-collapsed="{{ $startCollapsed }}">
-                                    @include('partials.markdown.rendered-block', [
-                                        'content' => $normalised,
-                                    ])
-                                </div>
-
-                                <button type="button"
-                                    class="knowledge-note-toggle hidden inline-flex items-center px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
-                                    data-target="{{ $contentId }}"
-                                    aria-expanded="false"
-                                    aria-controls="{{ $contentId }}">
-                                    Show more
-                                </button>
+                                <template x-if="note.notecontent_html">
+                                    <div class="mt-3 markdown-content prose prose-sm max-w-none text-gray-700"
+                                         x-html="note.notecontent_html">
+                                    </div>
+                                </template>
                             </div>
                         </div>
 
-                        <div class="flex flex-col items-end gap-2 text-xs text-gray-500 shrink-0">
-                            <div>ID: {{ $note->id }}</div>
-                            <div>Review: {{ $note->reviewdate?->format('d M Y') ?? '—' }}</div>
+                        <div class="flex shrink-0 items-center gap-2 self-end sm:self-start">
+                            <button type="button"
+                                    @click="startEditNote(note)"
+                                    class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs hover:bg-gray-300">
+                                Edit
+                            </button>
 
-                            <div class="flex items-center gap-2 mt-1">
-                                <a href="{{ route('knowledge.items.edit', [
-                                        'knowledgeItem' => $knowledgeItem,
-                                        'tab' => 'notes',
-                                        'editing_note_id' => $note->id,
-                                    ]) }}"
-                                   class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs hover:bg-gray-300">
-                                    Edit
-                                </a>
-
-                                <form method="POST"
-                                      action="{{ route('knowledge.items.notes.destroy', [$knowledgeItem, $note]) }}"
-                                      onsubmit="return confirm('Delete this note?');">
-                                    @csrf
-                                    @method('DELETE')
-
-                                    <button type="submit"
-                                            class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white rounded text-xs hover:bg-red-700">
-                                        Delete
-                                    </button>
-                                </form>
-                            </div>
+                            <button type="button"
+                                    @click="deleteNote(note)"
+                                    class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white rounded text-xs hover:bg-red-700">
+                                Delete
+                            </button>
                         </div>
                     </div>
-                </div>
-            @endif
-        @empty
+                </template>
+
+                {{-- Edit mode --}}
+                <template x-if="note.editing">
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                        <div class="mb-4 flex items-center justify-between gap-3">
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-900">Edit Note</h4>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    Markdown is rendered after saving.
+                                </p>
+                            </div>
+
+                            <button type="button"
+                                    @click="cancelEditNote(note)"
+                                    class="inline-flex items-center px-3 py-1.5 bg-white text-gray-700 border border-gray-300 rounded text-xs hover:bg-gray-50">
+                                Cancel
+                            </button>
+                        </div>
+
+                        @include('knowledge.items.partials.note-inline-editor', [
+                            'draftReference' => 'note.draft',
+                            'saveAction' => 'saveExistingNote(note)',
+                            'cancelAction' => 'cancelEditNote(note)',
+                            'saveLabel' => 'Save Note',
+                        ])
+                    </div>
+                </template>
+            </div>
+        </template>
+
+        <template x-if="notes.length === 0 && !newNote">
             <div class="p-6 text-sm text-gray-500">
                 No notes recorded for this knowledge item yet.
             </div>
-        @endforelse
+        </template>
     </div>
-
-    <form method="POST"
-          action="{{ route('knowledge.items.notes.reorder', $knowledgeItem) }}"
-          id="knowledge-notes-reorder-form"
-          class="hidden">
-        @csrf
-        <div id="knowledge-notes-reorder-fields"></div>
-    </form>
 </div>
 
-@if(($activeTab ?? null) === 'notes')
-    @include('partials.markdown.markdown-styles')
-    @include('partials.forms.markdown-field-scripts')
+@include('partials.markdown.markdown-styles')
 
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const list = document.getElementById('knowledge-notes-list');
-        const reorderFields = document.getElementById('knowledge-notes-reorder-fields');
-        const reorderForm = document.getElementById('knowledge-notes-reorder-form');
-        const noteContentBlocks = Array.from(document.querySelectorAll('.knowledge-note-content'));
+<script>
+    function knowledgeNotesPanel() {
+        return {
+            notes: [],
+            noteTypes: {},
+            storeUrl: '',
+            baseUrl: '',
+            reorderUrl: '',
+            csrfToken: '',
+            newNote: null,
+            saving: false,
+            reordering: false,
+            errorMessage: '',
+            sortable: null,
 
-        function updateNoteToggleVisibility(content) {
-            const button = document.querySelector('.knowledge-note-toggle[data-target="' + content.id + '"]');
-            if (!button) {
-                return;
-            }
+            init() {
+                try {
+                    const dataElement = document.getElementById('knowledge-notes-initial-data');
+                    const data = JSON.parse(dataElement.textContent);
 
-            const wasCollapsed = content.dataset.collapsed === 'true';
+                    this.notes = (data.notes || []).map(note => this.prepareNote(note));
+                    this.noteTypes = data.noteTypes || {};
+                    this.storeUrl = data.storeUrl;
+                    this.baseUrl = data.baseUrl;
+                    this.reorderUrl = data.reorderUrl;
+                    this.csrfToken = data.csrfToken;
 
-            content.dataset.collapsed = 'true';
-            const isTruncated = content.scrollHeight > content.clientHeight + 1;
-
-            if (isTruncated) {
-                button.classList.remove('hidden');
-            } else {
-                button.classList.add('hidden');
-                button.setAttribute('aria-expanded', 'false');
-                button.textContent = 'Show more';
-            }
-
-            content.dataset.collapsed = wasCollapsed ? 'true' : 'false';
-        }
-
-        function syncExpandedState(content, expanded) {
-            const button = document.querySelector('.knowledge-note-toggle[data-target="' + content.id + '"]');
-            if (!button) {
-                return;
-            }
-
-            content.dataset.collapsed = expanded ? 'false' : 'true';
-            button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-            button.textContent = expanded ? 'Show less' : 'Show more';
-        }
-
-        function syncNoteSortOrderLabels() {
-            if (!list) {
-                return;
-            }
-
-            const rows = Array.from(list.querySelectorAll('.knowledge-note-row'));
-
-            rows.forEach((row, index) => {
-                const sortLabel = row.querySelector('.knowledge-note-sort-label');
-                if (sortLabel) {
-                    sortLabel.textContent = index + 1;
+                    this.$nextTick(() => this.setupSortable());
+                } catch (error) {
+                    this.errorMessage = error.message || 'Unable to load notes.';
+                    console.error('Knowledge notes initialisation failed:', error);
                 }
-            });
-        }
+            },
 
-        function buildReorderFields() {
-            if (!list || !reorderFields) {
-                return;
-            }
+            prepareNote(note) {
+                return {
+                    ...note,
+                    editing: false,
+                    draft: null,
+                };
+            },
 
-            const rows = Array.from(list.querySelectorAll('.knowledge-note-row'));
-            reorderFields.innerHTML = '';
+            emptyDraft() {
+                return {
+                    notetype: '',
+                    title: '',
+                    notecontent: '',
+                    stance: '',
+                    convictionlevel: '',
+                    reviewdate: '',
+                    isprivate: true,
+                    sortorder: this.nextSortOrder(),
+                };
+            },
 
-            rows.forEach((row, index) => {
-                const noteId = row.dataset.noteId;
-                if (!noteId) {
+            nextSortOrder() {
+                if (this.notes.length === 0) {
+                    return 1;
+                }
+
+                return Math.max(
+                    ...this.notes.map(note => Number(note.sortorder) || 0)
+                ) + 1;
+            },
+
+            startNewNote() {
+                this.errorMessage = '';
+                this.closeAllEditors();
+                this.newNote = this.emptyDraft();
+            },
+
+            cancelNewNote() {
+                this.newNote = null;
+            },
+
+            startEditNote(note) {
+                this.errorMessage = '';
+                this.newNote = null;
+                this.closeAllEditors();
+
+                note.draft = {
+                    notetype: note.notetype || '',
+                    title: note.title || '',
+                    notecontent: note.notecontent || '',
+                    stance: note.stance || '',
+                    convictionlevel: note.convictionlevel || '',
+                    reviewdate: note.reviewdate || '',
+                    isprivate: Boolean(note.isprivate),
+                    sortorder: note.sortorder || 0,
+                };
+
+                note.editing = true;
+                this.disableSortable();
+            },
+
+            cancelEditNote(note) {
+                note.editing = false;
+                note.draft = null;
+                this.enableSortable();
+            },
+
+            closeAllEditors() {
+                this.notes.forEach(note => {
+                    note.editing = false;
+                    note.draft = null;
+                });
+
+                this.enableSortable();
+            },
+
+            async saveNewNote() {
+                if (!this.newNote) {
                     return;
                 }
 
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'note_order[' + noteId + ']';
-                input.value = index + 1;
-                reorderFields.appendChild(input);
-            });
-        }
+                await this.saveNote(this.newNote, null);
+            },
 
-        noteContentBlocks.forEach((content) => {
-            updateNoteToggleVisibility(content);
-        });
+            async saveExistingNote(note) {
+                await this.saveNote(note.draft, note);
+            },
 
-        document.querySelectorAll('.knowledge-note-toggle').forEach((button) => {
-            button.addEventListener('click', function () {
-                const content = document.getElementById(this.dataset.target);
-                if (!content) {
+            async saveNote(payload, existingNote) {
+                this.errorMessage = '';
+
+                if (!payload.notetype || !payload.notecontent?.trim()) {
+                    this.errorMessage = 'Note type and note content are required.';
                     return;
                 }
 
-                const expand = content.dataset.collapsed === 'true';
-                syncExpandedState(content, expand);
-            });
-        });
+                this.saving = true;
 
-        window.addEventListener('resize', function () {
-            noteContentBlocks.forEach((content) => {
-                updateNoteToggleVisibility(content);
-            });
-        });
+                try {
+                    const isNew = !existingNote;
 
-        if (list && reorderFields && reorderForm && typeof Sortable !== 'undefined') {
-            let isSubmitting = false;
+                    const response = await fetch(
+                        isNew ? this.storeUrl : `${this.baseUrl}/${existingNote.id}`,
+                        {
+                            method: isNew ? 'POST' : 'PUT',
+                            headers: {
+                                'X-CSRF-TOKEN': this.csrfToken,
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                ...payload,
+                                convictionlevel: payload.convictionlevel || null,
+                                reviewdate: payload.reviewdate || null,
+                                sortorder: Number(payload.sortorder) || 0,
+                                isprivate: Boolean(payload.isprivate),
+                            }),
+                        }
+                    );
 
-            Sortable.create(list, {
-                animation: 150,
-                handle: '.knowledge-note-drag-handle',
-                draggable: '.knowledge-note-row',
-                ghostClass: 'bg-blue-50',
-                chosenClass: 'bg-slate-50',
-                onEnd: function () {
-                    if (isSubmitting) {
-                        return;
+                    if (!response.ok) {
+                        throw new Error(await this.responseMessage(response));
                     }
 
-                    syncNoteSortOrderLabels();
-                    buildReorderFields();
-                    isSubmitting = true;
-                    reorderForm.submit();
-                }
-            });
+                    const data = await response.json();
 
-            syncNoteSortOrderLabels();
-            buildReorderFields();
-        }
-    });
-    </script>
-@endif
+                    if (isNew) {
+                        this.notes.push(this.prepareNote(data.note));
+                        this.newNote = null;
+                    } else {
+                        const index = this.notes.findIndex(
+                            item => Number(item.id) === Number(existingNote.id)
+                        );
+
+                        if (index !== -1) {
+                            this.notes.splice(
+                                index,
+                                1,
+                                this.prepareNote(data.note)
+                            );
+                        }
+                    }
+
+                    this.sortNotes();
+                    this.enableSortable();
+                } catch (error) {
+                    this.errorMessage = error.message || 'Unable to save the note.';
+                    console.error('Knowledge note save failed:', error);
+                } finally {
+                    this.saving = false;
+                }
+            },
+
+            async deleteNote(note) {
+                if (!window.confirm('Delete this note? This cannot be undone.')) {
+                    return;
+                }
+
+                this.errorMessage = '';
+                this.saving = true;
+
+                try {
+                    const response = await fetch(`${this.baseUrl}/${note.id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': this.csrfToken,
+                            'Accept': 'application/json',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(await this.responseMessage(response));
+                    }
+
+                    this.notes = this.notes.filter(
+                        item => Number(item.id) !== Number(note.id)
+                    );
+
+                    this.sortNotes();
+                } catch (error) {
+                    this.errorMessage = error.message || 'Unable to delete the note.';
+                    console.error('Knowledge note delete failed:', error);
+                } finally {
+                    this.saving = false;
+                }
+            },
+
+            sortNotes() {
+                this.notes.sort((left, right) => {
+                    const leftSort = Number(left.sortorder) || 0;
+                    const rightSort = Number(right.sortorder) || 0;
+
+                    if (leftSort !== rightSort) {
+                        return leftSort - rightSort;
+                    }
+
+                    return Number(left.id) - Number(right.id);
+                });
+            },
+
+            setupSortable() {
+                if (
+                    !this.$refs.notesList
+                    || typeof Sortable === 'undefined'
+                    || this.sortable
+                ) {
+                    return;
+                }
+
+                this.sortable = Sortable.create(this.$refs.notesList, {
+                    animation: 150,
+                    handle: '.knowledge-note-drag-handle',
+                    draggable: '.knowledge-note-row',
+                    ghostClass: 'bg-blue-50',
+                    chosenClass: 'bg-slate-50',
+                    onEnd: () => this.persistReorder(),
+                });
+            },
+
+            disableSortable() {
+                if (this.sortable) {
+                    this.sortable.option('disabled', true);
+                }
+            },
+
+            enableSortable() {
+                if (this.sortable) {
+                    this.sortable.option('disabled', false);
+                }
+            },
+
+            async persistReorder() {
+                if (this.reordering || !this.$refs.notesList) {
+                    return;
+                }
+
+                const rows = Array.from(
+                    this.$refs.notesList.querySelectorAll('.knowledge-note-row')
+                );
+
+                const noteOrder = {};
+
+                rows.forEach((row, index) => {
+                    const noteId = row.dataset.noteId;
+
+                    if (noteId) {
+                        noteOrder[noteId] = index + 1;
+                    }
+                });
+
+                this.notes.forEach(note => {
+                    if (noteOrder[note.id]) {
+                        note.sortorder = noteOrder[note.id];
+                    }
+                });
+
+                this.reordering = true;
+                this.errorMessage = '';
+
+                try {
+                    const response = await fetch(this.reorderUrl, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': this.csrfToken,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            note_order: noteOrder,
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(await this.responseMessage(response));
+                    }
+
+                    this.sortNotes();
+                } catch (error) {
+                    this.errorMessage = error.message || 'Unable to save the note order.';
+                    console.error('Knowledge note reorder failed:', error);
+                } finally {
+                    this.reordering = false;
+                }
+            },
+
+            async responseMessage(response) {
+                const data = await response.json().catch(() => null);
+
+                if (data?.message) {
+                    return data.message;
+                }
+
+                if (data?.errors) {
+                    return Object.values(data.errors).flat().join(' ');
+                }
+
+                return 'The request could not be completed.';
+            },
+        };
+    }
+</script>

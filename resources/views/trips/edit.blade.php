@@ -245,37 +245,34 @@
                         </div>
 
                         <div class="space-y-6">
-                            <x-forms.markdown-field
+                            <x-forms.markdown-display-editor
                                 name="summary"
                                 id="summary"
                                 :value="old('summary', $trip->summary)"
                                 label="Summary"
-                                rows="3"
-                                min-rows="3"
+                                :rows="3"
                                 placeholder="Short Markdown summary for this trip"
                                 help="Markdown supported, including headings, lists, links, emphasis, and tables."
                                 preview-title="Summary Preview"
                             />
 
-                            <x-forms.markdown-field
+                            <x-forms.markdown-display-editor
                                 name="planningnotes"
                                 id="planningnotes"
                                 :value="old('planningnotes', $trip->planningnotes)"
                                 label="Planning Notes"
-                                rows="6"
-                                min-rows="6"
+                                :rows="6"
                                 placeholder="Planning notes, ideas, reminders, route thinking, bookings to make, and preparation details"
                                 help="Markdown supported, including headings, lists, links, emphasis, and tables."
                                 preview-title="Planning Notes Preview"
                             />
 
-                            <x-forms.markdown-field
+                            <x-forms.markdown-display-editor
                                 name="actualnotes"
                                 id="actualnotes"
                                 :value="old('actualnotes', $trip->actualnotes)"
                                 label="Actual Notes"
-                                rows="6"
-                                min-rows="6"
+                                :rows="6"
                                 placeholder="What actually happened during the trip, lessons learned, changes, and observations"
                                 help="Markdown supported, including headings, lists, links, emphasis, and tables."
                                 preview-title="Actual Notes Preview"
@@ -788,7 +785,6 @@
     </div>
 
     @include('partials.markdown.markdown-styles')
-    @include('partials.forms.markdown-field-scripts')
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {

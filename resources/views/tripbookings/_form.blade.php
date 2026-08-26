@@ -175,20 +175,28 @@
         </div>
 
         <div class="md:col-span-2 xl:col-span-2">
-            <x-forms.markdown-field
+            <x-forms.markdown-display-editor
                 name="notes"
+                id="notes"
                 label="Notes"
                 :value="old('notes', $booking?->notes)"
+                :rows="5"
+                placeholder="Add booking notes, reminders, inclusions, or follow-up details..."
                 help="Use Markdown for booking notes, reminders, inclusions, or follow-up details."
+                preview-title="Booking Notes Preview"
             />
         </div>
 
         <div class="md:col-span-2 xl:col-span-2">
-            <x-forms.markdown-field
+            <x-forms.markdown-display-editor
                 name="paymentnotes"
+                id="paymentnotes"
                 label="Payment Notes"
                 :value="old('paymentnotes', $booking?->paymentnotes)"
-                help="Payment notes for deposits and progress payments."
+                :rows="5"
+                placeholder="Record deposit, balance, due-date, refund, and payment-progress details..."
+                help="Use Markdown for payment notes, deposits, and progress payments."
+                preview-title="Payment Notes Preview"
             />
         </div>
 
@@ -197,3 +205,5 @@
         Save Trip Booking
     </button>
 </div>
+
+@include('partials.markdown.markdown-styles')

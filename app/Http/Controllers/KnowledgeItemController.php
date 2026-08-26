@@ -493,6 +493,15 @@ class KnowledgeItemController extends Controller
         'relationshipFactTypeOptions' => $relationshipFactTypeOptions,
         'dateQualifierOptions' => $dateQualifierOptions,
         'proofStatusOptions' => $proofStatusOptions,
+        'books' => \App\Models\BibleBook::query()
+            ->orderBy('sortorder')
+            ->orderBy('bookname')
+            ->get(),
+
+        'versions' => \App\Models\BibleVersion::query()
+            ->where('isactive', 1)
+            ->orderBy('versionname')
+            ->get(),
     ]);
 }
 

@@ -105,18 +105,21 @@ protected $casts = [
     }
 
     public function attachments()
-{
-    return $this->belongsToMany(
-        KnowledgeAttachment::class,
-        'knowledgeitem_attachments',
-        'knowledgeitemid',
-        'knowledgeattachmentid'
-    )->withPivot([
-        'description',
-        'isprimary',
-        'sortorder',
-    ]);
-}
+    {
+        return $this->belongsToMany(
+            KnowledgeAttachment::class,
+            'knowledgeitem_attachments',
+            'knowledgeitemid',
+            'knowledgeattachmentid'
+        )
+            ->withPivot([
+                'description',
+                'expirydate',
+                'isprimary',
+                'sortorder',
+            ])
+            ->withTimestamps('created_at', 'updated_at');
+    }
 
     public function reviewLogs(): HasMany
     {

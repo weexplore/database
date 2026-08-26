@@ -7,6 +7,13 @@ use App\Models\TaskStatus;
 use App\Models\TaskComment;
 use App\Models\TaskRecurrence;
 use App\Models\Label;
+use App\Models\KnowledgeItem;
+use App\Models\KnowledgeNote;
+use App\Models\KnowledgeReviewLog;
+use App\Models\Trip;
+use App\Models\TripItem;
+use App\Models\KnowledgeAttachment;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -771,6 +778,219 @@ class TaskController extends Controller
         ->get()
         ->groupBy('projectid');
 
+    $knowledgeReviewBaseQuery = KnowledgeItem::query()
+        ->with('primaryCategory')
+        ->where('isactive', 1)
+        ->whereNotNull('nextreviewdate');
+
+    $overdueKnowledgeItemReviews = (clone $knowledgeReviewBaseQuery)
+        ->whereDate('nextreviewdate', '<', $today->toDateString())
+        ->orderBy('nextreviewdate')
+        ->orderBy('itemname')
+        ->get();
+
+    $knowledgeItemReviewsDueToday = (clone $knowledgeReviewBaseQuery)
+        ->whereDate('nextreviewdate', $today->toDateString())
+        ->orderBy('itemname')
+        ->get();
+
+    $upcomingKnowledgeItemReviews = (clone $knowledgeReviewBaseQuery)
+        ->whereDate('nextreviewdate', '>', $today->toDateString())
+        ->whereDate('nextreviewdate', '<=', $weekEnd->toDateString())
+        ->orderBy('nextreviewdate')
+        ->orderBy('itemname')
+        ->get();
+
+    $knowledgeNoteReviewBaseQuery = KnowledgeNote::query()
+        ->with([
+            'knowledgeItem.primaryCategory',
+        ])
+        ->whereNotNull('reviewdate')
+        ->whereHas('knowledgeItem', function (Builder $query) {
+            $query->where('isactive', 1);
+        });
+
+    $overdueKnowledgeNoteReviews = (clone $knowledgeNoteReviewBaseQuery)
+        ->whereDate('reviewdate', '<', $today->toDateString())
+        ->orderBy('reviewdate')
+        ->orderBy('id')
+        ->get();
+
+    $knowledgeNoteReviewsDueToday = (clone $knowledgeNoteReviewBaseQuery)
+        ->whereDate('reviewdate', $today->toDateString())
+        ->orderBy('id')
+        ->get();
+
+    $upcomingKnowledgeNoteReviews = (clone $knowledgeNoteReviewBaseQuery)
+        ->whereDate('reviewdate', '>', $today->toDateString())
+        ->whereDate('reviewdate', '<=', $weekEnd->toDateString())
+        ->orderBy('reviewdate')
+        ->orderBy('id')
+        ->get();
+
+    $knowledgeReviewLogBaseQuery = KnowledgeReviewLog::query()
+        ->with([
+            'knowledgeItem.primaryCategory',
+        ])
+        ->whereNotNull('nextreviewdate')
+        ->whereHas('knowledgeItem', function (Builder $query) {
+            $query->where('isactive', 1);
+        });
+
+    $overdueKnowledgeReviewFollowUps = (clone $knowledgeReviewLogBaseQuery)
+        ->whereDate('nextreviewdate', '<', $today->toDateString())
+        ->orderBy('nextreviewdate')
+        ->orderBy('id')
+        ->get();
+
+    $knowledgeReviewFollowUpsDueToday = (clone $knowledgeReviewLogBaseQuery)
+        ->whereDate('nextreviewdate', $today->toDateString())
+        ->orderBy('id')
+        ->get();
+
+    $upcomingKnowledgeReviewFollowUps = (clone $knowledgeReviewLogBaseQuery)
+        ->whereDate('nextreviewdate', '>', $today->toDateString())
+        ->whereDate('nextreviewdate', '<=', $weekEnd->toDateString())
+        ->orderBy('nextreviewdate')
+        ->orderBy('id')
+        ->get();
+
+                /*
+         * Trips beginning soon, plus currently active trips.
+         */
+        $upcomingTrips = Trip::query()
+            ->whereIn('tripstatus', ['planned', 'active'])
+            ->where(function (Builder $query) use ($today, $weekEnd) {
+                $query
+                    ->where(function (Builder $plannedQuery) use ($today, $weekEnd) {
+                        $plannedQuery
+                            ->where('tripstatus', 'planned')
+                            ->whereNotNull('startdate')
+                            ->whereDate('startdate', '>=', $today->toDateString())
+                            ->whereDate('startdate', '<=', $weekEnd->toDateString());
+                    })
+                    ->orWhere(function (Builder $activeQuery) use ($today) {
+                        $activeQuery
+                            ->where('tripstatus', 'active')
+                            ->where(function (Builder $dateQuery) use ($today) {
+                                $dateQuery
+                                    ->where(function (Builder $boundedTripQuery) use ($today) {
+                                        $boundedTripQuery
+                                            ->whereNotNull('startdate')
+                                            ->whereDate('startdate', '<=', $today->toDateString())
+                                            ->whereNotNull('enddate')
+                                            ->whereDate('enddate', '>=', $today->toDateString());
+                                    })
+                                    ->orWhere(function (Builder $openEndedTripQuery) use ($today) {
+                                        $openEndedTripQuery
+                                            ->whereNotNull('startdate')
+                                            ->whereDate('startdate', '<=', $today->toDateString())
+                                            ->whereNull('enddate');
+                                    });
+                            });
+                    });
+            })
+            ->orderByRaw('startdate IS NULL')
+            ->orderBy('startdate')
+            ->orderBy('tripname')
+            ->get();
+
+        /*
+         * Planned work linked to an active or planned trip.
+         *
+         * Exclude records that are already complete or deliberately not being
+         * done. A Trip Item with no itemdate is not actionable in Outlook.
+         */
+        $upcomingTripItems = TripItem::query()
+            ->with([
+                'trip',
+                'place',
+                'destination',
+                'destinationItem.destination',
+            ])
+            ->whereNotNull('itemdate')
+            ->whereDate('itemdate', '>=', $today->toDateString())
+            ->whereDate('itemdate', '<=', $weekEnd->toDateString())
+            ->whereNotIn('status', ['completed', 'cancelled', 'skipped'])
+            ->whereHas('trip', function (Builder $query) {
+                $query->whereIn('tripstatus', ['planned', 'active']);
+            })
+            ->orderBy('itemdate')
+            ->orderBy('sortorder')
+            ->orderBy('title')
+            ->get();
+
+        /*
+         * Recurrence templates expected to be generated in the next seven days.
+         *
+         * The scheduled command generates at:
+         *
+         *     next occurrence due date - lead days before due
+         *
+         * We calculate that same threshold here, but do not create anything.
+         */
+        $recurringTasksToGenerate = $this->recurringTasksScheduledForWindow(
+            $today,
+            $weekEnd
+        );
+
+        /*
+         * These are overdue generation events: the command should already
+         * have generated them. They are useful operational diagnostics if the
+         * scheduler/container/cron has stopped running.
+         */
+        $overdueRecurringTaskGenerations = $this->recurringTasksScheduledForWindow(
+            null,
+            $today->copy()->subDay()
+        );
+
+                $attachmentExpiryWindowEnd = $today->copy()
+            ->addDays(14)
+            ->endOfDay();
+
+        $attachmentExpiryWindowEnd = $today->copy()->addDays(14);
+
+        $expiringKnowledgeAttachments = DB::table('knowledgeitem_attachments as kia')
+            ->join(
+                'knowledgeitems as ki',
+                'ki.id',
+                '=',
+                'kia.knowledgeitemid'
+            )
+            ->join(
+                'knowledgeattachments as ka',
+                'ka.id',
+                '=',
+                'kia.knowledgeattachmentid'
+            )
+            ->leftJoin(
+                'knowledgecategories as kc',
+                'kc.id',
+                '=',
+                'ki.primarycategoryid'
+            )
+            ->where('ki.isactive', 1)
+            ->whereNotNull('kia.expirydate')
+            ->whereBetween('kia.expirydate', [
+                $today->toDateString(),
+                $attachmentExpiryWindowEnd->toDateString(),
+            ])
+            ->orderBy('kia.expirydate')
+            ->orderBy('ki.itemname')
+            ->select([
+                'kia.id as attachment_link_id',
+                'kia.expirydate',
+                'kia.description as link_description',
+                'ki.id as knowledge_item_id',
+                'ki.itemname as knowledge_item_name',
+                'ki.itemtype as knowledge_item_type',
+                'kc.categoryname as category_name',
+                'ka.id as attachment_id',
+                'ka.attachmenttype',
+                'ka.originalfilename',
+            ])
+            ->get();
+
     return view('tasks.outlook', compact(
         'today',
         'weekEnd',
@@ -778,6 +998,25 @@ class TaskController extends Controller
         'dueTodayTasks',
         'inProgressTasks',
         'upcomingTasks',
+
+        'overdueKnowledgeItemReviews',
+        'knowledgeItemReviewsDueToday',
+        'upcomingKnowledgeItemReviews',
+
+        'overdueKnowledgeNoteReviews',
+        'knowledgeNoteReviewsDueToday',
+        'upcomingKnowledgeNoteReviews',
+
+        'overdueKnowledgeReviewFollowUps',
+        'knowledgeReviewFollowUpsDueToday',
+        'upcomingKnowledgeReviewFollowUps',
+
+        'upcomingTrips',
+        'upcomingTripItems',
+        'recurringTasksToGenerate',
+        'overdueRecurringTaskGenerations',
+        'expiringKnowledgeAttachments',
+
         'todaysActivity',
         'statuses'
     ));
@@ -991,4 +1230,115 @@ private function redirectAfterTaskAction(
         ->route('tasks.show', $task)
         ->with('success', $message);
 }
+
+    private function recurringTasksScheduledForWindow(
+        ?\Carbon\Carbon $windowStart,
+        \Carbon\Carbon $windowEnd
+    ) {
+        $today = now()->startOfDay();
+
+        return TaskRecurrence::query()
+            ->with([
+                'taskTemplate.project',
+                'taskTemplate.labels',
+            ])
+            ->where('isactive', 1)
+            ->whereDate('startsonoccurrence', '<=', $windowEnd->toDateString())
+            ->where(function (Builder $query) use ($windowEnd) {
+                $query->whereNull('endsonoccurrence')
+                    ->orWhereDate(
+                        'endsonoccurrence',
+                        '>=',
+                        $windowEnd->toDateString()
+                    );
+            })
+            ->get()
+            ->map(function (TaskRecurrence $recurrence) {
+                $template = $recurrence->taskTemplate;
+
+                if (! $template) {
+                    return null;
+                }
+
+                $nextDue = $this->nextRecurringTaskDueDate($recurrence);
+
+                if (! $nextDue) {
+                    return null;
+                }
+
+                $leadDays = max(
+                    0,
+                    (int) ($recurrence->leaddaysbeforedue ?? 0)
+                );
+
+                $generationDate = $nextDue
+                    ->copy()
+                    ->subDays($leadDays)
+                    ->startOfDay();
+
+                $recurrenceRootId = $template->recurrencerootid
+                    ?? $template->id;
+
+                $generatedCount = Task::query()
+                    ->where('recurrencerootid', $recurrenceRootId)
+                    ->whereNull('parenttaskid')
+                    ->count();
+
+                if (
+                    $recurrence->maxoccurrences
+                    && $generatedCount >= (int) $recurrence->maxoccurrences
+                ) {
+                    return null;
+                }
+
+                return [
+                    'recurrence' => $recurrence,
+                    'template' => $template,
+                    'nextDue' => $nextDue,
+                    'generationDate' => $generationDate,
+                    'leadDays' => $leadDays,
+                    'generatedCount' => $generatedCount,
+                ];
+            })
+            ->filter()
+            ->filter(function (array $scheduled) use ($windowStart, $windowEnd) {
+                $generationDate = $scheduled['generationDate'];
+
+                if ($windowStart && $generationDate->isBefore($windowStart)) {
+                    return false;
+                }
+
+                return ! $generationDate->isAfter($windowEnd);
+            })
+            ->sortBy([
+                ['generationDate', 'asc'],
+                ['nextDue', 'asc'],
+            ])
+            ->values();
+    }
+
+    private function nextRecurringTaskDueDate(
+        TaskRecurrence $recurrence
+    ): ?\Carbon\Carbon {
+        $interval = max(1, (int) ($recurrence->intervalcount ?? 1));
+
+        if (! $recurrence->lastgeneratedon) {
+            return $recurrence->startsonoccurrence
+                ? \Carbon\Carbon::parse($recurrence->startsonoccurrence)
+                    ->startOfDay()
+                : null;
+        }
+
+        $baseDate = \Carbon\Carbon::parse(
+            $recurrence->lastgeneratedon
+        )->startOfDay();
+
+        return match ($recurrence->frequency) {
+            'daily' => $baseDate->copy()->addDays($interval),
+            'weekly' => $baseDate->copy()->addWeeks($interval),
+            'monthly' => $baseDate->copy()->addMonthsNoOverflow($interval),
+            'yearly' => $baseDate->copy()->addYearsNoOverflow($interval),
+            default => null,
+        };
+    }
 }

@@ -229,16 +229,15 @@
         </div>
 
         <div class="md:col-span-2 xl:col-span-5">
-            <x-forms.markdown-field
+            <x-forms.markdown-display-editor
                 name="comments"
                 id="comments"
                 label="Comments"
                 :value="old('comments', $review?->comments)"
-                rows="6"
-                minRows="5"
-                maxRows="18"
+                :rows="6"
                 placeholder="Write review comments in Markdown..."
-                help="Markdown supported. Use Show preview to view formatted content."
+                help="Markdown supported. Click Edit to change the content."
+                preview-title="Comments Preview"
             />
         </div>
     </div>
