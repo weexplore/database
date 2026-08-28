@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Illuminate\Support\Str;
 
 
 class KnowledgeItemController extends Controller
@@ -290,10 +291,24 @@ class KnowledgeItemController extends Controller
     $hasFamilyHistoryTools = (bool) ($domain?->hasfamilyhistorytools ?? false);
 
     $categories = KnowledgeCategory::query()
-        ->where('domainid', $domainId)
-        ->where('isactive', 1)
-        ->orderBy('sortorder')
-        ->orderBy('categoryname')
+        ->with([
+            'domain',
+            'parentCategory',
+        ])
+        ->join(
+            'knowledgedomains',
+            'knowledgedomains.id',
+            '=',
+            'knowledgecategories.domainid'
+        )
+        ->where('knowledgecategories.isactive', 1)
+        ->where('knowledgedomains.isactive', 1)
+        ->select('knowledgecategories.*')
+        ->orderByRaw('COALESCE(knowledgedomains.sortorder, 999999)')
+        ->orderBy('knowledgedomains.domainname')
+        ->orderByRaw('COALESCE(knowledgecategories.parentcategoryid, 0)')
+        ->orderByRaw('COALESCE(knowledgecategories.sortorder, 999999)')
+        ->orderBy('knowledgecategories.categoryname')
         ->get();
 
     $parentItems = KnowledgeItem::query()
@@ -538,6 +553,26 @@ class KnowledgeItemController extends Controller
                 ->withInput()
                 ->withErrors(['parentitemid' => 'A knowledge item cannot be its own parent.']);
         }
+        $selectedCategory = KnowledgeCategory::query()
+            ->select(['id', 'domainid'])
+            ->findOrFail($validated['primarycategoryid']);
+
+        if (!empty($validated['parentitemid'])) {
+            $selectedParentItem = KnowledgeItem::query()
+                ->with('primaryCategory:id,domainid')
+                ->findOrFail($validated['parentitemid']);
+
+            if (
+                (int) $selectedParentItem->primaryCategory?->domainid
+                !== (int) $selectedCategory->domainid
+            ) {
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'parentitemid' => 'The parent item must be in the same domain as the selected primary category.',
+                    ]);
+            }
+        }
 
         $tagIds = collect($request->input('tagids', []))
             ->filter()
@@ -545,6 +580,9 @@ class KnowledgeItemController extends Controller
             ->unique()
             ->values()
             ->all();
+
+        $categoryChanged = (int) $knowledgeItem->primarycategoryid
+            !== (int) $validated['primarycategoryid'];
 
         $knowledgeItem->tags()->sync($tagIds);
 
@@ -567,61 +605,100 @@ class KnowledgeItemController extends Controller
             'isactive' => (bool) ($validated['isactive'] ?? false),
         ]);
 
-        $returnTo = $request->input('return_to');
+        $returnTo = $this->safeReturnUrl(
+            $request,
+            $request->input('return_to')
+        );
 
         return redirect()->to(
-            $returnTo ?: route('knowledge-categories.index', [
-                'domainid' => $knowledgeItem->primaryCategory?->domainid,
-                'categoryid' => $knowledgeItem->primarycategoryid,
-            ])
+            !$categoryChanged && filled($returnTo)
+                ? $returnTo
+                : route('knowledge-categories.index', [
+                    'domainid' => $selectedCategory->domainid,
+                    'categoryid' => $selectedCategory->id,
+                ])
         )->with('success', 'Knowledge item updated.');
     }
 
     public function destroy(Request $request, KnowledgeItem $knowledgeItem): RedirectResponse
-{
-    $knowledgeItem->load(['primaryCategory', 'childItems']);
+    {
+        $knowledgeItem->load(['primaryCategory', 'childItems']);
 
-    $returnTo = $request->input('return_to');
+        $returnTo = $this->safeReturnUrl(
+            $request,
+            $request->input('return_to')
+        );
 
-    if ($knowledgeItem->childItems()->exists()) {
-        return redirect()->to(
-            $returnTo ?: route('knowledge.items.edit', $knowledgeItem)
-        )->with('error', 'This knowledge item cannot be deleted because it has child items.');
-    }
-
-    $domainId = $knowledgeItem->primaryCategory?->domainid;
-    $categoryId = $knowledgeItem->primarycategoryid;
-
-    $knowledgeItem->delete();
-
-    return redirect()->to(
-        $returnTo ?: route('knowledge-categories.index', [
-            'domainid' => $domainId,
-            'categoryid' => $categoryId,
-        ])
-    )->with('success', 'Knowledge item deleted.');
-}
-
-public function reorder(Request $request, KnowledgeItem $knowledgeItem): RedirectResponse
-{
-    $validated = $request->validate([
-        'notes' => ['required', 'array'],
-        'notes.*.sortorder' => ['required', 'integer', 'min:1'],
-    ]);
-
-    foreach ($validated['notes'] as $noteId => $row) {
-        $note = $knowledgeItem->notes()->whereKey($noteId)->first();
-
-        if ($note) {
-            $note->update([
-                'sortorder' => $row['sortorder'],
-            ]);
+        if ($knowledgeItem->childItems()->exists()) {
+            return redirect()->to(
+                $returnTo ?: route('knowledge.items.edit', $knowledgeItem)
+            )->with('error', 'This knowledge item cannot be deleted because it has child items.');
         }
+
+        $domainId = $knowledgeItem->primaryCategory?->domainid;
+        $categoryId = $knowledgeItem->primarycategoryid;
+
+        $knowledgeItem->delete();
+
+        return redirect()->to(
+            $returnTo ?: route('knowledge-categories.index', [
+                'domainid' => $domainId,
+                'categoryid' => $categoryId,
+            ])
+        )->with('success', 'Knowledge item deleted.');
     }
 
-    return redirect()->route('knowledge.items.edit', [
-        'knowledgeItem' => $knowledgeItem,
-        'tab' => 'notes',
-    ])->with('success', 'Note order saved.');
-}
+    public function reorder(Request $request, KnowledgeItem $knowledgeItem): RedirectResponse
+    {
+        $validated = $request->validate([
+            'notes' => ['required', 'array'],
+            'notes.*.sortorder' => ['required', 'integer', 'min:1'],
+        ]);
+
+        foreach ($validated['notes'] as $noteId => $row) {
+            $note = $knowledgeItem->notes()->whereKey($noteId)->first();
+
+            if ($note) {
+                $note->update([
+                    'sortorder' => $row['sortorder'],
+                ]);
+            }
+        }
+
+        return redirect()->route('knowledge.items.edit', [
+            'knowledgeItem' => $knowledgeItem,
+            'tab' => 'notes',
+        ])->with('success', 'Note order saved.');
+    }
+
+    private function safeReturnUrl(Request $request, ?string $returnUrl): ?string
+    {
+        if (blank($returnUrl)) {
+            return null;
+        }
+
+        $parsedUrl = parse_url($returnUrl);
+
+        if ($parsedUrl === false) {
+            return null;
+        }
+
+        if (empty($parsedUrl['host'])) {
+            return Str::startsWith($returnUrl, '/')
+                ? $returnUrl
+                : null;
+        }
+
+        $returnPort = isset($parsedUrl['port'])
+            ? (int) $parsedUrl['port']
+            : ($parsedUrl['scheme'] === 'https' ? 443 : 80);
+
+        $requestPort = (int) $request->getPort();
+
+        return $parsedUrl['host'] === $request->getHost()
+            && $parsedUrl['scheme'] === $request->getScheme()
+            && $returnPort === $requestPort
+            ? $returnUrl
+            : null;
+    }
 }

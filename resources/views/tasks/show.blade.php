@@ -30,13 +30,25 @@
             
 
             @php
-                $backUrl = $returnUrl ?: route('tasks.index', $task->projectid);
+                $backUrl = $returnUrl
+                    ?: match ($from) {
+                        'alltasks' => route('tasksall.all'),
+                        'outlook' => route('tasks.outlook'),
+                        default => route('tasks.index', $task->projectid),
+                    };
 
                 $backLabel = match ($from) {
-                    'alltasks' => '← Back to All Tasks',
-                    'outlook' => '← Back to Task Outlook',
-                    default => '← Back to Tasks',
+                    'alltasks' => 'Back to All Tasks',
+                    'outlook' => 'Back to Task Outlook',
+                    default => 'Back to Tasks',
                 };
+            @endphp
+
+            @php
+                $selectedKnowledgeItemIds = old(
+                    'knowledgeitemids',
+                    $task->knowledgeItems->pluck('id')->all()
+                );
             @endphp
 
             <a href="{{ $backUrl }}"
@@ -213,6 +225,93 @@
                                     </label>
                                 @endforeach
                             </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <label class="block text-xs font-medium text-gray-600">
+                                Linked Knowledge Items
+                            </label>
+
+                            <button type="button"
+                                    id="toggle-knowledge-items-panel"
+                                    class="text-xs px-2 py-1 rounded border border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100">
+                                {{ $task->knowledgeItems->isNotEmpty()
+                                    ? 'Add or change knowledge items'
+                                    : 'Add knowledge items' }}
+                            </button>
+                        </div>
+
+                        @if ($task->knowledgeItems->isNotEmpty())
+                            <div id="selected-knowledge-items-summary"
+                                class="flex flex-wrap gap-2 mb-2">
+                                @foreach ($task->knowledgeItems as $knowledgeItem)
+                                    <a href="{{ route('knowledge.items.edit', [
+                                            'knowledgeItem' => $knowledgeItem,
+                                            'return_to' => request()->fullUrl(),
+                                        ]) }}"
+                                    class="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-medium text-indigo-800 hover:bg-indigo-200 hover:underline">
+                                        {{ $knowledgeItem->itemname }}
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        <div id="knowledge-items-panel"
+                            class="hidden border border-gray-200 rounded-md p-3 bg-gray-50">
+
+                            <input type="search"
+                                id="knowledge-items-search"
+                                placeholder="Search Knowledge Items..."
+                                autocomplete="off"
+                                class="mb-3 w-full rounded-md border-gray-300 shadow-sm text-sm">
+
+                            <div id="knowledge-items-list"
+                                class="max-h-64 overflow-y-auto space-y-2">
+
+                                @foreach (
+                                    $knowledgeItems->sortByDesc(
+                                        fn ($knowledgeItem) => in_array(
+                                            $knowledgeItem->id,
+                                            $selectedKnowledgeItemIds
+                                        )
+                                    )->values()
+                                    as $knowledgeItem
+                                )
+                                    @php
+                                        $isSelected = in_array(
+                                            $knowledgeItem->id,
+                                            $selectedKnowledgeItemIds
+                                        );
+                                    @endphp
+
+                                    <label class="knowledge-item-option flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-white {{ $isSelected ? 'bg-indigo-50' : '' }}">
+                                        <input type="checkbox"
+                                            name="knowledgeitemids[]"
+                                            value="{{ $knowledgeItem->id }}"
+                                            class="knowledge-item-checkbox rounded border-gray-300 text-indigo-600 shadow-sm"
+                                            @checked($isSelected)>
+
+                                        <span class="min-w-0 truncate">
+                                            <span class="font-medium text-gray-800">
+                                                {{ $knowledgeItem->itemname }}
+                                            </span>
+
+                                            @if ($knowledgeItem->primaryCategory?->categoryname)
+                                                <span class="text-xs text-gray-500">
+                                                    — {{ $knowledgeItem->primaryCategory->categoryname }}
+                                                </span>
+                                            @endif
+                                        </span>
+                                    </label>
+                                @endforeach
+                            </div>
+
+                            <p id="knowledge-items-no-results"
+                            class="hidden py-3 text-center text-xs text-gray-500">
+                                No matching Knowledge Items.
+                            </p>
                         </div>
                     </div>
 
@@ -619,7 +718,7 @@
                                     </button>
                                 </td>
                             </tr>
-
+                            
                             {{-- Existing sub-tasks --}}
                             @forelse ($task->subtasks as $sub)
                                 {{-- Valid external form; fields in the table row attach to it --}}
@@ -1366,4 +1465,68 @@
             );
         });
     </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const toggleButton = document.getElementById('toggle-knowledge-items-panel');
+            const panel = document.getElementById('knowledge-items-panel');
+            const searchInput = document.getElementById('knowledge-items-search');
+            const options = Array.from(
+                document.querySelectorAll('.knowledge-item-option')
+            );
+            const noResults = document.getElementById('knowledge-items-no-results');
+
+            if (!panel) {
+                return;
+            }
+
+            function updateToggleLabel() {
+                if (!toggleButton) {
+                    return;
+                }
+
+                toggleButton.textContent = panel.classList.contains('hidden')
+                    ? 'Add or change knowledge items'
+                    : 'Hide knowledge items';
+            }
+
+            if (toggleButton) {
+                toggleButton.addEventListener('click', function () {
+                    panel.classList.toggle('hidden');
+                    updateToggleLabel();
+
+                    if (!panel.classList.contains('hidden') && searchInput) {
+                        searchInput.focus();
+                    }
+                });
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener('input', function () {
+                    const searchTerm = searchInput.value.trim().toLowerCase();
+                    let visibleCount = 0;
+
+                    options.forEach(function (option) {
+                        const matches = option.textContent
+                            .toLowerCase()
+                            .includes(searchTerm);
+
+                        option.classList.toggle('hidden', !matches);
+
+                        if (matches) {
+                            visibleCount++;
+                        }
+                    });
+
+                    if (noResults) {
+                        noResults.classList.toggle(
+                            'hidden',
+                            visibleCount > 0
+                        );
+                    }
+                });
+            }
+
+            updateToggleLabel();
+        });
+        </script>
 </x-app-layout>

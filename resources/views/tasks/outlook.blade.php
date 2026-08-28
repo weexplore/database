@@ -790,21 +790,29 @@
             {{-- Today's activity --}}
             <section class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-emerald-200">
                 <div class="px-4 py-3 border-b border-emerald-200 bg-emerald-50">
-                    <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-start justify-between gap-4">
                         <div>
-                            <h3 class="text-sm font-semibold text-emerald-800">
+                            <h2 class="text-sm font-semibold text-gray-900">
                                 Today’s Activity
-                            </h3>
+                            </h2>
+
+                            <p class="mt-1 text-xs text-gray-500">
+                                Tasks updated, completed, or commented on today.
+                            </p>
 
                             <p class="mt-1 text-xs text-emerald-700">
                                 Tasks updated or completed today, plus comments posted today.
                             </p>
                         </div>
 
-                        <span class="text-xs font-medium text-emerald-800">
+                        <div class="shrink-0 whitespace-nowrap pt-1 text-right text-xs text-emerald-800">
                             {{ $todaysActivity->count() }}
                             task{{ $todaysActivity->count() === 1 ? '' : 's' }}
-                        </span>
+                            · Estimated:
+                            {{ rtrim(rtrim(number_format($todaysActivityEstimatedHours, 2), '0'), '.') }}h
+                            · Actual:
+                            {{ rtrim(rtrim(number_format($todaysActivityActualHours, 2), '0'), '.') }}h
+                        </div>
                     </div>
                 </div>
 
@@ -842,6 +850,17 @@
                                             </a>
                                         @endif
                                     </p>
+                                    @if (
+                                        $activityTask->estimatedefforthours !== null
+                                        || $activityTask->actualefforthours !== null
+                                    )
+                                        <p class="mt-0.5 text-[11px] text-emerald-700">
+                                            Estimated:
+                                            {{ rtrim(rtrim(number_format((float) ($activityTask->estimatedefforthours ?? 0), 2), '0'), '.') }}h
+                                            · Actual:
+                                            {{ rtrim(rtrim(number_format((float) ($activityTask->actualefforthours ?? 0), 2), '0'), '.') }}h
+                                        </p>
+                                    @endif
                                 </div>
 
                                 <div class="flex flex-wrap items-center gap-1">
@@ -894,6 +913,111 @@
                             No task activity has been recorded today.
                         </p>
                     @endforelse
+                </div>
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-violet-200">
+                    <div class="px-4 py-3 border-b border-violet-200 bg-violet-50">
+                        <div class="flex items-center justify-between gap-4">
+                            <div>
+                                <h2 class="text-sm font-semibold text-violet-900">
+                                    Today’s Knowledge Activity
+                                </h2>
+
+                                <p class="mt-1 text-xs text-violet-700">
+                                    Knowledge Items, Notes, Sources, and Review Logs created or updated today.
+                                </p>
+                            </div>
+
+                            <a href="{{ route('knowledge.items.index') }}"
+                            class="inline-flex items-center rounded-md border border-violet-300 bg-white px-3 py-1.5 text-xs font-medium text-violet-800 hover:bg-violet-100">
+                                Knowledge Items
+                            </a>
+                        </div>
+                    </div>
+
+                    @if ($todayKnowledgeActivity->isEmpty())
+                        <div class="px-4 py-5 text-sm text-gray-500">
+                            No Knowledge Item activity recorded today.
+                        </div>
+                    @else
+                        <div class="divide-y divide-gray-100">
+                            @foreach ($todayKnowledgeActivity as $activity)
+                                @php
+                                    $knowledgeItem = $activity['knowledgeItem'];
+
+                                    $routeParameters = [
+                                        'knowledgeItem' => $knowledgeItem,
+                                        'tab' => $activity['tab'],
+                                        'return_to' => request()->fullUrl(),
+                                    ];
+
+                                    if (! empty($activity['editingNoteId'])) {
+                                        $routeParameters['editing_note_id'] = $activity['editingNoteId'];
+                                    }
+
+                                    if (! empty($activity['editingSourceId'])) {
+                                        $routeParameters['editing_source_id'] = $activity['editingSourceId'];
+                                    }
+
+                                    if (! empty($activity['editingReviewLogId'])) {
+                                        $routeParameters['editing_review_log_id'] = $activity['editingReviewLogId'];
+                                    }
+
+                                    $typeStyles = match ($activity['type']) {
+                                        'item' => [
+                                            'badge' => 'bg-indigo-100 text-indigo-800',
+                                            'icon' => 'Item',
+                                        ],
+                                        'note' => [
+                                            'badge' => 'bg-sky-100 text-sky-800',
+                                            'icon' => 'Note',
+                                        ],
+                                        'source' => [
+                                            'badge' => 'bg-emerald-100 text-emerald-800',
+                                            'icon' => 'Source',
+                                        ],
+                                        'review' => [
+                                            'badge' => 'bg-amber-100 text-amber-800',
+                                            'icon' => 'Review',
+                                        ],
+                                        default => [
+                                            'badge' => 'bg-gray-100 text-gray-800',
+                                            'icon' => 'Activity',
+                                        ],
+                                    };
+                                @endphp
+
+                                <a href="{{ route('knowledge.items.edit', $routeParameters) }}"
+                                class="block px-4 py-3 hover:bg-violet-50">
+                                    <div class="flex items-center gap-2 text-sm">
+                                        <span class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium {{ $typeStyles['badge'] }}">
+                                            {{ $typeStyles['icon'] }}
+                                        </span>
+
+                                        <span class="min-w-0 flex-1 truncate">
+                                            <span class="font-medium text-gray-900">
+                                                {{ $activity['title'] }}
+                                            </span>
+
+                                            <span class="text-gray-500">
+                                                · {{ $activity['label'] }}
+                                            </span>
+
+                                            @if (filled($activity['detail']))
+                                                <span class="text-gray-600">
+                                                    · {{ \Illuminate\Support\Str::limit($activity['detail'], 120) }}
+                                                </span>
+                                            @endif
+                                        </span>
+
+                                        <time class="shrink-0 text-xs text-gray-500"
+                                            datetime="{{ $activity['updatedAt']?->toIso8601String() }}">
+                                            {{ $activity['updatedAt']?->shiftTimezone('Australia/Sydney')->format('g:i A') }}
+                                        </time>
+                                    </div>
+                                </a>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             </section>
         </div>

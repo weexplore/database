@@ -171,5 +171,13 @@ protected $casts = [
             ->orderBy('facttype')
             ->orderBy('datefrom');
     }
-
+    public function tasks()
+    {
+        return $this->belongsToMany(
+            Task::class,
+            'taskknowledgeitems',
+            'knowledgeitemid',
+            'taskid'
+        )->withTimestamps();
+    }
 }

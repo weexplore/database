@@ -10,6 +10,7 @@ use App\Models\Label;
 use App\Models\KnowledgeItem;
 use App\Models\KnowledgeNote;
 use App\Models\KnowledgeReviewLog;
+use App\Models\KnowledgeSource;
 use App\Models\Trip;
 use App\Models\TripItem;
 use App\Models\KnowledgeAttachment;
@@ -76,6 +77,7 @@ class TaskController extends Controller
             'assignee',
             'labels',
             'recurrence',
+            'knowledgeItems.primaryCategory',
             'subtasks.status',
             'subtasks.labels',
             'comments.user',
@@ -97,11 +99,18 @@ class TaskController extends Controller
             ->orderBy('tasktitle')
             ->get();
 
+        $knowledgeItems = KnowledgeItem::query()
+            ->with('primaryCategory')
+            ->where('isactive', 1)
+            ->orderBy('itemname')
+            ->get();
+
         return view('tasks.show', compact(
             'task',
             'projects',
             'statuses',
             'labels',
+            'knowledgeItems',
             'projectTasks'
         ));
     }
@@ -124,6 +133,8 @@ class TaskController extends Controller
             'actualefforthours' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
             'taskexpectation' => ['nullable', 'string'],
             'statuscomment' => ['nullable', 'string'],
+            'knowledgeitemids' => ['nullable', 'array'],
+            'knowledgeitemids.*' => ['integer', 'exists:knowledgeitems,id'],
         ]);
 
         if (!empty($data['parenttaskid'])) {
@@ -147,19 +158,22 @@ class TaskController extends Controller
             }
         }
 
-        $data['tasktitle'] = $data['title'];
+        $data['tasktitle'] = trim((string) $data['title']);
         unset($data['title']);
 
         $data['assignedto'] = $data['assigneeid'] ?? null;
         unset($data['assigneeid']);
 
-        // labelids belongs to the pivot relation, not the tasks table.
         $labelIds = $data['labelids'] ?? [];
         unset($data['labelids']);
 
-        $task = Task::create($data);
+        $knowledgeItemIds = $data['knowledgeitemids'] ?? [];
+        unset($data['knowledgeitemids']);
 
+        $task = Task::create($data);
         $task->labels()->sync($labelIds);
+
+        $task->knowledgeItems()->sync($knowledgeItemIds);
 
        if (!empty($task->parenttaskid)) {
             return redirect()
@@ -171,7 +185,10 @@ class TaskController extends Controller
                 ->with('success', 'Sub-task created.');
         }
 
-        $returnUrl = $this->safeReturnUrl($request->input('return_url'));
+        $returnUrl = $this->safeReturnUrl(
+            $request,
+            $request->input('return_url')
+        );
 
         if ($returnUrl) {
             return redirect($returnUrl)->with('success', 'Task created.');
@@ -199,6 +216,8 @@ class TaskController extends Controller
             'actualefforthours' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
             'taskexpectation' => ['nullable', 'string'],
             'statuscomment' => ['nullable', 'string'],
+            'knowledgeitemids' => ['nullable', 'array'],
+            'knowledgeitemids.*' => ['integer', 'exists:knowledgeitems,id'],
         ]);
 
         foreach ([
@@ -240,7 +259,16 @@ class TaskController extends Controller
             $data['completedat'] = null;
         }
 
-        $data['tasktitle'] = $data['title'];
+       foreach ([
+            'estimatedefforthours',
+            'actualefforthours',
+        ] as $field) {
+            if (($data[$field] ?? null) === '') {
+                $data[$field] = null;
+            }
+        }
+
+        $data['tasktitle'] = trim((string) $data['title']);
         unset($data['title']);
 
         $data['assignedto'] = $data['assigneeid'] ?? null;
@@ -249,10 +277,19 @@ class TaskController extends Controller
         $labelIds = $data['labelids'] ?? [];
         unset($data['labelids']);
 
+        $knowledgeItemIds = $data['knowledgeitemids'] ?? [];
+        unset($data['knowledgeitemids']);
+
         $task->update($data);
+
         $task->labels()->sync($labelIds);
 
-        $returnUrl = $this->safeReturnUrl($request->input('return_url'));
+        $task->knowledgeItems()->sync($knowledgeItemIds);
+
+        $returnUrl = $this->safeReturnUrl(
+            $request,
+            $request->input('return_url')
+        );
 
         if ($returnUrl) {
             return redirect($returnUrl)->with('success', 'Task updated.');
@@ -284,7 +321,10 @@ class TaskController extends Controller
 
         $task->delete();
 
-        $returnUrl = $this->safeReturnUrl($request->input('return_url'));
+        $returnUrl = $this->safeReturnUrl(
+            $request,
+            $request->input('return_url')
+        );
 
         if ($returnUrl) {
             return redirect($returnUrl)->with('success', 'Task deleted.');
@@ -337,7 +377,10 @@ class TaskController extends Controller
         $task->projectid = $newProject->id;
         $task->save();
 
-        $returnUrl = $this->safeReturnUrl($request->input('return_url'));
+        $returnUrl = $this->safeReturnUrl(
+            $request,
+            $request->input('return_url')
+        );
 
         if ($returnUrl) {
             return redirect($returnUrl)
@@ -558,7 +601,16 @@ class TaskController extends Controller
         }
 
         return redirect()
-            ->route('tasksall.all', $request->only(['projectid', 'labelid', 'sort', 'dir']))
+            ->route('tasksall.all', $request->only([
+                'projectid',
+                'labelid',
+                'search',
+                'hideclosed',
+                'templatesonly',
+                'sort',
+                'dir',
+                'page',
+            ]))
             ->with('success', 'Tasks updated.');
     }
     public function outlook(Request $request)
@@ -691,6 +743,102 @@ class TaskController extends Controller
         ->get();
 
     /*
+    |--------------------------------------------------------------------------
+    | Today's Knowledge Activity
+    |--------------------------------------------------------------------------
+    |
+    | This is an audit-style activity feed. It intentionally includes both
+    | new records and edits made today; it is not a review or expiry queue.
+    |
+    */
+
+    $knowledgeItemsUpdatedToday = KnowledgeItem::query()
+        ->with('primaryCategory')
+        ->whereBetween('updatedat', [$today, $tomorrow])
+        ->get();
+
+    $knowledgeNotesUpdatedToday = KnowledgeNote::query()
+        ->with('knowledgeItem.primaryCategory')
+        ->whereBetween('updatedat', [$today, $tomorrow])
+        ->get();
+
+    $knowledgeSourcesUpdatedToday = KnowledgeSource::query()
+        ->with('knowledgeItem.primaryCategory')
+        ->whereBetween('updatedat', [$today, $tomorrow])
+        ->get();
+
+    $knowledgeReviewLogsUpdatedToday = KnowledgeReviewLog::query()
+        ->with('knowledgeItem.primaryCategory')
+        ->whereBetween('updatedat', [$today, $tomorrow])
+        ->get();
+
+    $todayKnowledgeActivity = collect();
+
+    foreach ($knowledgeItemsUpdatedToday as $knowledgeItem) {
+        $todayKnowledgeActivity->push([
+            'type' => 'item',
+            'label' => 'Knowledge item',
+            'knowledgeItem' => $knowledgeItem,
+            'record' => $knowledgeItem,
+            'title' => $knowledgeItem->itemname,
+            'detail' => $knowledgeItem->primaryCategory?->categoryname,
+            'tab' => 'details',
+            'updatedAt' => $knowledgeItem->updatedat,
+        ]);
+    }
+
+    foreach ($knowledgeNotesUpdatedToday as $knowledgeNote) {
+        $todayKnowledgeActivity->push([
+            'type' => 'note',
+            'label' => 'Note',
+            'knowledgeItem' => $knowledgeNote->knowledgeItem,
+            'record' => $knowledgeNote,
+            'title' => $knowledgeNote->knowledgeItem?->itemname ?? 'Knowledge Item',
+            'detail' => $knowledgeNote->title
+                ?: ucfirst((string) $knowledgeNote->notetype),
+            'tab' => 'notes',
+            'editingNoteId' => $knowledgeNote->id,
+            'updatedAt' => $knowledgeNote->updatedat,
+        ]);
+    }
+
+    foreach ($knowledgeSourcesUpdatedToday as $knowledgeSource) {
+        $todayKnowledgeActivity->push([
+            'type' => 'source',
+            'label' => 'Source',
+            'knowledgeItem' => $knowledgeSource->knowledgeItem,
+            'record' => $knowledgeSource,
+            'title' => $knowledgeSource->knowledgeItem?->itemname ?? 'Knowledge Item',
+            'detail' => $knowledgeSource->sourcetitle
+                ?: $knowledgeSource->sourceurl
+                ?: ucfirst((string) $knowledgeSource->sourcetype),
+            'tab' => 'sources',
+            'editingSourceId' => $knowledgeSource->id,
+            'updatedAt' => $knowledgeSource->updatedat,
+        ]);
+    }
+
+    foreach ($knowledgeReviewLogsUpdatedToday as $knowledgeReviewLog) {
+        $todayKnowledgeActivity->push([
+            'type' => 'review',
+            'label' => 'Review log',
+            'knowledgeItem' => $knowledgeReviewLog->knowledgeItem,
+            'record' => $knowledgeReviewLog,
+            'title' => $knowledgeReviewLog->knowledgeItem?->itemname ?? 'Knowledge Item',
+            'detail' => $knowledgeReviewLog->summary
+                ?: ucfirst((string) $knowledgeReviewLog->reviewtype),
+            'tab' => 'review-logs',
+            'editingReviewLogId' => $knowledgeReviewLog->id,
+            'updatedAt' => $knowledgeReviewLog->updatedat,
+        ]);
+    }
+
+    $todayKnowledgeActivity = $todayKnowledgeActivity
+        ->filter(fn (array $activity) => $activity['knowledgeItem'] !== null)
+        ->sortByDesc('updatedAt')
+        ->values();
+
+    /*
      * One activity record per task. A task can carry multiple reasons:
      * Updated, Completed, and Commented.
      */
@@ -771,6 +919,14 @@ class TaskController extends Controller
     $todaysActivity = $todaysActivity
         ->sortByDesc('latestActivityAt')
         ->values();
+    
+        $todaysActivityEstimatedHours = $todaysActivity->sum(
+            fn (array $activity) => (float) ($activity['task']->estimatedefforthours ?? 0)
+        );
+
+        $todaysActivityActualHours = $todaysActivity->sum(
+            fn (array $activity) => (float) ($activity['task']->actualefforthours ?? 0)
+        );
 
     $statuses = TaskStatus::query()
         ->orderBy('projectid')
@@ -1018,6 +1174,9 @@ class TaskController extends Controller
         'expiringKnowledgeAttachments',
 
         'todaysActivity',
+        'todaysActivityEstimatedHours',
+        'todaysActivityActualHours',
+        'todayKnowledgeActivity',
         'statuses'
     ));
 }
@@ -1088,7 +1247,10 @@ class TaskController extends Controller
             'parenttaskid' => $parentTask->id,
         ]);
         
-        $returnUrl = $this->safeReturnUrl($request->input('return_url'));
+        $returnUrl = $this->safeReturnUrl(
+            $request,
+            $request->input('return_url')
+        );
 
         if ($returnUrl) {
             return redirect($returnUrl)
@@ -1188,19 +1350,61 @@ class TaskController extends Controller
             ->with('success', 'Task duplicated.');
     }
 
-    private function safeReturnUrl(?string $returnUrl): ?string
-{
-    if (blank($returnUrl)) {
-        return null;
+    private function safeReturnUrl(
+        Request $request,
+        ?string $returnUrl
+    ): ?string {
+        if (blank($returnUrl)) {
+            return null;
+        }
+
+        $parsedUrl = parse_url($returnUrl);
+
+        if ($parsedUrl === false) {
+            return null;
+        }
+
+        /*
+        * A relative path is always safe within this application.
+        * Example: /tasksall/all?templatesonly=1
+        */
+        if (empty($parsedUrl['host'])) {
+            return Str::startsWith($returnUrl, '/')
+                ? $returnUrl
+                : null;
+        }
+
+        /*
+        * For absolute URLs, compare against the actual current request origin,
+        * rather than config('app.url'). This supports your internal server host
+        * and port even if APP_URL differs from the browser URL.
+        */
+        $returnHost = $parsedUrl['host'] ?? null;
+        $returnScheme = $parsedUrl['scheme'] ?? null;
+        $returnPort = isset($parsedUrl['port'])
+            ? (int) $parsedUrl['port']
+            : null;
+
+        $requestHost = $request->getHost();
+        $requestScheme = $request->getScheme();
+        $requestPort = (int) $request->getPort();
+
+        $normalisedReturnPort = $returnPort
+            ?? ($returnScheme === 'https' ? 443 : 80);
+
+        $normalisedRequestPort = $requestPort
+            ?: ($requestScheme === 'https' ? 443 : 80);
+
+        if (
+            !hash_equals((string) $requestHost, (string) $returnHost)
+            || !hash_equals((string) $requestScheme, (string) $returnScheme)
+            || $normalisedRequestPort !== $normalisedReturnPort
+        ) {
+            return null;
+        }
+
+        return $returnUrl;
     }
-
-    $appUrl = rtrim(config('app.url'), '/');
-
-    return Str::startsWith($returnUrl, $appUrl.'/')
-        || $returnUrl === $appUrl
-        ? $returnUrl
-        : null;
-}
 
 private function redirectAfterTaskAction(
     Request $request,
@@ -1208,7 +1412,10 @@ private function redirectAfterTaskAction(
     string $message,
     ?string $fallbackRoute = null
 ) {
-    $returnUrl = $this->safeReturnUrl($request->input('return_url'));
+    $returnUrl = $this->safeReturnUrl(
+        $request,
+        $request->input('return_url')
+    );
 
     if ($returnUrl) {
         return redirect($returnUrl)->with('success', $message);

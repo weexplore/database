@@ -21,18 +21,15 @@ class Task extends Model
         'assignedto',
         'startdate',
         'duedate',
-        'completedat',
-        'sortorder',
-        'isrecurringtemplate',
-        'generatedfromtemplateid',
         'estimatedefforthours',
         'actualefforthours',
         'taskexpectation',
         'statuscomment',
         'completedat',
-        'recurrencerootid',
+        'sortorder',
+        'isrecurringtemplate',
+        'generatedfromtemplateid',
     ];
-
     protected $casts = [
         'startdate' => 'date',
         'duedate' => 'date',
@@ -109,5 +106,14 @@ class Task extends Model
                 })
                 ->orWhereNull('statusid');
             });
+    }
+    public function knowledgeItems()
+    {
+        return $this->belongsToMany(
+            KnowledgeItem::class,
+            'taskknowledgeitems',
+            'taskid',
+            'knowledgeitemid'
+        )->withTimestamps();
     }
 }

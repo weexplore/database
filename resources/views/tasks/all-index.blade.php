@@ -69,8 +69,6 @@
                             </label>
 
                             <label class="inline-flex items-center gap-2 text-sm text-gray-700">
-                                <input type="hidden" name="templatesonly" value="0">
-
                                 <input type="checkbox"
                                     name="templatesonly"
                                     value="1"
@@ -123,6 +121,10 @@
                         <input type="hidden" name="labelid" value="{{ $labelId }}">
                         <input type="hidden" name="sort" value="{{ $currentSort }}">
                         <input type="hidden" name="dir" value="{{ $currentDir }}">
+                        <input type="hidden" name="search" value="{{ $search }}">
+                        <input type="hidden" name="hideclosed" value="{{ $hideClosed ? '1' : '0' }}">
+                        <input type="hidden" name="templatesonly" value="{{ $templatesOnly ? '1' : '0' }}">
+                        <input type="hidden" name="page" value="{{ request('page', 1) }}">
 
                         <table class="min-w-full table-auto text-sm">
                             <thead>
@@ -152,7 +154,7 @@
                                             <a href="{{ route('tasks.show', [
                                                     'task' => $task,
                                                     'from' => 'alltasks',
-                                                    'return' => url()->full(),
+                                                    'return_url' => request()->fullUrl(),
                                                 ]) }}"
                                             class="text-indigo-700 hover:underline">
                                                 {{ $task->tasktitle }}
@@ -180,7 +182,7 @@
                                                 <a href="{{ route('tasks.show', [
                                                     'task' => $task->parentTask,
                                                     'from' => 'alltasks',
-                                                    'return' => request()->fullUrl(),
+                                                    'return_url' => request()->fullUrl(),
                                                 ]) }}"
                                                 class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold shadow-sm hover:opacity-80"
                                                 style="border-color: #4ade80; background-color: #f0fdf4; color: #166534;"
@@ -258,7 +260,7 @@
                                         <a href="{{ route('tasks.show', [
                                                 'task'   => $task,
                                                 'from'   => 'alltasks',
-                                                'return' => request()->fullUrl(),
+                                                'return_url' => request()->fullUrl(),
                                             ]) }}"
                                         class="inline-flex items-center px-2.5 py-1.5 border border-gray-300 rounded text-xs text-gray-700 bg-white hover:bg-gray-100">
                                             View

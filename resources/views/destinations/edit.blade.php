@@ -183,12 +183,6 @@
                                 help="Markdown supported. Click Edit to change the content."
                                 preview-title="Travel Notes Preview"
                             />
-                                'value' => old('travelnotes', $destination->travelnotes),
-                                'rows' => 6,
-                                'placeholder' => 'Add travel notes, route thoughts, timing, or practical commentary...',
-                                'help' => 'Markdown supported. Click Edit to change the content.',
-                                'previewTitle' => 'Travel Notes Preview',
-                            ])
                         </div>
 
                         <div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-6">

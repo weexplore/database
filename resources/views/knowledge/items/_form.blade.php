@@ -16,13 +16,35 @@
                         class="w-full rounded-md border-gray-300 shadow-sm text-sm"
                         required>
                     <option value="">Select category</option>
-                    @foreach($categories as $category)
-                        <option value="{{ $category->id }}"
-                            @selected((string) old('primarycategoryid', $knowledgeItem->primarycategoryid ?? '') === (string) $category->id)>
-                            {{ $category->categoryname }}
-                        </option>
+
+                    @foreach($categories->groupBy('domainid') as $categoriesForDomain)
+                        @php
+                            $domain = $categoriesForDomain->first()?->domain;
+                        @endphp
+
+                        <optgroup label="{{ $domain?->domainname ?? 'Unknown domain' }}">
+                            @foreach($categoriesForDomain as $category)
+                                @php
+                                    $parentPrefix = $category->parentCategory
+                                        ? '— ' . $category->parentCategory->categoryname . ' / '
+                                        : '';
+                                @endphp
+
+                                <option value="{{ $category->id }}"
+                                    @selected((string) old(
+                                        'primarycategoryid',
+                                        $knowledgeItem->primarycategoryid ?? ''
+                                    ) === (string) $category->id)>
+                                    {{ $parentPrefix }}{{ $category->categoryname }}
+                                </option>
+                            @endforeach
+                        </optgroup>
                     @endforeach
                 </select>
+
+                <p class="mt-1 text-xs text-gray-500">
+                    Changing the category can also move this item to a different Knowledge domain.
+                </p>
             </div>
 
             <div>
