@@ -392,82 +392,150 @@ class TaskController extends Controller
             ->route('tasks.index', $newProject)
             ->with('success', 'Task moved to project: '.$newProject->projectname);
     }
-    public function updateRecurrence(Request $request, Task $task)
-    {
-        $data = $request->validate([
-            'frequency' => ['nullable', 'in:daily,weekly,monthly,yearly'],
-            'intervalcount' => ['nullable', 'integer', 'min:1'],
-            'leaddaysbeforedue' => ['nullable', 'integer', 'min:0'],
-            'startsonoccurrence' => ['nullable', 'date'],
-            'endsonoccurrence' => ['nullable', 'date', 'after_or_equal:startsonoccurrence'],
-            'maxoccurrences' => ['nullable', 'integer', 'min:1'],
-            'isactive' => ['nullable', 'boolean'],
+    public function updateRecurrence(
+    Request $request,
+    Task $task
+): RedirectResponse {
+    $data = $request->validate([
+        'frequency' => ['nullable', 'in:daily,weekly,monthly,yearly'],
+        'intervalcount' => ['nullable', 'integer', 'min:1'],
+        'leaddaysbeforedue' => ['nullable', 'integer', 'min:0'],
+        'startsonoccurrence' => ['nullable', 'date'],
+        'endsonoccurrence' => [
+            'nullable',
+            'date',
+            'after_or_equal:startsonoccurrence',
+        ],
+        'maxoccurrences' => ['nullable', 'integer', 'min:1'],
+        'isactive' => ['nullable', 'boolean'],
 
-            'monthlypattern' => ['nullable', 'in:day_of_month,nth_weekday,last_day'],
-            'monthday' => ['nullable', 'integer', 'between:1,31'],
-            'monthweeknumber' => ['nullable', 'integer', 'in:1,2,3,4,-1'],
-            'monthweekday' => ['nullable', 'integer', 'between:0,6'],
-        ]);
+        'monthlypattern' => [
+            'nullable',
+            'in:day_of_month,nth_weekday,last_day',
+        ],
+        'monthday' => ['nullable', 'integer', 'between:1,31'],
+        'monthweeknumber' => ['nullable', 'integer', 'in:1,2,3,4,-1'],
+        'monthweekday' => ['nullable', 'integer', 'between:0,6'],
+    ]);
 
-        /*
-        * A blank frequency is the UI's “None” selection.
-        * Remove the recurrence definition entirely rather than storing
-        * an invalid/inactive row with a NULL frequency.
-        */
-        if (blank($data['frequency'] ?? null)) {
-            $task->recurrence()->delete();
+    /*
+     * A blank frequency is the UI's “None” selection.
+     * Remove the recurrence definition entirely rather than retaining an
+     * invalid/inactive row with a NULL frequency.
+     */
+    if (blank($data['frequency'] ?? null)) {
+        $task->recurrence()->delete();
 
-            $task->isrecurringtemplate = 0;
-            $task->save();
-
-           return $this->redirectAfterTaskAction(
-                $request,
-                $task,
-                'Recurring task settings removed.',
-                $request->input('from')
-            );
-        }
-
-        /*
-        * These fields are meaningful only for a real recurrence.
-        * Require a start date when recurrence is being enabled/updated.
-        */
-        if (blank($data['startsonoccurrence'] ?? null)) {
-            return back()
-                ->withInput()
-                ->withErrors([
-                    'startsonoccurrence' => 'A recurrence start date is required when a frequency is selected.',
-                ]);
-        }
-
-        $task->isrecurringtemplate = 1;
+        $task->isrecurringtemplate = 0;
         $task->save();
-
-        TaskRecurrence::updateOrCreate(
-            ['tasktemplateid' => $task->id],
-            [
-                'frequency' => $data['frequency'],
-                'intervalcount' => $data['intervalcount'] ?? 1,
-                'leaddaysbeforedue' => $data['leaddaysbeforedue'] ?? 0,
-                'startsonoccurrence' => $data['startsonoccurrence'],
-                'endsonoccurrence' => $data['endsonoccurrence'] ?? null,
-                'maxoccurrences' => $data['maxoccurrences'] ?? null,
-                'isactive' => $request->boolean('isactive'),
-
-                'monthlypattern' => $data['monthlypattern'] ?? null,
-                'monthday' => $data['monthday'] ?? null,
-                'monthweeknumber' => $data['monthweeknumber'] ?? null,
-                'monthweekday' => $data['monthweekday'] ?? null,
-            ]
-        );
 
         return $this->redirectAfterTaskAction(
             $request,
             $task,
-            'Recurring task settings updated.',
+            'Recurring task settings removed.',
             $request->input('from')
         );
     }
+
+    /*
+     * A start date is required for every active recurrence. It is the anchor
+     * used when first creating a recurrence and after a schedule change.
+     */
+    if (blank($data['startsonoccurrence'] ?? null)) {
+        return back()
+            ->withInput()
+            ->withErrors([
+                'startsonoccurrence' =>
+                    'A recurrence start date is required when a frequency is selected.',
+            ]);
+    }
+
+    /*
+     * Build the exact recurrence values to save. Use effective defaults so
+     * empty interval/lead fields compare consistently with stored values.
+     */
+    $recurrenceValues = [
+        'frequency' => $data['frequency'],
+        'intervalcount' => (int) ($data['intervalcount'] ?? 1),
+        'leaddaysbeforedue' => (int) (
+            $data['leaddaysbeforedue'] ?? 0
+        ),
+        'startsonoccurrence' => $data['startsonoccurrence'],
+        'endsonoccurrence' => $data['endsonoccurrence'] ?? null,
+        'maxoccurrences' => $data['maxoccurrences'] ?? null,
+        'isactive' => $request->boolean('isactive'),
+
+        'monthlypattern' => $data['monthlypattern'] ?? null,
+        'monthday' => $data['monthday'] ?? null,
+        'monthweeknumber' => $data['monthweeknumber'] ?? null,
+        'monthweekday' => $data['monthweekday'] ?? null,
+    ];
+
+    /*
+     * Retrieve without saving so we can compare the old persisted values
+     * against the submitted schedule before any update occurs.
+     */
+    $recurrence = TaskRecurrence::firstOrNew([
+        'tasktemplateid' => $task->id,
+    ]);
+
+    $isNewRecurrence = ! $recurrence->exists;
+
+    /*
+     * Only fields which change the actual timing mechanics belong here.
+     *
+     * Deliberately excluded:
+     * - endsonoccurrence: limits recurrence but does not alter its cadence
+     * - maxoccurrences: limits recurrence but does not alter its cadence
+     * - isactive: pauses/resumes recurrence rather than changing its pattern
+     */
+    $scheduleFields = [
+        'frequency',
+        'intervalcount',
+        'leaddaysbeforedue',
+        'startsonoccurrence',
+        'monthlypattern',
+        'monthday',
+        'monthweeknumber',
+        'monthweekday',
+    ];
+
+    $recurrence->fill($recurrenceValues);
+
+    /*
+     * New recurrence: lastgeneratedat will naturally be NULL.
+     * Existing changed recurrence: discard the cursor created under the old
+     * schedule, so the scheduler recalculates from startsonoccurrence.
+     */
+    $scheduleChanged = ! $isNewRecurrence
+        && $recurrence->isDirty($scheduleFields);
+
+    DB::transaction(function () use (
+        $task,
+        $recurrence,
+        $scheduleChanged
+    ) {
+        $task->isrecurringtemplate = 1;
+        $task->save();
+
+    if ($scheduleChanged) {
+        $recurrence->lastgeneratedon = null;
+    }
+
+        $recurrence->save();
+    });
+
+    $message = $scheduleChanged
+        ? 'Recurring task settings updated. Future generation will be recalculated from the recurrence start date.'
+        : 'Recurring task settings updated.';
+
+    return $this->redirectAfterTaskAction(
+        $request,
+        $task,
+        $message,
+        $request->input('from')
+    );
+}
 
     public function allIndex(Request $request)
 {

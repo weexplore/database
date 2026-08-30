@@ -383,6 +383,8 @@
                     <h3 class="text-sm font-semibold text-slate-800">Recurring Task</h3>
                     <p class="mt-1 text-xs text-slate-700">
                         Treat this task as a template and generate new tasks on a schedule.
+                        If any schedule details change, future occurrences are recalculated
+                        from the recurrence start date.
                     </p>
                 </div>
 
