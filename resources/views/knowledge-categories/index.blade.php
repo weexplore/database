@@ -687,27 +687,33 @@
                                                 @forelse($items as $item)
                                                     <tr class="knowledge-item-row" data-item-id="{{ $item->id }}">
                                                         <td class="px-3 py-2 text-center align-top">
-                                                            <button type="button"
-                                                                    class="knowledge-item-drag-handle inline-flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-move"
-                                                                    title="Drag to reorder"
-                                                                    aria-label="Drag to reorder">
-                                                                <svg xmlns="http://www.w3.org/2000/svg"
-                                                                    class="w-5 h-5"
-                                                                    viewBox="0 0 20 20"
-                                                                    fill="currentColor"
-                                                                    aria-hidden="true">
-                                                                    <path d="M3 5h14a1 1 0 110 2H3a1 1 0 110-2Zm0 4h14a1 1 0 110 2H3a1 1 0 110-2Zm0 4h14a1 1 0 110 2H3a1 1 0 110-2Z" />
-                                                                </svg>
-                                                            </button>
+                                                            @if ($items->currentPage() === 1)
+                                                                <button type="button"
+                                                                        class="knowledge-item-drag-handle inline-flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-move"
+                                                                        title="Drag to reorder items on this page"
+                                                                        aria-label="Drag to reorder">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                                                        class="w-5 h-5"
+                                                                        viewBox="0 0 20 20"
+                                                                        fill="currentColor"
+                                                                        aria-hidden="true">
+                                                                        <path d="M3 5h14a1 1 0 110 2H3a1 1 0 110-2Zm0 4h14a1 1 0 110 2H3a1 1 0 110-2Zm0 4h14a1 1 0 0 0 0 2H3a1 1 0 110-2Z" />
+                                                                    </svg>
+                                                                </button>
+                                                            @else
+                                                                <span class="text-xs text-gray-400" title="Use Sort order to reposition items across pages">
+                                                                    —
+                                                                </span>
+                                                            @endif
                                                         </td>
 
-<td class="px-3 py-2 min-w-[220px]">
-    <a href="{{ route('knowledge.items.edit', $item) }}"
-       class="block w-full min-w-[180px] rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 hover:text-gray-900"
-       title="Open {{ $item->itemname }}">
-        <span class="truncate">{{ $item->itemname }}</span>
-    </a>
-</td>
+                                                        <td class="px-3 py-2 min-w-[220px]">
+                                                            <a href="{{ route('knowledge.items.edit', $item) }}"
+                                                            class="block w-full min-w-[180px] rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+                                                            title="Open {{ $item->itemname }}">
+                                                                <span class="truncate">{{ $item->itemname }}</span>
+                                                            </a>
+                                                        </td>
 
                                                         <td class="px-3 py-2 min-w-[150px]">
                                                             <select name="existing[{{ $item->id }}][itemtype]"
@@ -908,6 +914,31 @@
                                             </tbody>
                                         </table>
                                     </div>
+                                    @if ($items instanceof \Illuminate\Contracts\Pagination\Paginator)
+                                        <div class="pt-4">
+                                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                <p class="text-sm text-gray-500">
+                                                    @if ($items instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator)
+                                                        Showing
+                                                        {{ $items->firstItem() ?? 0 }}
+                                                        to
+                                                        {{ $items->lastItem() ?? 0 }}
+                                                        of
+                                                        {{ $items->total() }}
+                                                        knowledge items
+                                                    @else
+                                                        Showing up to
+                                                        {{ $items->perPage() }}
+                                                        knowledge items per page
+                                                    @endif
+                                                </p>
+
+                                                <div>
+                                                    {{ $items->onEachSide(1)->links() }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
 
                                     <div class="pt-4 flex items-center justify-between">
                                         <p class="text-sm text-gray-500">
@@ -1036,35 +1067,60 @@
 
             let isSubmittingReorder = false;
 
+
+            const canDragReorder = {{ $items instanceof \Illuminate\Contracts\Pagination\Paginator
+                && $items->currentPage() === 1
+                ? 'true'
+                : 'false' }};
+
             function syncKnowledgeItemSortOrder() {
-                const rows = Array.from(tbody.querySelectorAll('tr.knowledge-item-row'));
+                const rows = Array.from(
+                    tbody.querySelectorAll('tr.knowledge-item-row')
+                );
 
                 rows.forEach((row, index) => {
                     const itemId = row.dataset.itemId;
-                    if (!itemId) return;
 
-                    const sortInput = row.querySelector(`input[name="existing[${itemId}][sortorder]"]`);
+                    if (!itemId) {
+                        return;
+                    }
+
+                    const sortInput = row.querySelector(
+                        `input[name="existing[${itemId}][sortorder]"]`
+                    );
+
                     if (sortInput) {
                         sortInput.value = index + 1;
                     }
                 });
             }
 
-            Sortable.create(tbody, {
-                animation: 150,
-                handle: '.knowledge-item-drag-handle',
-                draggable: 'tr.knowledge-item-row',
-                ghostClass: 'bg-blue-50',
-                onEnd: function () {
-                    if (isSubmittingReorder) return;
+            /*
+            * Pagination means a page only contains part of the category.
+            * Reordering on page 2 or later could corrupt the global order,
+            * so drag-and-drop is available only on page 1.
+            */
+            if (canDragReorder) {
+                Sortable.create(tbody, {
+                    animation: 150,
+                    handle: '.knowledge-item-drag-handle',
+                    draggable: 'tr.knowledge-item-row',
+                    ghostClass: 'bg-blue-50',
 
-                    syncKnowledgeItemSortOrder();
-                    isSubmittingReorder = true;
-                    itemsForm.submit();
-                }
-            });
+                    onEnd: function () {
+                        if (isSubmittingReorder) {
+                            return;
+                        }
 
-            syncKnowledgeItemSortOrder();
+                        syncKnowledgeItemSortOrder();
+
+                        isSubmittingReorder = true;
+                        itemsForm.submit();
+                    },
+                });
+
+                syncKnowledgeItemSortOrder();
+            }
         });
     </script>
 </x-app-layout>

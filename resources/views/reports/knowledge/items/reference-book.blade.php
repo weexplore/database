@@ -269,22 +269,30 @@
 
                                             <div class="text-sm text-gray-800">
                                                 <span class="font-medium">{{ $bookName }}</span>
-                                                @if(!is_null($chapterFrom))
-                                                    .
-                                                    {{ $chapterFrom }}
-                                                    @if(!is_null($verseFrom))
+
+                                                @if (! is_null($chapterFrom))
+                                                    {{ ' ' . $chapterFrom }}
+
+                                                    @if (! is_null($verseFrom))
                                                         :{{ $verseFrom }}
                                                     @endif
 
-                                                    @if(!is_null($chapterTo) || !is_null($verseTo))
+                                                    @if (! is_null($chapterTo) || ! is_null($verseTo))
                                                         –
                                                         {{ $chapterTo ?? $chapterFrom }}
-                                                        @if(!is_null($verseTo))
+
+                                                        @if (! is_null($verseTo))
                                                             :{{ $verseTo }}
                                                         @endif
                                                     @endif
                                                 @endif
                                             </div>
+
+                                            @if (filled($reference->referencelabel))
+                                                <div class="text-xs text-gray-500">
+                                                    {{ $reference->referencelabel }}
+                                                </div>
+                                            @endif
 
                                             @if(!empty($reference->cachedpassagetext))
                                                 <div class="rounded-md bg-gray-50 border border-gray-200 px-3 py-2">
@@ -315,44 +323,57 @@
                             </div>
                         @endif
 
-                        {{-- Display relationships --}}
-                        @if($knowledgeItem->displayRelationships?->isNotEmpty())
+                        {{-- Relationships --}}
+                        @if ($knowledgeItem->displayRelationships?->isNotEmpty())
                             <div class="rounded-lg border border-gray-200 p-4 space-y-3">
                                 <h3 class="text-sm font-semibold text-gray-900">Relationships</h3>
 
-                                <ul class="space-y-1 text-sm text-gray-700">
-                                    @foreach($knowledgeItem->displayRelationships as $entry)
+                                <div class="space-y-3">
+                                    @foreach ($knowledgeItem->displayRelationships as $entry)
                                         @php
                                             $relatedItem = $entry['relatedItem'] ?? null;
+                                            $relationship = $entry['relationship'] ?? null;
                                         @endphp
 
-                                        <li>
-                                            <span class="font-medium">
-                                                {{ $entry['displayTypeLabel'] ?? 'Related' }}
-                                            </span>
-
-                                            @if(!empty($entry['direction']))
-                                                <span class="text-xs text-gray-500">
-                                                    ({{ $entry['direction'] === 'incoming' ? 'incoming' : 'outgoing' }})
+                                        <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
+                                            <div class="text-sm text-gray-700">
+                                                <span class="font-medium text-gray-900">
+                                                    {{ $entry['displayTypeLabel'] ?? 'Related' }}
                                                 </span>
-                                            @endif
 
-                                            @if($relatedItem)
-                                                – {{ $relatedItem->itemname }}
-                                            @else
-                                                <span class="text-xs text-gray-500">
-                                                    Missing related item
-                                                </span>
-                                            @endif
+                                                @if (! empty($entry['direction']))
+                                                    <span class="text-xs text-gray-500">
+                                                        ({{ $entry['direction'] === 'incoming' ? 'incoming' : 'outgoing' }})
+                                                    </span>
+                                                @endif
 
-                                            @if($entry['effectiveDate'] ?? null)
-                                                <span class="text-xs text-gray-500">
-                                                    Effective {{ $entry['effectiveDate']->format('d M Y') }}
-                                                </span>
+                                                <span class="text-gray-400">—</span>
+
+                                                @if ($relatedItem)
+                                                    {{ $relatedItem->itemname }}
+                                                @else
+                                                    <span class="text-xs text-gray-500">
+                                                        Missing related item
+                                                    </span>
+                                                @endif
+
+                                                @if (! empty($entry['effectiveDate']))
+                                                    <span class="text-xs text-gray-500">
+                                                        · Effective {{ $entry['effectiveDate']->format('d M Y') }}
+                                                    </span>
+                                                @endif
+                                            </div>
+
+                                            @if (filled($relationship?->notes))
+                                                <div class="mt-2 text-sm text-gray-600 markdown-content">
+                                                    @include('partials.markdown.rendered-block', [
+                                                        'content' => $relationship->notes,
+                                                    ])
+                                                </div>
                                             @endif
-                                        </li>
+                                        </div>
                                     @endforeach
-                                </ul>
+                                </div>
                             </div>
                         @endif
 
@@ -526,40 +547,47 @@
                             </div>
                         @endif
 
-                        {{-- Knowledge notes --}}
-                        @if($knowledgeItem->notes?->isNotEmpty())
+                        {{-- Knowledge Notes --}}
+                        @if ($knowledgeItem->notes?->isNotEmpty())
                             <div class="rounded-lg border border-gray-200 p-4 space-y-3">
                                 <h3 class="text-sm font-semibold text-gray-900">Knowledge Notes</h3>
 
-                                @foreach($knowledgeItem->notes as $note)
+                                @foreach ($knowledgeItem->notes as $note)
                                     <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
                                         <div class="flex flex-wrap gap-2 text-xs mb-2">
-                                            @if($note->notetype)
+                                            @if ($note->notetype)
                                                 <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                                    {{ $noteTypeOptions[$note->notetype] ?? ucfirst(str_replace(['-', '_'], ' ', $note->notetype)) }}
+                                                    {{ \App\Models\KnowledgeNote::TYPE_OPTIONS[$note->notetype]
+                                                        ?? ucfirst(str_replace(['-', '_'], ' ', $note->notetype)) }}
                                                 </span>
                                             @endif
 
-                                            @if($note->reviewdate)
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                                    Review {{ $note->reviewdate->format('d M Y') }}
+                                            @if (filled($note->stance))
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
+                                                    Stance: {{ ucfirst($note->stance) }}
                                                 </span>
                                             @endif
 
-                                            @if($note->isprivate)
+                                            @if ($note->reviewdate)
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                    Review: {{ $note->reviewdate->format('d M Y') }}
+                                                </span>
+                                            @endif
+
+                                            @if ($note->isprivate)
                                                 <span class="inline-flex items-center px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-200">
                                                     Private
                                                 </span>
                                             @endif
                                         </div>
 
-                                        @if($note->title)
+                                        @if (filled($note->title))
                                             <div class="text-sm font-medium text-gray-800">
                                                 {{ $note->title }}
                                             </div>
                                         @endif
 
-                                        @if($note->notecontent)
+                                        @if (filled($note->notecontent))
                                             <div class="mt-1 text-sm text-gray-700 markdown-content">
                                                 @include('partials.markdown.rendered-block', [
                                                     'content' => $note->notecontent,
@@ -571,97 +599,50 @@
                             </div>
                         @endif
 
-                        {{-- Sources --}}
-                        @if($knowledgeItem->sources?->isNotEmpty())
-                            <section>
-                                <h3 class="text-base font-semibold text-slate-900">Sources</h3>
+                        {{-- Review History --}}
+                        @if ($knowledgeItem->reviewLogs?->isNotEmpty())
+                            <div class="rounded-lg border border-gray-200 p-4 space-y-3">
+                                <h3 class="text-sm font-semibold text-gray-900">Review History</h3>
 
-                                <div class="mt-3 space-y-3">
-                                    @foreach($knowledgeItem->sources as $source)
-                                        @php
-                                            $sourceTitle = $source->title
-                                                ?? $source->sourcetitle
-                                                ?? $source->pagetitle
-                                                ?? 'Source';
+                                @foreach ($knowledgeItem->reviewLogs as $log)
+                                    <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
+                                        <div class="flex flex-wrap gap-2 text-xs mb-2">
+                                            @if ($log->reviewdate)
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                    {{ $log->reviewdate->format('d M Y') }}
+                                                </span>
+                                            @endif
 
-                                            $sourceUrl = $source->url
-                                                ?? $source->sourceurl
-                                                ?? $source->canonicalurl
-                                                ?? null;
+                                            @if ($log->reviewtype)
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                    {{ \App\Models\KnowledgeReviewLog::TYPE_OPTIONS[$log->reviewtype]
+                                                        ?? ucfirst(str_replace(['-', '_'], ' ', $log->reviewtype)) }}
+                                                </span>
+                                            @endif
 
-                                            $importedSummary = $source->importedsummary ?? $source->summary ?? null;
-                                            $importedNotes = $source->importednotes ?? $source->notes ?? null;
-                                        @endphp
+                                            @if ($log->outcome)
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                                    {{ ucfirst($log->outcome) }}
+                                                </span>
+                                            @endif
 
-                                        @if(
-                                            filled($sourceTitle)
-                                            || filled($sourceUrl)
-                                            || filled($importedSummary)
-                                            || filled($importedNotes)
-                                            || filled($source->sourcepublisher)
-                                        )
-                                            <div class="rounded-lg border border-slate-200 px-4 py-3 space-y-3">
-                                                <div class="text-sm font-medium text-slate-900">
-                                                    {{ $sourceTitle }}
-                                                </div>
+                                            @if ($log->nextreviewdate)
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
+                                                    Next review: {{ $log->nextreviewdate->format('d M Y') }}
+                                                </span>
+                                            @endif
+                                        </div>
 
-                                                @if(filled($sourceUrl))
-                                                    <div>
-                                                        <div class="text-xs font-medium text-slate-500 mb-1">
-                                                            URL
-                                                        </div>
-                                                        <div class="text-sm break-all">
-                                                            <a href="{{ $sourceUrl }}"
-                                                               target="_blank"
-                                                               rel="noopener noreferrer"
-                                                               class="text-blue-600 hover:text-blue-800 hover:underline">
-                                                                {{ $sourceUrl }}
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                @endif
-
-                                                @if(filled($source->sourcepublisher))
-                                                    <div>
-                                                        <div class="text-xs font-medium text-slate-500 mb-1">
-                                                            Publisher
-                                                        </div>
-                                                        <div class="text-sm text-slate-700">
-                                                            {{ $source->sourcepublisher }}
-                                                        </div>
-                                                    </div>
-                                                @endif
-
-                                                @if(filled($importedSummary))
-                                                    <div>
-                                                        <div class="text-xs font-medium text-slate-500 mb-1">
-                                                            Imported Summary
-                                                        </div>
-                                                        <div class="text-sm text-slate-700 markdown-content">
-                                                            @include('partials.markdown.rendered-block', [
-                                                                'content' => $importedSummary,
-                                                            ])
-                                                        </div>
-                                                    </div>
-                                                @endif
-
-                                                @if(filled($importedNotes))
-                                                    <div>
-                                                        <div class="text-xs font-medium text-slate-500 mb-1">
-                                                            Imported Notes
-                                                        </div>
-                                                        <div class="text-sm text-slate-700 markdown-content">
-                                                            @include('partials.markdown.rendered-block', [
-                                                                'content' => $importedNotes,
-                                                            ])
-                                                        </div>
-                                                    </div>
-                                                @endif
+                                        @if (filled($log->summary))
+                                            <div class="mt-1 text-sm text-gray-700 markdown-content">
+                                                @include('partials.markdown.rendered-block', [
+                                                    'content' => $log->summary,
+                                                ])
                                             </div>
                                         @endif
-                                    @endforeach
-                                </div>
-                            </section>
+                                    </div>
+                                @endforeach
+                            </div>
                         @endif
 
                         {{-- Attachments --}}
@@ -674,31 +655,44 @@
                             ]
                         )
 
-                        {{-- Review history --}}
-                        @if($knowledgeItem->reviewLogs?->isNotEmpty())
+                        {{-- Review History --}}
+                        @if ($knowledgeItem->reviewLogs?->isNotEmpty())
                             <div class="rounded-lg border border-gray-200 p-4 space-y-3">
                                 <h3 class="text-sm font-semibold text-gray-900">Review History</h3>
 
-                                @foreach($knowledgeItem->reviewLogs as $log)
+                                @foreach ($knowledgeItem->reviewLogs as $log)
                                     <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
                                         <div class="flex flex-wrap gap-2 text-xs mb-2">
-                                            @if($log->reviewdate)
+                                            @if ($log->reviewdate)
                                                 <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
                                                     {{ $log->reviewdate->format('d M Y') }}
                                                 </span>
                                             @endif
 
-                                            @if($log->reviewtype)
+                                            @if ($log->reviewtype)
                                                 <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                                    {{ $log->reviewTypeLabel() ?? $log->reviewtype }}
+                                                    {{ \App\Models\KnowledgeReviewLog::TYPE_OPTIONS[$log->reviewtype]
+                                                        ?? ucfirst(str_replace(['-', '_'], ' ', $log->reviewtype)) }}
+                                                </span>
+                                            @endif
+
+                                            @if ($log->outcome)
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                                    {{ ucfirst($log->outcome) }}
+                                                </span>
+                                            @endif
+
+                                            @if ($log->nextreviewdate)
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
+                                                    Next review: {{ $log->nextreviewdate->format('d M Y') }}
                                                 </span>
                                             @endif
                                         </div>
 
-                                        @if($log->reviewnotes)
+                                        @if (filled($log->summary))
                                             <div class="mt-1 text-sm text-gray-700 markdown-content">
                                                 @include('partials.markdown.rendered-block', [
-                                                    'content' => $log->reviewnotes,
+                                                    'content' => $log->summary,
                                                 ])
                                             </div>
                                         @endif

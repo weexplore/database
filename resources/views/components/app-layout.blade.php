@@ -65,20 +65,6 @@
                             : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
                         Cashbook Transactions
                     </a>
-                    <a href="{{ route('projects.index') }}"
-                        class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
-                        {{ request()->routeIs('projects.*')
-                            ? 'border-b-2 border-white text-white'
-                            : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
-                        Projects
-                    </a>
-                    <a href="{{ route('tasksall.all') }}"
-                        class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
-                        {{ request()->routeIs('tasksall.*')
-                            ? 'border-b-2 border-white text-white'
-                            : 'text-blue-100 hover:text-white hover:border-b-2 hover:border-blue-300' }}">
-                        All Tasks
-                    </a>
                     <a href="{{ route('tasks.outlook') }}"
                         class="inline-flex items-center px-1 pt-3 pb-2.5 text-sm font-medium
                         {{ request()->routeIs('tasks.outlook.*')

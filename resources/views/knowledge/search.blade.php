@@ -57,20 +57,26 @@
                 </div>
 
                 <div class="px-6 py-4">
-                    <form method="GET" action="{{ route('knowledge.search') }}" class="space-y-4">
+                    <form method="GET"
+                        action="{{ route('knowledge.search') }}"
+                        id="knowledge-search-form"
+                        class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {{-- Domain selector --}}
                             <div>
                                 <label for="domainid" class="block text-sm font-medium text-gray-700">
                                     Domain
                                 </label>
-                                <select name="domainid" id="domainid"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm
-                                               focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                <select name="domainid"
+                                    id="domainid"
+                                    onchange="this.form.submit()"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm
+                                        focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                     <option value="">Select a domain…</option>
                                     @foreach ($domains as $domain)
                                         <option value="{{ $domain->id }}"
-                                            @selected($selectedDomainId == $domain->id)>
+                                                data-has-bible-tools="{{ $domain->hasbibletools ? '1' : '0' }}"
+                                                @selected($selectedDomainId == $domain->id)>
                                             {{ $domain->domainname ?? ('Domain #' . $domain->id) }}
                                         </option>
                                     @endforeach
@@ -90,7 +96,8 @@
                         </div>
 
                         {{-- Type filters --}}
-                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                        <div id="knowledge-search-type-filters"
+                            class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                             @php
                                 $typeFilter = $typeFilter ?? [];
                             @endphp
@@ -141,6 +148,22 @@
                                     @checked(empty($typeFilter) || in_array('relationships', $typeFilter, true))>
                                 <span class="ml-2">Relationships</span>
                             </label>
+
+                            @if (! empty($hasBibleTools))
+                                <label id="bible-references-filter"
+                                    class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                    <input
+                                        id="bible-references-checkbox"
+                                        type="checkbox"
+                                        name="types[]"
+                                        value="bible-references"
+                                        class="rounded border-gray-300 text-indigo-600 shadow-sm
+                                            focus:border-indigo-500 focus:ring-indigo-500"
+                                        @checked(empty($typeFilter) || in_array('bible-references', $typeFilter, true))
+                                    >
+                                    <span>Bible References</span>
+                                </label>
+                            @endif
                         </div>
 
                         <div class="flex items-center justify-end gap-3 pt-2">
@@ -362,6 +385,40 @@
                         </div>
                     @endif
 
+                    @if ($bibleReferences->isNotEmpty())
+                        <section class="mt-6">
+                            <h2 class="text-lg font-semibold text-gray-900">
+                                Bible References
+                                <span class="text-sm font-normal text-gray-500">
+                                    ({{ $bibleReferences->count() }})
+                                </span>
+                            </h2>
+
+                            <div class="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-white divide-y divide-gray-100">
+                                @foreach ($bibleReferences as $reference)
+                                    <a href="{{ route('knowledge.items.edit', [
+                                            'knowledgeItem' => $reference->knowledgeItem,
+                                            'tab' => 'bible-references',
+                                        ]) }}"
+                                    class="block px-4 py-3 hover:bg-violet-50">
+                                        <div class="font-medium text-gray-900">
+                                            {{ $reference->knowledgeItem?->itemname ?? 'Knowledge Item' }}
+                                        </div>
+
+                                        <div class="mt-1 text-sm text-gray-600">
+                                            {{ $reference->referencelabel ?: 'Bible reference' }}
+
+                                            @if (filled($reference->notes))
+                                                <span class="text-gray-400">·</span>
+                                                {{ \Illuminate\Support\Str::limit($reference->notes, 180) }}
+                                            @endif
+                                        </div>
+                                    </a>
+                                @endforeach
+                            </div>
+                        </section>
+                    @endif
+
                     @if (
                         $categories->isEmpty()
                         && $items->isEmpty()
@@ -369,6 +426,7 @@
                         && $sources->isEmpty()
                         && $reviews->isEmpty()
                         && $relationships->isEmpty()
+                        && $bibleReferences->isEmpty()
                     )
                         <div class="text-sm text-gray-500">
                             No results found for “{{ $q }}” in this domain.
@@ -382,4 +440,34 @@
             @endif
         </div>
     </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('knowledge-search-form');
+        const domainSelect = document.getElementById('domainid');
+
+        if (!form || !domainSelect) {
+            return;
+        }
+
+        domainSelect.addEventListener('change', function () {
+            const selectedOption = domainSelect.options[domainSelect.selectedIndex];
+            const hasBibleTools = selectedOption?.dataset.hasBibleTools === '1';
+
+            /*
+            * The Bible checkbox only exists after a server render for a Bible
+            * domain. If it is currently visible and the user switches to a
+            * non-Bible domain, remove its checked value before the GET submits.
+            */
+            const bibleCheckbox = document.getElementById('bible-references-checkbox');
+
+            if (!hasBibleTools && bibleCheckbox) {
+                bibleCheckbox.checked = false;
+                bibleCheckbox.disabled = true;
+            }
+
+            form.submit();
+        });
+});
+</script>
 </x-app-layout>

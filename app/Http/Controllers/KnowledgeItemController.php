@@ -129,130 +129,283 @@ class KnowledgeItemController extends Controller
     }
 
     public function bulkSave(Request $request): RedirectResponse
-{
-    $itemTypeRule = [
-        'nullable',
-        'integer',
-        Rule::exists('knowledgeitemtypes', 'id')->where(fn ($query) => $query->where('isactive', 1)),
-    ];
+    {
+        $itemTypeRule = [
+            'nullable',
+            'integer',
+            Rule::exists('knowledgeitemtypes', 'id')
+                ->where(fn ($query) => $query->where('isactive', 1)),
+        ];
 
-    $rules = [
-        'existing' => ['nullable', 'array'],
-        // 'existing.*.itemname' => ['required', 'string', 'max:255'],
-        'existing.*.primarycategoryid' => ['required', 'integer', Rule::exists('knowledgecategories', 'id')],
-        'existing.*.itemtype' => $itemTypeRule,
-        'existing.*.itemstatus' => ['nullable', 'string', 'max:30'],
-        'existing.*.summary' => ['nullable', 'string'],
-        'existing.*.sortorder' => ['nullable', 'integer', 'min:0'],
-        'existing.*.startdate' => ['nullable', 'date'],
-        'existing.*.enddate' => ['nullable', 'date'],
-        'existing.*.nextreviewdate' => ['nullable', 'date'],
-        'existing.*.isfeatured' => ['nullable', 'boolean'],
-        'existing.*.isactive' => ['nullable', 'boolean'],
+        $rules = [
+            'existing' => ['nullable', 'array'],
+            'existing.*.primarycategoryid' => [
+                'required',
+                'integer',
+                Rule::exists('knowledgecategories', 'id'),
+            ],
+            'existing.*.itemtype' => $itemTypeRule,
+            'existing.*.itemstatus' => ['nullable', 'string', 'max:30'],
+            'existing.*.summary' => ['nullable', 'string'],
+            'existing.*.sortorder' => ['nullable', 'integer', 'min:0'],
+            'existing.*.startdate' => ['nullable', 'date'],
+            'existing.*.enddate' => ['nullable', 'date'],
+            'existing.*.nextreviewdate' => ['nullable', 'date'],
+            'existing.*.isfeatured' => ['nullable', 'boolean'],
+            'existing.*.isactive' => ['nullable', 'boolean'],
 
-        'new' => ['nullable', 'array'],
-        'new.itemname' => ['nullable', 'string', 'max:255'],
-        'new.primarycategoryid' => ['nullable', 'integer', Rule::exists('knowledgecategories', 'id')],
-        'new.itemtype' => $itemTypeRule,
-        'new.itemstatus' => ['nullable', 'string', 'max:30'],
-        'new.summary' => ['nullable', 'string'],
-        'new.sortorder' => ['nullable', 'integer', 'min:0'],
-        'new.startdate' => ['nullable', 'date'],
-        'new.enddate' => ['nullable', 'date'],
-        'new.nextreviewdate' => ['nullable', 'date'],
-        'new.isfeatured' => ['nullable', 'boolean'],
-        'new.isactive' => ['nullable', 'boolean'],
+            'new' => ['nullable', 'array'],
+            'new.itemname' => ['nullable', 'string', 'max:255'],
+            'new.primarycategoryid' => [
+                'nullable',
+                'integer',
+                Rule::exists('knowledgecategories', 'id'),
+            ],
+            'new.itemtype' => $itemTypeRule,
+            'new.itemstatus' => ['nullable', 'string', 'max:30'],
+            'new.summary' => ['nullable', 'string'],
+            'new.sortorder' => ['nullable', 'integer', 'min:0'],
+            'new.startdate' => ['nullable', 'date'],
+            'new.enddate' => ['nullable', 'date'],
+            'new.nextreviewdate' => ['nullable', 'date'],
+            'new.isfeatured' => ['nullable', 'boolean'],
+            'new.isactive' => ['nullable', 'boolean'],
 
-        'domainid' => ['nullable', 'integer'],
-        'categoryid' => ['nullable', 'integer'],
-        'search' => ['nullable', 'string'],
-        'itemtype' => $itemTypeRule,
-        'itemstatus' => ['nullable', 'string'],
-        'active' => ['nullable', 'in:0,1'],
-        'page' => ['nullable', 'integer', 'min:1'],
-        'show_selected_category_panel' => ['nullable', 'in:0,1'],
-    ];
+            'domainid' => ['nullable', 'integer'],
+            'categoryid' => ['nullable', 'integer'],
+            'search' => ['nullable', 'string'],
+            'itemtype' => $itemTypeRule,
+            'itemstatus' => ['nullable', 'string'],
+            'active' => ['nullable', 'in:0,1'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'show_selected_category_panel' => ['nullable', 'in:0,1'],
+        ];
 
-    $validated = $request->validate($rules, [], [
-        'itemtype' => 'item type',
-        'existing.*.itemtype' => 'item type',
-        'new.itemtype' => 'item type',
-    ]);
+        $validated = $request->validate($rules, [], [
+            'itemtype' => 'item type',
+            'existing.*.itemtype' => 'item type',
+            'new.itemtype' => 'item type',
+        ]);
 
-    DB::transaction(function () use ($validated) {
-        foreach ($validated['existing'] ?? [] as $id => $row) {
-            $item = KnowledgeItem::findOrFail($id);
+        DB::transaction(function () use ($validated) {
+            /*
+            * Categories whose items must have their sort orders normalised.
+            * This includes both source and destination categories when an
+            * existing item is moved.
+            */
+            $affectedCategoryIds = [];
 
-            $item->update([
-                'primarycategoryid' => $row['primarycategoryid'],
-                // 'itemname' => trim((string) $row['itemname']),
-                'itemtype' => $row['itemtype'] ?? null,
-                'itemstatus' => $row['itemstatus'] ?? null,
-                'summary' => $row['summary'] ?? null,
-                'sortorder' => $row['sortorder'] ?? 0,
-                'startdate' => $row['startdate'] ?? null,
-                'enddate' => $row['enddate'] ?? null,
-                'nextreviewdate' => $row['nextreviewdate'] ?? null,
-                'isfeatured' => (bool) ($row['isfeatured'] ?? false),
-                'isactive' => (bool) ($row['isactive'] ?? false),
-            ]);
-        }
+            /*
+            * Existing rows.
+            *
+            * Item names are not editable from this bulk screen. However, an
+            * item can be moved to a different category, so validate that its
+            * unchanged name does not already exist in the target category.
+            */
+            foreach ($validated['existing'] ?? [] as $id => $row) {
+                $item = KnowledgeItem::query()
+                    ->lockForUpdate()
+                    ->findOrFail($id);
 
-        $new = $validated['new'] ?? [];
-        $hasNewRow = trim((string) ($new['itemname'] ?? '')) !== '';
+                $oldCategoryId = (int) $item->primarycategoryid;
+                $newCategoryId = (int) $row['primarycategoryid'];
 
-        if ($hasNewRow) {
-            $validator = Validator::make($new, [
-                'itemname' => ['required', 'string', 'max:255'],
-                'primarycategoryid' => ['required', 'integer', Rule::exists('knowledgecategories', 'id')],
-                'itemtype' => [
-                    'nullable',
-                    'integer',
-                    Rule::exists('knowledgeitemtypes', 'id')->where(fn ($query) => $query->where('isactive', 1)),
-                ],
-                'itemstatus' => ['nullable', 'string', 'max:30'],
-                'summary' => ['nullable', 'string'],
-                'sortorder' => ['nullable', 'integer', 'min:0'],
-                'startdate' => ['nullable', 'date'],
-                'enddate' => ['nullable', 'date'],
-                'nextreviewdate' => ['nullable', 'date'],
-                'isfeatured' => ['nullable', 'boolean'],
-                'isactive' => ['nullable', 'boolean'],
-            ], [], [
-                'itemtype' => 'item type',
-            ]);
+                /*
+                * Do not allow a move into a category that already contains an
+                * item with the same item name. Exclude the current item so that
+                * saving without changing categories remains valid.
+                */
+                $duplicateExists = KnowledgeItem::query()
+                    ->where('primarycategoryid', $newCategoryId)
+                    ->where('itemname', $item->itemname)
+                    ->whereKeyNot($item->id)
+                    ->exists();
 
-            if ($validator->fails()) {
-                throw ValidationException::withMessages($validator->errors()->toArray());
+                if ($duplicateExists) {
+                    throw ValidationException::withMessages([
+                        "existing.{$id}.primarycategoryid" =>
+                            "Cannot move '{$item->itemname}' because an item with that name already exists in the selected category.",
+                    ]);
+                }
+
+                $affectedCategoryIds[] = $oldCategoryId;
+                $affectedCategoryIds[] = $newCategoryId;
+
+                $item->update([
+                    'primarycategoryid' => $newCategoryId,
+                    'itemtype' => $row['itemtype'] ?? null,
+                    'itemstatus' => $row['itemstatus'] ?? null,
+                    'summary' => $row['summary'] ?? null,
+                    'sortorder' => (int) ($row['sortorder'] ?? 0),
+                    'startdate' => $row['startdate'] ?? null,
+                    'enddate' => $row['enddate'] ?? null,
+                    'nextreviewdate' => $row['nextreviewdate'] ?? null,
+                    'isfeatured' => (bool) ($row['isfeatured'] ?? false),
+                    'isactive' => (bool) ($row['isactive'] ?? false),
+                ]);
             }
 
-            KnowledgeItem::create([
-                'primarycategoryid' => $new['primarycategoryid'],
-                'itemname' => trim((string) $new['itemname']),
-                'itemtype' => $new['itemtype'] ?? null,
-                'itemstatus' => $new['itemstatus'] ?? 'active',
-                'summary' => $new['summary'] ?? null,
-                'sortorder' => $new['sortorder'] ?? 0,
-                'startdate' => $new['startdate'] ?? null,
-                'enddate' => $new['enddate'] ?? null,
-                'nextreviewdate' => $new['nextreviewdate'] ?? null,
-                'isfeatured' => (bool) ($new['isfeatured'] ?? false),
-                'isactive' => array_key_exists('isactive', $new) ? (bool) $new['isactive'] : true,
-            ]);
-        }
-    });
+            /*
+            * Optional single new row from the inline “Add item” controls.
+            */
+            $new = $validated['new'] ?? [];
+            $hasNewRow = trim((string) ($new['itemname'] ?? '')) !== '';
 
-    return redirect()->route('knowledge-categories.index', [
-        'domainid' => $request->input('domainid'),
-        'categoryid' => $request->input('categoryid'),
-        'search' => $request->input('search'),
-        'knowledgeitemtypeid' => $request->input('itemtype'),
-        'itemstatus' => $request->input('itemstatus'),
-        'active' => $request->input('active'),
-        'page' => $request->input('page'),
-        'show_selected_category_panel' => $request->input('show_selected_category_panel'),
-    ])->with('success', 'Knowledge items saved successfully.');
-}
+            if ($hasNewRow) {
+                $newCategoryId = (int) ($new['primarycategoryid'] ?? 0);
+                $newItemName = trim((string) ($new['itemname'] ?? ''));
+
+                /*
+                * The first validation pass allows an empty new row. Once an
+                * item name has been entered, the new row becomes mandatory and
+                * must be unique within its selected category.
+                */
+                $newValidator = Validator::make([
+                    ...$new,
+                    'itemname' => $newItemName,
+                    'primarycategoryid' => $newCategoryId,
+                ], [
+                    'itemname' => [
+                        'required',
+                        'string',
+                        'max:255',
+                        Rule::unique('knowledgeitems', 'itemname')
+                            ->where(
+                                fn ($query) => $query->where(
+                                    'primarycategoryid',
+                                    $newCategoryId
+                                )
+                            ),
+                    ],
+                    'primarycategoryid' => [
+                        'required',
+                        'integer',
+                        Rule::exists('knowledgecategories', 'id'),
+                    ],
+                    'itemtype' => [
+                        'nullable',
+                        'integer',
+                        Rule::exists('knowledgeitemtypes', 'id')
+                            ->where(fn ($query) => $query->where('isactive', 1)),
+                    ],
+                    'itemstatus' => ['nullable', 'string', 'max:30'],
+                    'summary' => ['nullable', 'string'],
+                    'sortorder' => ['nullable', 'integer', 'min:0'],
+                    'startdate' => ['nullable', 'date'],
+                    'enddate' => ['nullable', 'date'],
+                    'nextreviewdate' => ['nullable', 'date'],
+                    'isfeatured' => ['nullable', 'boolean'],
+                    'isactive' => ['nullable', 'boolean'],
+                ], [
+                    'itemname.unique' =>
+                        'An item with this name already exists in the selected category.',
+                ], [
+                    'itemname' => 'item name',
+                    'itemtype' => 'item type',
+                    'primarycategoryid' => 'primary category',
+                ]);
+
+                if ($newValidator->fails()) {
+                    throw ValidationException::withMessages(
+                        $newValidator->errors()->toArray()
+                    );
+                }
+
+                $newValidated = $newValidator->validated();
+
+                $newCategoryId = (int) $newValidated['primarycategoryid'];
+                $newItemName = trim((string) $newValidated['itemname']);
+                $newRequestedSortOrder = (int) (
+                    $newValidated['sortorder'] ?? 0
+                );
+
+                /*
+                * Blank or zero means append. The later normalisation pass makes
+                * sort order values sequential for all affected categories.
+                */
+                if ($newRequestedSortOrder <= 0) {
+                    $currentMaximumSortOrder = KnowledgeItem::query()
+                        ->where('primarycategoryid', $newCategoryId)
+                        ->lockForUpdate()
+                        ->max('sortorder');
+
+                    $newRequestedSortOrder = max(
+                        0,
+                        (int) ($currentMaximumSortOrder ?? 0)
+                    ) + 1;
+                }
+
+                KnowledgeItem::create([
+                    'primarycategoryid' => $newCategoryId,
+                    'itemname' => $newItemName,
+                    'itemtype' => $newValidated['itemtype'] ?? null,
+                    'itemstatus' => $newValidated['itemstatus'] ?? 'active',
+                    'summary' => $newValidated['summary'] ?? null,
+                    'sortorder' => $newRequestedSortOrder,
+                    'startdate' => $newValidated['startdate'] ?? null,
+                    'enddate' => $newValidated['enddate'] ?? null,
+                    'nextreviewdate' => $newValidated['nextreviewdate'] ?? null,
+                    'isfeatured' => (bool) (
+                        $newValidated['isfeatured'] ?? false
+                    ),
+                    'isactive' => array_key_exists('isactive', $newValidated)
+                        ? (bool) $newValidated['isactive']
+                        : true,
+                ]);
+
+                $affectedCategoryIds[] = $newCategoryId;
+            }
+
+            /*
+            * Ensure each affected category has a clean sequential order:
+            * 1, 2, 3, ...
+            *
+            * Explicit positive order values are honoured first. Zero and NULL
+            * values are placed after them in deterministic name/ID order.
+            */
+            $affectedCategoryIds = array_values(array_unique(
+                array_filter(
+                    array_map('intval', $affectedCategoryIds)
+                )
+            ));
+
+            foreach ($affectedCategoryIds as $categoryId) {
+                $items = KnowledgeItem::query()
+                    ->where('primarycategoryid', $categoryId)
+                    ->lockForUpdate()
+                    ->orderByRaw(
+                        'CASE WHEN sortorder IS NULL OR sortorder = 0 THEN 1 ELSE 0 END'
+                    )
+                    ->orderBy('sortorder')
+                    ->orderBy('itemname')
+                    ->orderBy('id')
+                    ->get();
+
+                foreach ($items as $index => $item) {
+                    $normalisedSortOrder = $index + 1;
+
+                    if ((int) $item->sortorder !== $normalisedSortOrder) {
+                        $item->update([
+                            'sortorder' => $normalisedSortOrder,
+                        ]);
+                    }
+                }
+            }
+        });
+
+        return redirect()->route('knowledge-categories.index', [
+            'domainid' => $request->input('domainid'),
+            'categoryid' => $request->input('categoryid'),
+            'search' => $request->input('search'),
+            'itemtype' => $request->input('itemtype'),
+            'itemstatus' => $request->input('itemstatus'),
+            'active' => $request->input('active'),
+            'page' => $request->input('page'),
+            'show_selected_category_panel' => $request->input(
+                'show_selected_category_panel'
+            ),
+        ])->with('success', 'Knowledge items saved successfully.');
+    }
 
     public function edit(Request $request, KnowledgeItem $knowledgeItem): View
 {

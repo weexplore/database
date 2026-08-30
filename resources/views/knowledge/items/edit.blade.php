@@ -96,6 +96,32 @@
             </div>
 
             @php
+                /*
+                * These relationships were eager-loaded in KnowledgeItemController::edit(),
+                * so calling count() here does not issue additional database queries.
+                */
+                $tabCounts = [
+                    'notes' => $knowledgeItem->notes->count(),
+                    'sources' => $knowledgeItem->sources->count(),
+                    'review-logs' => $knowledgeItem->reviewLogs->count(),
+                    'relationships' => $displayRelationships->count(),
+                    'attachments' => $knowledgeItem->attachments->count(),
+                ];
+
+                if (! empty($hasBibleTools)) {
+                    $tabCounts['bible-references'] = $knowledgeItem->bibleReferences->count();
+                }
+                
+                if (! empty($hasInvestmentTools)) {
+                    $instrument = $knowledgeItem->instrument;
+
+                    $tabCounts['investments'] = $instrument
+                        ? $instrument->priceObservations->count()
+                            + $instrument->corporateActions->count()
+                            + $instrument->transactions->count()
+                        : 0;
+                }
+
                 $tabs = [
                     'details' => 'Details',
                     'info' => 'Info',
@@ -106,15 +132,15 @@
                     'attachments' => 'Attachments',
                 ];
 
-                if (!empty($hasFamilyHistoryTools)) {
+                if (! empty($hasFamilyHistoryTools)) {
                     $tabs['family-history'] = 'Family History';
                 }
 
-                if (!empty($hasBibleTools)) {
+                if (! empty($hasBibleTools)) {
                     $tabs['bible-references'] = 'Bible References';
                 }
 
-                if (!empty($hasInvestmentTools)) {
+                if (! empty($hasInvestmentTools)) {
                     $tabs['investments'] = 'Investments';
                 }
             @endphp
@@ -127,10 +153,18 @@
                                     'tab' => $tabKey,
                                     'return_to' => $returnTo,
                                 ])) }}"
-                            class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium {{ ($activeTab ?? 'details') === $tabKey
+                            class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium {{ ($activeTab ?? 'details') === $tabKey
                                 ? 'bg-blue-600 text-white'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                                {{ $tabLabel }}
+                                <span>{{ $tabLabel }}</span>
+
+                                @if (array_key_exists($tabKey, $tabCounts))
+                                    <span class="inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-semibold {{ ($activeTab ?? 'details') === $tabKey
+                                        ? 'bg-white/20 text-white'
+                                        : 'bg-white text-gray-700 ring-1 ring-inset ring-gray-300' }}">
+                                        {{ $tabCounts[$tabKey] }}
+                                    </span>
+                                @endif
                             </a>
                         @endforeach
                     </nav>
@@ -195,6 +229,8 @@
             @if(($activeTab ?? 'details') === 'info')
                 @include('knowledge.items.partials.info-panel', [
                     'knowledgeItem' => $knowledgeItem,
+                    'displayRelationships' => $displayRelationships,
+                    'hasBibleTools' => $hasBibleTools,
                 ])
             @endif
             @if ($activeTab === 'family-history' && $hasFamilyHistoryTools)

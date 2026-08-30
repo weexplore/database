@@ -13,13 +13,14 @@ use App\Models\KnowledgeReviewLog;
 use App\Models\KnowledgeSource;
 use App\Models\Trip;
 use App\Models\TripItem;
-use App\Models\KnowledgeAttachment;
 use Illuminate\Support\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Http\RedirectResponse;
 
 class TaskController extends Controller
 {
@@ -775,6 +776,9 @@ class TaskController extends Controller
     $todayKnowledgeActivity = collect();
 
     foreach ($knowledgeItemsUpdatedToday as $knowledgeItem) {
+        $wasCreatedToday = $knowledgeItem->createdat !== null
+            && $knowledgeItem->createdat->betweenIncluded($today, $tomorrow);
+
         $todayKnowledgeActivity->push([
             'type' => 'item',
             'label' => 'Knowledge item',
@@ -783,11 +787,15 @@ class TaskController extends Controller
             'title' => $knowledgeItem->itemname,
             'detail' => $knowledgeItem->primaryCategory?->categoryname,
             'tab' => 'details',
+            'createdToday' => $wasCreatedToday,
             'updatedAt' => $knowledgeItem->updatedat,
         ]);
     }
 
     foreach ($knowledgeNotesUpdatedToday as $knowledgeNote) {
+        $wasCreatedToday = $knowledgeNote->createdat !== null
+            && $knowledgeNote->createdat->betweenIncluded($today, $tomorrow);
+
         $todayKnowledgeActivity->push([
             'type' => 'note',
             'label' => 'Note',
@@ -798,6 +806,7 @@ class TaskController extends Controller
                 ?: ucfirst((string) $knowledgeNote->notetype),
             'tab' => 'notes',
             'editingNoteId' => $knowledgeNote->id,
+            'createdToday' => $wasCreatedToday,
             'updatedAt' => $knowledgeNote->updatedat,
         ]);
     }
@@ -819,6 +828,9 @@ class TaskController extends Controller
     }
 
     foreach ($knowledgeReviewLogsUpdatedToday as $knowledgeReviewLog) {
+        $wasCreatedToday = $knowledgeReviewLog->createdat !== null
+            && $knowledgeReviewLog->createdat->betweenIncluded($today, $tomorrow);
+
         $todayKnowledgeActivity->push([
             'type' => 'review',
             'label' => 'Review log',
@@ -829,6 +841,7 @@ class TaskController extends Controller
                 ?: ucfirst((string) $knowledgeReviewLog->reviewtype),
             'tab' => 'review-logs',
             'editingReviewLogId' => $knowledgeReviewLog->id,
+            'createdToday' => $wasCreatedToday,
             'updatedAt' => $knowledgeReviewLog->updatedat,
         ]);
     }
@@ -1147,6 +1160,11 @@ class TaskController extends Controller
             ])
             ->get();
 
+        $projects = Project::query()
+            ->where('status', 'active')
+            ->orderBy('projectname')
+            ->get();
+
     return view('tasks.outlook', compact(
         'today',
         'weekEnd',
@@ -1177,33 +1195,142 @@ class TaskController extends Controller
         'todaysActivityEstimatedHours',
         'todaysActivityActualHours',
         'todayKnowledgeActivity',
-        'statuses'
+        'statuses',
+        'projects'
     ));
 }
 
-    public function updateFromOutlook(Request $request, Task $task)
-    {
-        $data = $request->validate([
-            'duedate' => ['nullable', 'date'],
-            'statusid' => ['required', 'exists:task_statuses,id'],
-            'statuscomment' => ['nullable', 'string'],
-            'actualefforthours' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
-        ]);
+public function storeFromOutlook(Request $request): RedirectResponse
+{
+    $validated = $request->validate([
+        'tasktitle' => ['required', 'string', 'max:255'],
 
-        $status = TaskStatus::findOrFail($data['statusid']);
+        'projectid' => [
+            'required',
+            'integer',
+            Rule::exists(Project::class, 'id'),
+        ],
 
-        $task->update([
-            'duedate' => $data['duedate'] ?: null,
-            'statusid' => $status->id,
-            'statuscomment' => $data['statuscomment'] ?? null,
-            'actualefforthours' => $data['actualefforthours'] ?? null,
-            'completedat' => $status->iscompletedstatus
-                ? ($task->completedat ?? now())
-                : null,
-        ]);
+        'statusid' => [
+            'nullable',
+            'integer',
+            Rule::exists(TaskStatus::class, 'id'),
+        ],
 
-        return back()->with('success', 'Task updated.');
+        
+
+        'priority' => [
+            'nullable',
+            Rule::in(['low', 'medium', 'high', 'urgent']),
+        ],
+
+        'startdate' => ['nullable', 'date'],
+
+        'duedate' => [
+            'nullable',
+            'date',
+            'after_or_equal:startdate',
+        ],
+
+        'estimatedefforthours' => [
+            'nullable',
+            'numeric',
+            'min:0',
+            'max:9999.99',
+        ],
+    ], [], [
+        'tasktitle' => 'task title',
+        'projectid' => 'project',
+        'statusid' => 'status',
+        'startdate' => 'start date',
+        'duedate' => 'due date',
+        'estimatedefforthours' => 'estimated effort',
+    ]);
+
+    $project = Project::query()
+        ->where('status', 'active')
+        ->findOrFail($validated['projectid']);
+
+    $statusId = $validated['statusid'] ?? null;
+
+    /*
+     * A TaskStatus record is project-specific. Do not allow a status from
+     * another project's workflow to be assigned merely because it has a
+     * valid ID.
+     */
+    if ($statusId !== null) {
+        $statusBelongsToProject = TaskStatus::query()
+            ->whereKey($statusId)
+            ->where('projectid', $project->id)
+            ->where('isactive', 1)
+            ->exists();
+
+        if (! $statusBelongsToProject) {
+            throw ValidationException::withMessages([
+                'statusid' =>
+                    'The selected status is not active for the selected project.',
+            ]);
+        }
+    } else {
+        /*
+         * Default to the first active open status for this project.
+         * If none exists, the task is still valid with statusid NULL, and
+         * your existing Outlook query explicitly includes NULL statuses as
+         * open tasks.
+         */
+        $statusId = TaskStatus::query()
+            ->where('projectid', $project->id)
+            ->where('isactive', 1)
+            ->where('iscompletedstatus', 0)
+            ->orderBy('sortorder')
+            ->value('id');
     }
+
+    $task = Task::create([
+        'projectid' => $project->id,
+        'tasktitle' => trim((string) $validated['tasktitle']),
+        'statusid' => $statusId,
+        'priority' => $validated['priority'] ?? 'medium',
+        'startdate' => $validated['startdate'] ?? null,
+        'duedate' => $validated['duedate'] ?? null,
+        'estimatedefforthours' =>
+            $validated['estimatedefforthours'] ?? null,
+        'isrecurringtemplate' => false,
+    ]);
+
+    return redirect()
+        ->route('tasks.outlook')
+        ->with(
+            'success',
+            "Task '{$task->tasktitle}' added successfully."
+        );
+}
+
+    public function updateFromOutlook(Request $request, Task $task)
+{
+    $data = $request->validate([
+        'duedate' => ['nullable', 'date'],
+        'statusid' => ['required', 'exists:task_statuses,id'],
+        'statuscomment' => ['nullable', 'string'],
+        'estimatedefforthours' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
+        'actualefforthours' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
+    ]);
+
+    $status = TaskStatus::findOrFail($data['statusid']);
+
+    $task->update([
+        'duedate' => $data['duedate'] ?: null,
+        'statusid' => $status->id,
+        'statuscomment' => $data['statuscomment'] ?? null,
+        'estimatedefforthours' => $data['estimatedefforthours'] ?? null,
+        'actualefforthours' => $data['actualefforthours'] ?? null,
+        'completedat' => $status->iscompletedstatus
+            ? ($task->completedat ?? now())
+            : null,
+    ]);
+
+    return back()->with('success', 'Task updated.');
+}
 
     public function makeSubtask(Request $request, Task $task)
     {

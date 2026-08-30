@@ -84,16 +84,18 @@
             </div>
 
             {{-- Estimate --}}
-            <div class="w-16">
+            <div class="w-20">
                 <label class="block text-[11px] font-medium text-gray-500">
                     Est.
                 </label>
 
-                <div class="mt-0.5 rounded border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs text-gray-700">
-                    {{ $task->estimatedefforthours !== null
-                        ? rtrim(rtrim(number_format((float) $task->estimatedefforthours, 2), '0'), '.').'h'
-                        : '—' }}
-                </div>
+                <input type="number"
+                    name="estimatedefforthours"
+                    min="0"
+                    max="9999.99"
+                    step="0.25"
+                    value="{{ $task->estimatedefforthours }}"
+                    class="mt-0.5 w-full rounded border-gray-300 px-2 py-1.5 text-xs shadow-sm">
             </div>
 
             {{-- Actual effort --}}

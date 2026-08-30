@@ -292,9 +292,36 @@
                                         </div>
                                     @endif
 
-                                    @if($knowledgeItem->detailednotes || $knowledgeItem->reviewnotes)
+                                   @if (
+                                        filled($knowledgeItem->summary)
+                                        || filled($knowledgeItem->significance)
+                                        || filled($knowledgeItem->detailednotes)
+                                        || filled($knowledgeItem->reviewnotes)
+                                    )
                                         <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
-                                            @if($knowledgeItem->detailednotes)
+                                            @if (filled($knowledgeItem->summary))
+                                                <div class="rounded-lg border border-gray-200 p-4">
+                                                    <h5 class="text-sm font-semibold text-gray-900 mb-2">Summary</h5>
+                                                    <div class="text-sm text-gray-700 markdown-content">
+                                                        @include('partials.markdown.rendered-block', [
+                                                            'content' => $knowledgeItem->summary,
+                                                        ])
+                                                    </div>
+                                                </div>
+                                            @endif
+
+                                            @if (filled($knowledgeItem->significance))
+                                                <div class="rounded-lg border border-gray-200 p-4">
+                                                    <h5 class="text-sm font-semibold text-gray-900 mb-2">Significance</h5>
+                                                    <div class="text-sm text-gray-700 markdown-content">
+                                                        @include('partials.markdown.rendered-block', [
+                                                            'content' => $knowledgeItem->significance,
+                                                        ])
+                                                    </div>
+                                                </div>
+                                            @endif
+
+                                            @if (filled($knowledgeItem->detailednotes))
                                                 <div class="rounded-lg border border-gray-200 p-4 xl:col-span-2">
                                                     <h5 class="text-sm font-semibold text-gray-900 mb-2">Detailed Notes</h5>
                                                     <div class="text-sm text-gray-700 markdown-content">
@@ -305,7 +332,7 @@
                                                 </div>
                                             @endif
 
-                                            @if($knowledgeItem->reviewnotes)
+                                            @if (filled($knowledgeItem->reviewnotes))
                                                 <div class="rounded-lg border border-gray-200 p-4 xl:col-span-2">
                                                     <h5 class="text-sm font-semibold text-gray-900 mb-2">Review Notes</h5>
                                                     <div class="text-sm text-gray-700 markdown-content">
@@ -520,6 +547,11 @@
                                                                     {{ \App\Models\KnowledgeNote::TYPE_OPTIONS[$note->notetype] ?? $note->notetype }}
                                                                 </span>
                                                             @endif
+                                                            @if (filled($note->stance))
+                                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
+                                                                    Stance: {{ ucfirst($note->stance) }}
+                                                                </span>
+                                                            @endif
 
                                                             @if($note->reviewdate)
                                                                 <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
@@ -552,91 +584,114 @@
                                             </div>
                                         @endif
 
-                                        @if($knowledgeItem->sources->isNotEmpty())
-                                            <section>
-                                                <h3 class="text-base font-semibold text-slate-900">Sources</h3>
-                                                <div class="mt-3 space-y-3">
-                                                    @foreach($knowledgeItem->sources as $source)
-                                                        @php
-                                                            $sourceTitle = $source->title
-                                                                ?? $source->sourcetitle
-                                                                ?? $source->pagetitle
-                                                                ?? 'Source';
+                                        @if ($knowledgeItem->sources->isNotEmpty())
+                                            <section class="rounded-lg border border-gray-200 p-4 space-y-3">
+                                                <h5 class="text-sm font-semibold text-gray-900">Sources</h5>
 
-                                                            $sourceUrl = $source->url
-                                                                ?? $source->sourceurl
-                                                                ?? $source->canonicalurl
-                                                                ?? null;
+                                                @foreach ($knowledgeItem->sources as $source)
+                                                    @php
+                                                        $sourceTitle = $source->sourcetitle ?: 'Source';
+                                                    @endphp
 
-                                                            $importedSummary = $source->importedsummary
-                                                                ?? $source->summary
-                                                                ?? null;
+                                                    <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0 space-y-3">
+                                                        <div>
+                                                            <div class="text-sm font-medium text-gray-900">
+                                                                {{ $sourceTitle }}
+                                                            </div>
 
-                                                            $importedNotes = $source->importednotes
-                                                                ?? $source->notes
-                                                                ?? null;
-                                                        @endphp
-
-                                                        @if(
-                                                            filled($sourceTitle) ||
-                                                            filled($sourceUrl) ||
-                                                            filled($importedSummary) ||
-                                                            filled($importedNotes) ||
-                                                            filled($source->sourcepublisher)
-                                                        )
-                                                            <div class="rounded-lg border border-slate-200 px-4 py-3 space-y-3">
-                                                                <div class="text-sm font-medium text-slate-900">
-                                                                    {{ $sourceTitle }}
-                                                                </div>
-
-                                                                @if(filled($sourceUrl))
-                                                                    <div>
-                                                                        <div class="text-xs font-medium text-slate-500 mb-1">URL</div>
-                                                                        <div class="text-sm break-all">
-                                                                            <a href="{{ $sourceUrl }}"
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            class="text-blue-600 hover:text-blue-800 hover:underline">
-                                                                                {{ $sourceUrl }}
-                                                                            </a>
-                                                                        </div>
-                                                                    </div>
+                                                            <div class="mt-1 flex flex-wrap gap-2 text-xs">
+                                                                @if (filled($source->sourcetype))
+                                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                                        {{ ucfirst($source->sourcetype) }}
+                                                                    </span>
                                                                 @endif
 
-                                                                @if(filled($source->sourcepublisher))
-                                                                    <div>
-                                                                        <div class="text-xs font-medium text-slate-500 mb-1">Publisher</div>
-                                                                        <div class="text-sm text-slate-700">
-                                                                            {{ $source->sourcepublisher }}
-                                                                        </div>
-                                                                    </div>
+                                                                @if (filled($source->importstatus))
+                                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                                                        {{ ucfirst($source->importstatus) }}
+                                                                    </span>
                                                                 @endif
 
-                                                                @if(filled($importedSummary))
-                                                                    <div>
-                                                                        <div class="text-xs font-medium text-slate-500 mb-1">Imported Summary</div>
-                                                                        <div class="text-sm text-slate-700 markdown-content">
-                                                                            @include('partials.markdown.rendered-block', [
-                                                                                'content' => $importedSummary,
-                                                                            ])
-                                                                        </div>
-                                                                    </div>
+                                                                @if ($source->retrievedon)
+                                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                                        Retrieved: {{ $source->retrievedon->format('d M Y') }}
+                                                                    </span>
                                                                 @endif
 
-                                                                @if(filled($importedNotes))
-                                                                    <div>
-                                                                        <div class="text-xs font-medium text-slate-500 mb-1">Imported Notes</div>
-                                                                        <div class="text-sm text-slate-700 markdown-content">
-                                                                            @include('partials.markdown.rendered-block', [
-                                                                                'content' => $importedNotes,
-                                                                            ])
-                                                                        </div>
-                                                                    </div>
+                                                                @if ($source->reviewedon)
+                                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                                        Reviewed: {{ $source->reviewedon->format('d M Y') }}
+                                                                    </span>
                                                                 @endif
                                                             </div>
+                                                        </div>
+
+                                                        @if (filled($source->sourceurl))
+                                                            <div>
+                                                                <div class="text-xs font-medium text-gray-500 mb-1">URL</div>
+                                                                <div class="text-sm break-all">
+                                                                    <a href="{{ $source->sourceurl }}"
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    class="text-blue-600 hover:text-blue-800 hover:underline">
+                                                                        {{ $source->sourceurl }}
+                                                                    </a>
+                                                                </div>
+                                                            </div>
                                                         @endif
-                                                    @endforeach
-                                                </div>
+
+                                                        @if (filled($source->sourcepublisher))
+                                                            <div>
+                                                                <div class="text-xs font-medium text-gray-500 mb-1">Publisher</div>
+                                                                <div class="text-sm text-gray-700">
+                                                                    {{ $source->sourcepublisher }}
+                                                                </div>
+                                                            </div>
+                                                        @endif
+
+                                                        @if (filled($source->reviewedby))
+                                                            <div>
+                                                                <div class="text-xs font-medium text-gray-500 mb-1">Reviewed by</div>
+                                                                <div class="text-sm text-gray-700">
+                                                                    {{ $source->reviewedby }}
+                                                                </div>
+                                                            </div>
+                                                        @endif
+
+                                                        @if (filled($source->importedsummary))
+                                                            <div>
+                                                                <div class="text-xs font-medium text-gray-500 mb-1">Imported Summary</div>
+                                                                <div class="text-sm text-gray-700 markdown-content">
+                                                                    @include('partials.markdown.rendered-block', [
+                                                                        'content' => $source->importedsummary,
+                                                                    ])
+                                                                </div>
+                                                            </div>
+                                                        @endif
+
+                                                        @if (filled($source->importednotes))
+                                                            <div>
+                                                                <div class="text-xs font-medium text-gray-500 mb-1">Imported Notes</div>
+                                                                <div class="text-sm text-gray-700 markdown-content">
+                                                                    @include('partials.markdown.rendered-block', [
+                                                                        'content' => $source->importednotes,
+                                                                    ])
+                                                                </div>
+                                                            </div>
+                                                        @endif
+
+                                                        @if (filled($source->internalnotes))
+                                                            <div class="rounded-md bg-amber-50 border border-amber-200 px-3 py-2">
+                                                                <div class="text-xs font-medium text-amber-800 mb-1">Internal Notes</div>
+                                                                <div class="text-sm text-amber-900 markdown-content">
+                                                                    @include('partials.markdown.rendered-block', [
+                                                                        'content' => $source->internalnotes,
+                                                                    ])
+                                                                </div>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
                                             </section>
                                         @endif
                                     </div>
@@ -659,12 +714,24 @@
                                                                 {{ \App\Models\KnowledgeReviewLog::TYPE_OPTIONS[$log->reviewtype] ?? $log->reviewtype }}
                                                             </span>
                                                         @endif
+
+                                                        @if ($log->outcome)
+                                                            <span class="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                                                {{ ucfirst($log->outcome) }}
+                                                            </span>
+                                                        @endif
+
+                                                        @if ($log->nextreviewdate)
+                                                            <span class="inline-flex items-center px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
+                                                                Next review: {{ $log->nextreviewdate->format('d M Y') }}
+                                                            </span>
+                                                        @endif
                                                     </div>
 
-                                                    @if($log->reviewnotes)
+                                                    @if (filled($log->summary))
                                                         <div class="mt-1 text-sm text-gray-700 markdown-content">
                                                             @include('partials.markdown.rendered-block', [
-                                                                'content' => $log->reviewnotes,
+                                                                'content' => $log->summary,
                                                             ])
                                                         </div>
                                                     @endif

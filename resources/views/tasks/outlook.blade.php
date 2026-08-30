@@ -11,10 +11,22 @@
                 </p>
             </div>
 
-            <a href="{{ route('tasksall.all') }}"
-               class="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded border border-gray-300 hover:bg-gray-200">
-                All Tasks
-            </a>
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                <button
+                    type="button"
+                    id="toggle-quick-add-task"
+                    aria-expanded="{{ $errors->any() ? 'true' : 'false' }}"
+                    aria-controls="quick-add-task"
+                    class="inline-flex items-center rounded border border-indigo-600 bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+                >
+                    {{ $errors->any() ? 'Hide Add Task' : 'Add Task' }}
+                </button>
+
+                <a href="{{ route('tasksall.all') }}"
+                class="inline-flex items-center rounded border border-gray-300 bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200">
+                    All Tasks
+                </a>
+            </div>
         </div>
     </x-slot>
 
@@ -23,6 +35,261 @@
 
             @include('partials.admin.flash-messages')
             @include('partials.admin.validation-summary')
+
+            <section
+                id="quick-add-task"
+                class="overflow-hidden border border-indigo-200 bg-white shadow-sm sm:rounded-lg{{ $errors->any() ? '' : ' hidden' }}"
+            >
+                <div class="border-b border-indigo-200 bg-indigo-50 px-4 py-3">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-indigo-900">
+                                Quick Add Task
+                            </h3>
+
+                            <p class="mt-1 text-xs text-indigo-700">
+                                Capture a task without leaving Task Outlook.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <form
+                    method="POST"
+                    action="{{ route('tasks.outlook.store') }}"
+                    class="p-4"
+                >
+                    @csrf
+
+                    <div class="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                        <div class="lg:col-span-4">
+                            <label
+                                for="outlook-tasktitle"
+                                class="block text-xs font-medium text-gray-700"
+                            >
+                                Task title <span class="text-red-600">*</span>
+                            </label>
+
+                            <input
+                                id="outlook-tasktitle"
+                                name="tasktitle"
+                                type="text"
+                                value="{{ old('tasktitle') }}"
+                                required
+                                maxlength="255"
+                                autofocus
+                                class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                placeholder="What needs to be done?"
+                            >
+
+                            @error('tasktitle')
+                                <p class="mt-1 text-xs text-red-600">
+                                    {{ $message }}
+                                </p>
+                            @enderror
+                        </div>
+
+                        <div class="lg:col-span-2">
+                            <label
+                                for="outlook-projectid"
+                                class="block text-xs font-medium text-gray-700"
+                            >
+                                Project <span class="text-red-600">*</span>
+                            </label>
+
+                            <select
+                                id="outlook-projectid"
+                                name="projectid"
+                                required
+                                class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            >
+                                <option value="">Select project</option>
+
+                                @foreach ($projects as $project)
+                                    <option
+                                        value="{{ $project->id }}"
+                                        @selected((string) old('projectid') === (string) $project->id)
+                                    >
+                                        {{ $project->projectname }}
+                                    </option>
+                                @endforeach
+                            </select>
+
+                            @error('projectid')
+                                <p class="mt-1 text-xs text-red-600">
+                                    {{ $message }}
+                                </p>
+                            @enderror
+                        </div>
+
+                        <div class="lg:col-span-2">
+                            <label
+                                for="outlook-statusid"
+                                class="block text-xs font-medium text-gray-700"
+                            >
+                                Status
+                            </label>
+
+                            <select
+                                id="outlook-statusid"
+                                name="statusid"
+                                class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            >
+                                <option value="">Default open status</option>
+                            </select>
+
+                            <p class="mt-1 text-[11px] text-gray-500">
+                                Statuses are shown after selecting a project.
+                            </p>
+
+                            @error('statusid')
+                                <p class="mt-1 text-xs text-red-600">
+                                    {{ $message }}
+                                </p>
+                            @enderror
+                        </div>
+
+                        <div class="lg:col-span-1">
+                            <label
+                                for="outlook-priority"
+                                class="block text-xs font-medium text-gray-700"
+                            >
+                                Priority
+                            </label>
+
+                            <select
+                                id="outlook-priority"
+                                name="priority"
+                                class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            >
+                                <option
+                                    value="low"
+                                    @selected(old('priority') === 'low')
+                                >
+                                    Low
+                                </option>
+
+                                <option
+                                    value="medium"
+                                    @selected(old('priority', 'medium') === 'medium')
+                                >
+                                    Medium
+                                </option>
+
+                                <option
+                                    value="high"
+                                    @selected(old('priority') === 'high')
+                                >
+                                    High
+                                </option>
+                            </select>
+
+                            @error('priority')
+                                <p class="mt-1 text-xs text-red-600">
+                                    {{ $message }}
+                                </p>
+                            @enderror
+                        </div>
+
+                        <div class="lg:col-span-1">
+                            <label
+                                for="outlook-startdate"
+                                class="block text-xs font-medium text-gray-700"
+                            >
+                                Start
+                            </label>
+
+                            <input
+                                id="outlook-startdate"
+                                name="startdate"
+                                type="date"
+                                value="{{ old('startdate') }}"
+                                class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            >
+
+                            @error('startdate')
+                                <p class="mt-1 text-xs text-red-600">
+                                    {{ $message }}
+                                </p>
+                            @enderror
+                        </div>
+
+                        <div class="lg:col-span-1">
+                            <label
+                                for="outlook-duedate"
+                                class="block text-xs font-medium text-gray-700"
+                            >
+                                Due
+                            </label>
+
+                            <input
+                                id="outlook-duedate"
+                                name="duedate"
+                                type="date"
+                                value="{{ old('duedate', $today->toDateString()) }}"
+                                class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            >
+
+                            @error('duedate')
+                                <p class="mt-1 text-xs text-red-600">
+                                    {{ $message }}
+                                </p>
+                            @enderror
+                        </div>
+
+                        <div class="lg:col-span-1">
+                            <label
+                                for="outlook-estimatedefforthours"
+                                class="block text-xs font-medium text-gray-700"
+                            >
+                                Est. hours
+                            </label>
+
+                            <input
+                                id="outlook-estimatedefforthours"
+                                name="estimatedefforthours"
+                                type="number"
+                                min="0"
+                                max="9999.99"
+                                step="0.25"
+                                value="{{ old('estimatedefforthours') }}"
+                                class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                placeholder="0"
+                            >
+
+                            @error('estimatedefforthours')
+                                <p class="mt-1 text-xs text-red-600">
+                                    {{ $message }}
+                                </p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4">
+                        <p class="text-xs text-gray-500">
+                            Use the full task editor for notes, labels, subtasks, recurrence,
+                            attachments, and other detailed fields.
+                        </p>
+
+                        <div class="flex items-center gap-2">
+                            <button
+                                type="button"
+                                data-close-quick-add-task
+                                class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                type="submit"
+                                class="inline-flex items-center rounded-md border border-indigo-600 bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                            >
+                                Add Task
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </section>
 
             {{-- Overdue --}}
             <section class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-red-200">
@@ -1009,10 +1276,20 @@
                                             @endif
                                         </span>
 
-                                        <time class="shrink-0 text-xs text-gray-500"
-                                            datetime="{{ $activity['updatedAt']?->toIso8601String() }}">
-                                            {{ $activity['updatedAt']?->shiftTimezone('Australia/Sydney')->format('g:i A') }}
-                                        </time>
+                                        <div class="shrink-0 whitespace-nowrap text-right text-xs text-gray-500">
+                                            @if (($activity['createdToday'] ?? false) === true)
+                                                <span class="font-medium text-emerald-700">
+                                                    Created today
+                                                </span>
+                                                <span class="text-gray-400">·</span>
+                                            @endif
+
+                                            <span>Updated</span>
+
+                                            <time datetime="{{ $activity['updatedAt']?->toIso8601String() }}">
+                                                {{ $activity['updatedAt']?->shiftTimezone('Australia/Sydney')->format('g:i A') }}
+                                            </time>
+                                        </div>
                                     </div>
                                 </a>
                             @endforeach
@@ -1022,8 +1299,26 @@
             </section>
         </div>
     </div>
+@php
+    $outlookStatusesByProject = $statuses
+        ->map(
+            fn ($projectStatuses) => $projectStatuses
+                ->filter(fn ($status) => (bool) $status->isactive)
+                ->map(fn ($status) => [
+                    'id' => $status->id,
+                    'label' => $status->statuslabel,
+                    'isCompleted' => (bool) $status->iscompletedstatus,
+                ])
+                ->values()
+        )
+        ->all();
+@endphp
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        /*
+         * Existing task-row reschedule buttons.
+         */
         document.querySelectorAll('[data-reschedule-task]').forEach(function (button) {
             button.addEventListener('click', function () {
                 const taskId = button.dataset.rescheduleTask;
@@ -1038,6 +1333,115 @@
                 }
             });
         });
+
+        /*
+         * Quick Add Task: populate project-specific task statuses.
+         */
+        const projectSelect = document.getElementById('outlook-projectid');
+        const statusSelect = document.getElementById('outlook-statusid');
+
+        const statusesByProject = {{ \Illuminate\Support\Js::from(
+            $outlookStatusesByProject
+        ) }};
+
+        const oldStatusId = {{ \Illuminate\Support\Js::from(
+            old('statusid')
+        ) }};
+
+        function populateOutlookStatuses(selectedStatusId = null) {
+            if (!projectSelect || !statusSelect) {
+                return;
+            }
+
+            const projectId = projectSelect.value;
+
+            statusSelect.innerHTML = '';
+
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'Default open status';
+            statusSelect.appendChild(defaultOption);
+
+            if (!projectId || !statusesByProject[projectId]) {
+                return;
+            }
+
+            statusesByProject[projectId].forEach(function (status) {
+                const option = document.createElement('option');
+
+                option.value = status.id;
+                option.textContent = status.label;
+
+                if (String(status.id) === String(selectedStatusId)) {
+                    option.selected = true;
+                }
+
+                statusSelect.appendChild(option);
+            });
+        }
+
+                if (projectSelect && statusSelect) {
+            populateOutlookStatuses(oldStatusId);
+
+            projectSelect.addEventListener('change', function () {
+                populateOutlookStatuses(null);
+            });
+        }
+
+        const toggleQuickAddTaskButton = document.getElementById(
+            'toggle-quick-add-task'
+        );
+
+        const quickAddTaskSection = document.getElementById(
+            'quick-add-task'
+        );
+
+        const closeQuickAddTaskButton = document.querySelector(
+            '[data-close-quick-add-task]'
+        );
+
+        function setQuickAddTaskVisibility(show) {
+            if (!quickAddTaskSection || !toggleQuickAddTaskButton) {
+                return;
+            }
+
+            quickAddTaskSection.classList.toggle('hidden', !show);
+
+            toggleQuickAddTaskButton.textContent = show
+                ? 'Hide Add Task'
+                : 'Add Task';
+
+            toggleQuickAddTaskButton.setAttribute(
+                'aria-expanded',
+                show ? 'true' : 'false'
+            );
+
+            if (show) {
+                const taskTitleInput = document.getElementById(
+                    'outlook-tasktitle'
+                );
+
+                if (taskTitleInput) {
+                    taskTitleInput.focus();
+                }
+            }
+        }
+
+        if (toggleQuickAddTaskButton && quickAddTaskSection) {
+            toggleQuickAddTaskButton.addEventListener('click', function () {
+                const isCurrentlyHidden = quickAddTaskSection.classList.contains(
+                    'hidden'
+                );
+
+                setQuickAddTaskVisibility(isCurrentlyHidden);
+            });
+        }
+
+        if (closeQuickAddTaskButton) {
+            closeQuickAddTaskButton.addEventListener('click', function () {
+                setQuickAddTaskVisibility(false);
+            });
+        }
     });
 </script>
 </x-app-layout>

@@ -14,9 +14,27 @@ Artisan::command('inspire', function () {
 Artisan::command('tasks:generate-recurring', function () {
     $today = now()->startOfDay();
 
+    /*
+    * Include a recurrence as soon as its first occurrence is within its
+    * configured generation lead-time window.
+    *
+    * Example:
+    * - First due date: 31 Aug
+    * - Lead days: 1
+    * - First generation date: 30 Aug
+    *
+    * This makes the first run consistent with later runs, which already use:
+    * next due date - lead days.
+    */
     $recurrences = TaskRecurrence::query()
         ->where('isactive', 1)
-        ->whereDate('startsonoccurrence', '<=', $today->toDateString())
+        ->whereRaw(
+            'DATE_SUB(
+                startsonoccurrence,
+                INTERVAL COALESCE(leaddaysbeforedue, 0) DAY
+            ) <= ?',
+            [$today->toDateString()]
+        )
         ->where(function ($query) use ($today) {
             $query->whereNull('endsonoccurrence')
                 ->orWhereDate('endsonoccurrence', '>=', $today->toDateString());

@@ -122,12 +122,25 @@
 
                 <div class="flex items-center justify-between gap-4">
                     <span class="text-gray-600">Relationships</span>
-                    <span class="font-medium text-gray-900">{{ $knowledgeItem->relationships->count() }}</span>
+                    <span class="font-medium text-gray-900">
+                        {{ isset($displayRelationships)
+                            ? $displayRelationships->count()
+                            : $knowledgeItem->outgoingRelationships->count()
+                                + $knowledgeItem->incomingRelationships->count() }}
+                    </span>
                 </div>
+                @if (! empty($hasBibleTools))
+                    <div class="flex items-center justify-between gap-4">
+                        <span class="text-gray-600">Bible references</span>
+                        <span class="font-medium text-gray-900">
+                            {{ $knowledgeItem->bibleReferences->count() }}
+                        </span>
+                    </div>
+                @endif
             </div>
         </div>
 
-        @include('knowledge.items.partials.info-danger-zone', [
+       @include('knowledge.items.partials.info-danger-zone', [
             'knowledgeItem' => $knowledgeItem,
         ])
     </div>

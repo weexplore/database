@@ -717,6 +717,9 @@ Route::post('/tasks/bulk-update', [TaskController::class, 'bulkUpdate'])
 Route::get('/tasks/outlook', [TaskController::class, 'outlook'])
     ->name('tasks.outlook');
 
+Route::post('/tasks/outlook', [TaskController::class, 'storeFromOutlook']
+    )->name('tasks.outlook.store');
+
 // Standard task creation.
 Route::post('/tasks', [TaskController::class, 'store'])
     ->name('tasks.store');

@@ -15,6 +15,7 @@ use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class KnowledgeCategoryController extends Controller
 {
@@ -42,7 +43,16 @@ class KnowledgeCategoryController extends Controller
     $categoryTree = collect();
     $selectedCategory = null;
     $editableCategories = collect();
-    $items = collect();
+    $items = new LengthAwarePaginator(
+        collect(),
+        0,
+        50,
+        1,
+        [
+            'path' => $request->url(),
+            'query' => $request->query(),
+        ]
+    );$items = collect();
     $globalParentOptions = collect();
 
     // Expanded ids from request
@@ -73,7 +83,32 @@ class KnowledgeCategoryController extends Controller
             $filters['categoryid'] = (int) $selectedCategory->id;
 
             // Items under selected category
+            $itemColumns = [
+                'id',
+                'primarycategoryid',
+                'itemname',
+                'itemtype',
+                'itemstatus',
+                'summary',
+                'startdate',
+                'enddate',
+                'nextreviewdate',
+                'sortorder',
+                'isfeatured',
+                'isactive',
+            ];
+
+            /*
+            * detailednotes is only selected when it is needed for the current
+            * full-text-style LIKE search. This avoids loading large Bible study
+            * content during normal category browsing.
+            */
+            if ($filters['search'] !== '') {
+                $itemColumns[] = 'detailednotes';
+            }
+
             $itemQuery = KnowledgeItem::query()
+                ->select($itemColumns)
                 ->where('primarycategoryid', $selectedCategory->id)
                 ->with([
                     'tagLinks.tag',
@@ -98,7 +133,9 @@ class KnowledgeCategoryController extends Controller
                 $itemQuery->where('itemstatus', $filters['itemstatus']);
             }
 
-            $items = $itemQuery->get();
+            $items = $itemQuery
+                ->paginate(50)
+                ->withQueryString();
 
             // Immediate children for bulk-edit block
             $editableCategories = $allCategories
@@ -165,6 +202,13 @@ class KnowledgeCategoryController extends Controller
     }
 
     $itemStatuses = KnowledgeItem::query()
+        ->when(
+            $selectedCategory,
+            fn ($query) => $query->where(
+                'primarycategoryid',
+                $selectedCategory->id
+            )
+        )
         ->whereNotNull('itemstatus')
         ->where('itemstatus', '!=', '')
         ->distinct()
