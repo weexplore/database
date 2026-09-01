@@ -42,34 +42,70 @@ class BudgetLineController extends Controller
         $endOfYear = Carbon::create($budget->financialyear, 6, 30)->toDateString();
 
         /*
-         * Category-row actuals are display amounts. Payments remain positive
-         * expenses because payment transaction-line values are stored positive.
-         * Transfers retain their recorded signs.
-         */
+        * Actuals are collected as display amounts by budget category:
+        *
+        * - Receipt categories: positive incoming amounts.
+        * - Payment categories: positive expense amounts. They are subtracted later
+        *   by entityNetMovementMultiplier().
+        * - Transfer categories: retain cash-direction sign:
+        *      receipt / transfer-in = positive;
+        *      payment / transfer-out = negative.
+        *
+        * This makes Budget, Revised, and Actual section totals comparable and lets
+        * the final net formula consistently be:
+        *
+        * Receipts - Payments + Transfers
+        */
         $actualRows = DB::table('cashbook_transaction_lines as line')
-    ->join('cashbook_transactions as txn', 'txn.id', '=', 'line.transactionid')
-    ->join('cashbook_categories as category', 'category.id', '=', 'line.categoryid')
-    ->join('cashbook_category_types as categoryType', 'categoryType.id', '=', 'category.categorytypeid')
-    ->where('txn.legalentityid', $legalEntityId)
-    ->whereBetween('txn.transactiondate', [$startOfYear, $endOfYear])
-    ->whereNotNull('line.categoryid')
-    ->selectRaw('
-        line.categoryid,
-        MONTH(txn.transactiondate) AS calendar_month,
-        SUM(
-            CASE
-                WHEN LOWER(categoryType.typecode) = "transfer"
-                     AND txn.transactionkind = "payment"
-                    THEN -1 * line.amount
-                ELSE line.amount
-            END
-        ) AS total
-    ')
-    ->groupBy(
-        'line.categoryid',
-        DB::raw('MONTH(txn.transactiondate)')
-    )
-    ->get();
+            ->join('cashbook_transactions as txn', 'txn.id', '=', 'line.transactionid')
+            ->join('cashbook_categories as category', 'category.id', '=', 'line.categoryid')
+            ->join(
+                'cashbook_category_types as categoryType',
+                'categoryType.id',
+                '=',
+                'category.categorytypeid'
+            )
+            ->where('txn.legalentityid', $legalEntityId)
+            ->whereBetween('txn.transactiondate', [$startOfYear, $endOfYear])
+            ->whereNotNull('line.categoryid')
+            ->selectRaw("
+                line.categoryid,
+                MONTH(txn.transactiondate) AS calendar_month,
+
+                SUM(
+                    CASE
+                        /*
+                        * Transfer category rows must retain their direction:
+                        * payment = transfer out = negative;
+                        * receipt = transfer in = positive.
+                        *
+                        * ABS protects this calculation if historic transaction-line
+                        * values happen to contain either positive or negative signs.
+                        */
+                        WHEN LOWER(TRIM(categoryType.typecode)) IN ('transfer', 'transfers')
+                            AND LOWER(TRIM(txn.transactionkind)) = 'payment'
+                        THEN -ABS(line.amount)
+
+                        WHEN LOWER(TRIM(categoryType.typecode)) IN ('transfer', 'transfers')
+                            AND LOWER(TRIM(txn.transactionkind)) = 'receipt'
+                        THEN ABS(line.amount)
+
+                        /*
+                        * Receipt and payment category rows are display values:
+                        * both remain positive here.
+                        *
+                        * Payments are turned into an outflow later by:
+                        * entityNetMovementMultiplier('payment') => -1
+                        */
+                        ELSE ABS(line.amount)
+                    END
+                ) AS total
+            ")
+            ->groupBy(
+                'line.categoryid',
+                DB::raw('MONTH(txn.transactiondate)')
+            )
+            ->get();
 
         $actualMap = [];
 
@@ -122,12 +158,28 @@ class BudgetLineController extends Controller
             }
         }
 
+        /*
+        * Gross activity totals:
+        *
+        * These are useful only where you want to show total budget activity
+        * without treating payments as a cash outflow.
+        *
+        * Gross = Receipts + Payments + Transfers
+        */
         $budgetOverallTotals = [
             'adopted' => array_fill(1, 12, 0.00),
             'revised' => array_fill(1, 12, 0.00),
             'actuals' => array_fill(1, 12, 0.00),
         ];
 
+        /*
+        * Net cash movement totals:
+        *
+        * Net movement = Receipts - Payments + Transfers
+        *
+        * This is the total that should be presented as the principal budget
+        * total / expected cash movement / actual cash movement.
+        */
         $budgetNetMovementTotals = [
             'adopted' => array_fill(1, 12, 0.00),
             'revised' => array_fill(1, 12, 0.00),
@@ -135,12 +187,60 @@ class BudgetLineController extends Controller
         ];
 
         foreach ($budgetSectionTotals as $typeCode => $section) {
-            $multiplier = $this->entityNetMovementMultiplier($typeCode);
+            /*
+            * Normalise category type codes so variations such as "receipt",
+            * "receipts", "income", "payment", and "payments" are handled
+            * deliberately and consistently.
+            */
+            $normalisedTypeCode = strtolower(trim((string) $typeCode));
+
+            $multiplier = match ($normalisedTypeCode) {
+                /*
+                * Cash coming in increases available cash.
+                */
+                'receipt',
+                'receipts',
+                'income',
+                'incomes' => 1,
+
+                /*
+                * Cash paid out decreases available cash.
+                *
+                * Payment amounts are held/displayed as positive values, so they
+                * must be subtracted when calculating a net cash movement total.
+                */
+                'payment',
+                'payments',
+                'expense',
+                'expenses' => -1,
+
+                /*
+                * Transfers retain their recorded sign. A transfer in should be
+                * positive; a transfer out should be negative.
+                */
+                'transfer',
+                'transfers' => 1,
+
+                /*
+                * Do not silently treat unknown category types as receipts.
+                * Zero means they do not distort the cash movement total until
+                * their intended accounting treatment is defined.
+                */
+                default => 0,
+            };
 
             foreach ($monthLabels as $monthNo => $label) {
                 foreach (['adopted', 'revised', 'actuals'] as $field) {
                     $amount = (float) ($section[$field][$monthNo] ?? 0.00);
+
+                    /*
+                    * Gross activity: all displayed section values added together.
+                    */
                     $budgetOverallTotals[$field][$monthNo] += $amount;
+
+                    /*
+                    * Net movement: receipts - payments + transfers.
+                    */
                     $budgetNetMovementTotals[$field][$monthNo] += $multiplier * $amount;
                 }
             }
@@ -474,17 +574,25 @@ class BudgetLineController extends Controller
             : $calendarMonth + 6;
     }
 
-    private function entityNetMovementMultiplier(string $categoryTypeCode): int
-    {
-        return match (strtolower(trim($categoryTypeCode))) {
-            'receipt' => 1,
-            'payment' => -1,
-            // Transfers are normally internal to the legal entity and do not
-            // affect entity-level net movement. Their signed activity remains visible.
-            'transfer' => 0,
-            default => 1,
-        };
-    }
+    private function entityNetMovementMultiplier(string $typeCode): int
+{
+    return match (strtolower(trim($typeCode))) {
+        'receipt',
+        'receipts',
+        'income',
+        'incomes' => 1,
+
+        'payment',
+        'payments',
+        'expense',
+        'expenses' => -1,
+
+        'transfer',
+        'transfers' => 1,
+
+        default => 0,
+    };
+}
 
     private function clearRevisedActualFlags(BudgetLine $line): void
     {
@@ -627,4 +735,6 @@ class BudgetLineController extends Controller
             403
         );
     }
+
+    
 }

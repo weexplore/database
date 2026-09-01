@@ -227,13 +227,18 @@
                                         <input type="date"
                                             name="tasks[{{ $task->id }}][startdate]"
                                             value="{{ $task->startdate?->format('Y-m-d') }}"
+                                            data-task-startdate="{{ $task->id }}"
                                             class="w-full border-gray-300 rounded-md shadow-sm text-xs">
                                     </td>
-                                    <td class="px-3 py-2 text-xs text-gray-700">
-                                        <input type="date"
+                                   <td class="px-3 py-2 text-xs text-gray-700">
+                                        <input
+                                            type="date"
                                             name="tasks[{{ $task->id }}][duedate]"
                                             value="{{ $task->duedate?->format('Y-m-d') }}"
-                                            class="w-full border-gray-300 rounded-md shadow-sm text-xs">
+                                            min="{{ $task->startdate?->format('Y-m-d') }}"
+                                            data-task-duedate="{{ $task->id }}"
+                                            class="w-full border-gray-300 rounded-md shadow-sm text-xs"
+                                        >
                                     </td>
                                     <td class="px-3 py-2">
                                         <div class="flex flex-wrap gap-1">
@@ -292,4 +297,52 @@
             </div>
         </div>
     </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-task-startdate]').forEach(
+            function (startInput) {
+                const taskId = startInput.dataset.taskStartdate;
+
+                const dueInput = document.querySelector(
+                    '[data-task-duedate="' + taskId + '"]'
+                );
+
+                if (!dueInput) {
+                    return;
+                }
+
+                function setMinimumDueDate() {
+                    dueInput.min = startInput.value || '';
+                }
+
+                function correctDueDateAfterStartChange() {
+                    const startDate = startInput.value;
+                    const dueDate = dueInput.value;
+
+                    dueInput.min = startDate || '';
+
+                    if (!startDate) {
+                        return;
+                    }
+
+                    if (!dueDate || dueDate < startDate) {
+                        dueInput.value = startDate;
+                    }
+                }
+
+                setMinimumDueDate();
+
+                startInput.addEventListener(
+                    'change',
+                    correctDueDateAfterStartChange
+                );
+
+                startInput.addEventListener(
+                    'input',
+                    correctDueDateAfterStartChange
+                );
+            }
+        );
+    });
+</script>
 </x-app-layout>

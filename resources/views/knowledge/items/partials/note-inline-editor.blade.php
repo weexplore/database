@@ -98,6 +98,17 @@
                    min="0"
                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
         </div>
+        <div class="flex items-end pb-2">
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                <input
+                    type="checkbox"
+                    x-model="{{ $draftReference }}.isprivate"
+                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500"
+                >
+
+                <span>Private</span>
+            </label>
+        </div>
     </div>
 
 <div class="flex items-center justify-end gap-2 border-t border-gray-200 pt-4">

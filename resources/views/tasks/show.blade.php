@@ -124,16 +124,40 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-medium text-gray-600">Start date</label>
-                            <input type="date" name="startdate" value="{{ $task->startdate?->format('Y-m-d') }}"
-                                   class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm">
+                            <label class="block text-xs font-medium text-gray-600">
+                                Start date
+                            </label>
+
+                            <input
+                                id="main-task-startdate"
+                                type="date"
+                                name="startdate"
+                                value="{{ old('startdate', $task->startdate?->format('Y-m-d')) }}"
+                                class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"
+                            >
                         </div>
 
                         <div>
-                            <label class="block text-xs font-medium text-gray-600">Due date</label>
-                            <input type="date" name="duedate" value="{{ $task->duedate?->format('Y-m-d') }}"
-                                   class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm">
+                            <label class="block text-xs font-medium text-gray-600">
+                                Due date
+                            </label>
+
+                            <input
+                                id="main-task-duedate"
+                                type="date"
+                                name="duedate"
+                                value="{{ old('duedate', $task->duedate?->format('Y-m-d')) }}"
+                                min="{{ old('startdate', $task->startdate?->format('Y-m-d')) }}"
+                                class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"
+                            >
+
+                            @error('duedate')
+                                <p class="mt-1 text-xs text-red-600">
+                                    {{ $message }}
+                                </p>
+                            @enderror
                         </div>
+
                         <div>
                             <label class="block text-xs font-medium text-gray-600">
                                 Estimated effort (hours)
@@ -669,17 +693,26 @@
                                 </td>
 
                                 <td class="px-3 py-2 min-w-[145px]">
-                                    <input form="new-subtask-form"
+                                    <input
+                                        form="new-subtask-form"
+                                        id="new-subtask-startdate"
                                         type="date"
                                         name="startdate"
-                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                        value="{{ old('startdate') }}"
+                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                    >
                                 </td>
 
                                 <td class="px-3 py-2 min-w-[145px]">
-                                    <input form="new-subtask-form"
+                                    <input
+                                        form="new-subtask-form"
+                                        id="new-subtask-duedate"
                                         type="date"
                                         name="duedate"
-                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                        value="{{ old('duedate') }}"
+                                        min="{{ old('startdate') }}"
+                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                    >
                                 </td>
 
                                 <td class="px-3 py-2 min-w-[125px]">
@@ -745,19 +778,28 @@
                                     </td>
 
                                     <td class="px-3 py-2 min-w-[145px]">
-                                        <input form="subtask-form-{{ $sub->id }}"
+                                        <input
+                                            form="subtask-form-{{ $sub->id }}"
+                                            id="subtask-startdate-{{ $sub->id }}"
                                             type="date"
                                             name="startdate"
                                             value="{{ $sub->startdate?->format('Y-m-d') }}"
-                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                            data-subtask-startdate="{{ $sub->id }}"
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                        >
                                     </td>
 
                                     <td class="px-3 py-2 min-w-[145px]">
-                                        <input form="subtask-form-{{ $sub->id }}"
+                                        <input
+                                            form="subtask-form-{{ $sub->id }}"
+                                            id="subtask-duedate-{{ $sub->id }}"
                                             type="date"
                                             name="duedate"
                                             value="{{ $sub->duedate?->format('Y-m-d') }}"
-                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                            min="{{ $sub->startdate?->format('Y-m-d') }}"
+                                            data-subtask-duedate="{{ $sub->id }}"
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                        >
                                     </td>
 
                                     <td class="px-3 py-2 min-w-[125px]">
@@ -1530,5 +1572,86 @@
 
             updateToggleLabel();
         });
+        </script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                function bindDateRange(startInput, dueInput) {
+                    if (!startInput || !dueInput) {
+                        return;
+                    }
+
+                    /*
+                    * On initial page load, set the browser constraint only.
+                    * Do not silently alter existing saved dates.
+                    */
+                    function setMinimumDueDate() {
+                        dueInput.min = startInput.value || '';
+                    }
+
+                    /*
+                    * When the user deliberately changes Start, keep Due valid:
+                    * - blank Due becomes Start;
+                    * - earlier Due moves to Start;
+                    * - same/later Due remains unchanged.
+                    */
+                    function correctDueDateAfterStartChange() {
+                        const startDate = startInput.value;
+                        const dueDate = dueInput.value;
+
+                        dueInput.min = startDate || '';
+
+                        if (!startDate) {
+                            return;
+                        }
+
+                        if (!dueDate || dueDate < startDate) {
+                            dueInput.value = startDate;
+                        }
+                    }
+
+                    setMinimumDueDate();
+
+                    startInput.addEventListener(
+                        'change',
+                        correctDueDateAfterStartChange
+                    );
+
+                    startInput.addEventListener(
+                        'input',
+                        correctDueDateAfterStartChange
+                    );
+                }
+
+                /*
+                * Main task edit card.
+                */
+                bindDateRange(
+                    document.getElementById('main-task-startdate'),
+                    document.getElementById('main-task-duedate')
+                );
+
+                /*
+                * New inline subtask row.
+                */
+                bindDateRange(
+                    document.getElementById('new-subtask-startdate'),
+                    document.getElementById('new-subtask-duedate')
+                );
+
+                /*
+                * Existing inline subtask rows.
+                */
+                document.querySelectorAll('[data-subtask-startdate]').forEach(
+                    function (startInput) {
+                        const subtaskId = startInput.dataset.subtaskStartdate;
+
+                        const dueInput = document.querySelector(
+                            '[data-subtask-duedate="' + subtaskId + '"]'
+                        );
+
+                        bindDateRange(startInput, dueInput);
+                    }
+                );
+            });
         </script>
 </x-app-layout>

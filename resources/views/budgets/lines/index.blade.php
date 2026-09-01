@@ -477,12 +477,12 @@
                             </th>
                             <th class="px-3 py-2.5 text-right font-semibold tabular-nums whitespace-nowrap"
                                 style="background-color: #1e293b; color: #ffffff;">
-                                {{ number_format(array_sum($budgetOverallTotals['adopted']), 2) }}
+                                {{ number_format(array_sum($budgetNetMovementTotals['adopted']), 2) }}
                             </th>
                             @foreach ($monthLabels as $monthNo => $label)
                                 <th class="px-2 py-2.5 text-right font-semibold tabular-nums whitespace-nowrap"
                                     style="background-color: #1e293b; color: #ffffff;">
-                                    {{ number_format($budgetOverallTotals['adopted'][$monthNo] ?? 0, 2) }}
+                                    {{ number_format($budgetNetMovementTotals['adopted'][$monthNo] ?? 0, 2) }}
                                 </th>
                             @endforeach
                             @if (!$budget->isClosed())
@@ -495,11 +495,11 @@
                                 Entity Total — Revised
                             </th>
                             <th class="bg-slate-700 px-3 py-2.5 text-right font-semibold text-white tabular-nums whitespace-nowrap">
-                                {{ number_format(array_sum($budgetOverallTotals['revised']), 2) }}
+                                {{ number_format(array_sum($budgetNetMovementTotals['revised']), 2) }}
                             </th>
                             @foreach ($monthLabels as $monthNo => $label)
                                 <th class="bg-slate-700 px-2 py-2.5 text-right font-semibold text-white tabular-nums whitespace-nowrap">
-                                    {{ number_format($budgetOverallTotals['revised'][$monthNo] ?? 0, 2) }}
+                                    {{ number_format($budgetNetMovementTotals['revised'][$monthNo] ?? 0, 2) }}
                                 </th>
                             @endforeach
                             @if (!$budget->isClosed())
@@ -512,11 +512,11 @@
                                 Entity Total — Actuals
                             </th>
                             <th class="bg-slate-900 px-3 py-2.5 text-right font-semibold text-white tabular-nums whitespace-nowrap">
-                                {{ number_format(array_sum($budgetOverallTotals['actuals']), 2) }}
+                                {{ number_format(array_sum($budgetNetMovementTotals['actuals']), 2) }}
                             </th>
                             @foreach ($monthLabels as $monthNo => $label)
                                 <th class="bg-slate-900 px-2 py-2.5 text-right font-semibold text-white tabular-nums whitespace-nowrap">
-                                    {{ number_format($budgetOverallTotals['actuals'][$monthNo] ?? 0, 2) }}
+                                    {{ number_format($budgetNetMovementTotals['actuals'][$monthNo] ?? 0, 2) }}
                                 </th>
                             @endforeach
                             @if (!$budget->isClosed())

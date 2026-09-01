@@ -23,13 +23,24 @@
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div class="min-w-[260px] flex-1">
             <div class="flex flex-wrap items-center gap-2">
-                <a href="{{ route('knowledge.items.edit', [
-                        'knowledgeItem' => $knowledgeItem,
-                        'tab' => $reminder['tab'],
-                    ]) }}"
-                   class="text-sm font-semibold text-indigo-700 hover:underline">
-                    {{ $knowledgeItem->itemname }}
-                </a>
+                <div class="flex min-w-0 items-baseline gap-1.5">
+                    <a
+                        href="{{ route('knowledge.items.edit', [
+                            'knowledgeItem' => $knowledgeItem,
+                            'tab' => $reminder['tab'] ?? 'details',
+                            'return_to' => request()->fullUrl(),
+                        ]) }}"
+                        class="shrink-0 text-sm font-semibold text-indigo-700 hover:underline"
+                    >
+                        {{ $knowledgeItem->itemname }}
+                    </a>
+
+                    @if (filled($reminder['summaryPreview'] ?? null))
+                        <span class="min-w-0 truncate text-sm text-gray-700">
+                            — {{ $reminder['summaryPreview'] }}
+                        </span>
+                    @endif
+                </div>
 
                 <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
                     {{ $reminder['title'] }}

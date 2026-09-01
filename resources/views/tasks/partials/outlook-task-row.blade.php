@@ -7,7 +7,7 @@
     <div class="flex flex-col gap-2">
 
         {{-- Compact main line --}}
-        <div class="flex flex-wrap items-end gap-x-3 gap-y-2">
+        <div class="flex flex-wrap items-start gap-x-3 gap-y-2">
 
             {{-- Task identity --}}
             <div class="min-w-[260px] flex-1">
@@ -104,13 +104,36 @@
                     Actual
                 </label>
 
-                <input type="number"
-                       name="actualefforthours"
-                       min="0"
-                       max="9999.99"
-                       step="0.25"
-                       value="{{ $task->actualefforthours }}"
-                       class="mt-0.5 w-full rounded border-gray-300 px-2 py-1.5 text-xs shadow-sm">
+                <input
+                    type="number"
+                    name="actualefforthours"
+                    min="0"
+                    max="9999.99"
+                    step="0.25"
+                    value="{{ $task->actualefforthours }}"
+                    class="mt-0.5 w-full rounded border-gray-300 px-2 py-1.5 text-xs shadow-sm"
+                >
+            </div>
+
+            {{-- Priority --}}
+            <div class="w-24">
+                <label class="block text-[11px] font-medium text-gray-500">
+                    Priority
+                </label>
+
+                <select
+                    name="priority"
+                    class="mt-0.5 w-full rounded border-gray-300 px-2 py-1.5 text-xs shadow-sm"
+                >
+                    @foreach (['low', 'medium', 'high', 'urgent'] as $priority)
+                        <option
+                            value="{{ $priority }}"
+                            @selected($task->priority === $priority)
+                        >
+                            {{ ucfirst($priority) }}
+                        </option>
+                    @endforeach
+                </select>
             </div>
 
             {{-- Status --}}
@@ -119,61 +142,92 @@
                     Status
                 </label>
 
-                <select name="statusid"
-                        required
-                        class="mt-0.5 w-full rounded border-gray-300 px-2 py-1.5 text-xs shadow-sm">
+                <select
+                    name="statusid"
+                    required
+                    class="mt-0.5 w-full rounded border-gray-300 px-2 py-1.5 text-xs shadow-sm"
+                >
                     @foreach (($statuses[$task->projectid] ?? collect()) as $status)
-                        <option value="{{ $status->id }}"
-                                @selected((int) $task->statusid === (int) $status->id)>
+                        <option
+                            value="{{ $status->id }}"
+                            @selected((int) $task->statusid === (int) $status->id)
+                        >
                             {{ $status->statuslabel }}
                         </option>
                     @endforeach
                 </select>
             </div>
 
-            {{-- Due date and actions --}}
+            {{-- Start date --}}
+            <div class="w-32 shrink-0">
+                <label class="block text-[11px] font-medium text-gray-500">
+                    Start date
+                </label>
+
+                <input
+                    id="outlook-start-date-{{ $task->id }}"
+                    type="date"
+                    name="startdate"
+                    value="{{ $task->startdate?->format('Y-m-d') }}"
+                    data-outlook-start-date="{{ $task->id }}"
+                    class="mt-0.5 w-full rounded border-gray-300 px-2 py-1.5 text-xs shadow-sm"
+                >
+            </div>
+
+            {{-- Due date --}}
             <div class="w-40 shrink-0">
                 <label class="block text-[11px] font-medium text-gray-500">
                     Due date
                 </label>
 
-                <input id="outlook-due-date-{{ $task->id }}"
+                <input
+                    id="outlook-due-date-{{ $task->id }}"
                     type="date"
                     name="duedate"
                     value="{{ $task->duedate?->format('Y-m-d') }}"
-                    class="mt-0.5 w-full rounded border-gray-300 px-2 py-1.5 text-xs shadow-sm">
+                    min="{{ $task->startdate?->format('Y-m-d') }}"
+                    data-outlook-due-date="{{ $task->id }}"
+                    class="mt-0.5 w-full rounded border-gray-300 px-2 py-1.5 text-xs shadow-sm"
+                >
 
-                <div class="mt-1">
-                    <div class="mt-1 flex gap-1 whitespace-nowrap">
-                        <button type="button"
-                                data-reschedule-task="{{ $task->id }}"
-                                data-date="{{ $today->toDateString() }}"
-                                class="text-[9px] leading-none text-indigo-700 hover:underline">
-                            Today
-                        </button>
+                <div class="mt-1 flex gap-1 whitespace-nowrap">
+                    <button
+                        type="button"
+                        data-reschedule-task="{{ $task->id }}"
+                        data-date="{{ $today->toDateString() }}"
+                        class="text-[9px] leading-none text-indigo-700 hover:underline"
+                    >
+                        Today
+                    </button>
 
-                        <button type="button"
-                                data-reschedule-task="{{ $task->id }}"
-                                data-date="{{ $today->copy()->addDay()->toDateString() }}"
-                                class="text-[9px] leading-none text-indigo-700 hover:underline">
-                            Tomorrow
-                        </button>
+                    <button
+                        type="button"
+                        data-reschedule-task="{{ $task->id }}"
+                        data-date="{{ $today->copy()->addDay()->toDateString() }}"
+                        class="text-[9px] leading-none text-indigo-700 hover:underline"
+                    >
+                        Tomorrow
+                    </button>
 
-                        <button type="button"
-                                data-reschedule-task="{{ $task->id }}"
-                                data-date="{{ $today->copy()->next(\Carbon\Carbon::MONDAY)->toDateString() }}"
-                                class="text-[9px] leading-none text-indigo-700 hover:underline">
-                            Mon
-                        </button>
-                    </div>
-
-                    <div class="mt-1 flex justify-end">
-                        <button type="submit"
-                                class="inline-flex items-center justify-center rounded bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700">
-                            Save
-                        </button>
-                    </div>
+                    <button
+                        type="button"
+                        data-reschedule-task="{{ $task->id }}"
+                        data-date="{{ $today->copy()->next(\Carbon\Carbon::MONDAY)->toDateString() }}"
+                        class="text-[9px] leading-none text-indigo-700 hover:underline"
+                    >
+                        Mon
+                    </button>
                 </div>
+            </div>
+
+            {{-- Save --}}
+            <div class="shrink-0 pt-[21px]">
+                <button
+                    type="submit"
+                    class="inline-flex items-center justify-center rounded bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700"
+                >
+                    Save
+                </button>
             </div>
         </div>
 

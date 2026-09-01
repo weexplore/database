@@ -35,6 +35,7 @@ protected $fillable = [
     'nextreviewdate',
     'sortorder',
     'isfeatured',
+    'iswatchlist',
     'isactive',
 ];
 
@@ -48,6 +49,7 @@ protected $casts = [
     'nextreviewdate' => 'date',
     'sortorder' => 'integer',
     'isfeatured' => 'boolean',
+    'iswatchlist' => 'boolean',
     'isactive' => 'boolean',
 ];
 

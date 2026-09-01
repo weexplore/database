@@ -695,6 +695,7 @@ class KnowledgeItemController extends Controller
             'nextreviewdate' => ['nullable', 'date'],
             'sortorder' => ['nullable', 'integer', 'min:0'],
             'isfeatured' => ['nullable', 'boolean'],
+            'iswatchlist' => ['nullable', 'boolean'],
             'isactive' => ['nullable', 'boolean'],
             
         ], [], [
@@ -755,6 +756,7 @@ class KnowledgeItemController extends Controller
             'nextreviewdate' => $validated['nextreviewdate'] ?? null,
             'sortorder' => $validated['sortorder'] ?? 0,
             'isfeatured' => (bool) ($validated['isfeatured'] ?? false),
+            'iswatchlist' => (bool) ($validated['iswatchlist'] ?? false),
             'isactive' => (bool) ($validated['isactive'] ?? false),
         ]);
 

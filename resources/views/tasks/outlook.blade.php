@@ -226,6 +226,7 @@
                                 id="outlook-duedate"
                                 name="duedate"
                                 type="date"
+                                min="{{ old('startdate') }}"
                                 value="{{ old('duedate', $today->toDateString()) }}"
                                 class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                             >
@@ -327,6 +328,101 @@
                 </div>
             </section>
 
+            <section class="overflow-hidden border border-indigo-200 bg-white shadow-sm sm:rounded-lg">
+                <div class="border-b border-indigo-200 bg-indigo-50 px-4 py-3">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-indigo-800">
+                                Knowledge Watchlist
+                            </h3>
+
+                            <p class="mt-1 text-xs text-indigo-700">
+                                Active Knowledge Items selected for ongoing monitoring.
+                            </p>
+                        </div>
+
+                        <span class="text-xs font-medium text-indigo-800">
+                            {{ $watchlistItems->count() }}
+                            item{{ $watchlistItems->count() === 1 ? '' : 's' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="p-4">
+                    @forelse ($watchlistItems as $watchlistItem)
+                        @php
+                            $reviewDate = $watchlistItem->nextreviewdate;
+                            $daysUntilReview = $reviewDate
+                                ? $today->diffInDays($reviewDate, false)
+                                : null;
+                        @endphp
+
+                        <div class="border-b border-gray-200 py-3 last:border-b-0">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div class="min-w-[260px] flex-1">
+                                   <div class="flex min-w-0 items-baseline gap-1.5">
+                                        <a
+                                            href="{{ route('knowledge.items.edit', [
+                                                'knowledgeItem' => $watchlistItem,
+                                                'return_to' => request()->fullUrl(),
+                                            ]) }}"
+                                            class="shrink-0 text-sm font-semibold text-indigo-700 hover:underline"
+                                        >
+                                            {{ $watchlistItem->itemname }}
+                                        </a>
+
+                                        @if (filled($watchlistItem->summary))
+                                            <span class="min-w-0 truncate text-sm text-gray-700">
+                                                — {{ \Illuminate\Support\Str::limit(
+                                                    trim(preg_replace('/\s+/', ' ', strip_tags($watchlistItem->summary))),
+                                                    140
+                                                ) }}
+                                            </span>
+                                        @endif
+                                    </div>
+
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        {{ $watchlistItem->primaryCategory?->categoryname
+                                            ?? 'Uncategorised' }}
+
+                                        @if ($watchlistItem->itemType?->typename)
+                                            · {{ $watchlistItem->itemType->typename }}
+                                        @endif
+
+                                        @if (filled($watchlistItem->itemstatus))
+                                            · {{ ucfirst($watchlistItem->itemstatus) }}
+                                        @endif
+                                    </p>
+                                </div>
+
+                                <div class="shrink-0 text-right">
+                                    @if (! $reviewDate)
+                                        <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-700">
+                                            No review date
+                                        </span>
+                                    @elseif ($daysUntilReview < 0)
+                                        <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-800">
+                                            Review overdue
+                                        </span>
+                                    @elseif ($daysUntilReview === 0)
+                                        <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                                            Review today
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                                            Review {{ $reviewDate->format('d M Y') }}
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-sm text-gray-500">
+                            No active Knowledge Items are on the watchlist.
+                        </p>
+                    @endforelse
+                </div>
+            </section>
             {{-- Due today --}}
             <section class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-amber-200">
                 <div class="px-4 py-3 border-b border-amber-200 bg-amber-50">
@@ -638,6 +734,23 @@
             </section>
             {{-- Knowledge Reminders --}}
             @php
+                $knowledgeSummaryPreview = function ($knowledgeItem): ?string {
+                    if (! $knowledgeItem || blank($knowledgeItem->summary)) {
+                        return null;
+                    }
+
+                    $summary = trim(preg_replace(
+                        '/\s+/',
+                        ' ',
+                        strip_tags($knowledgeItem->summary)
+                    ));
+
+                    return filled($summary)
+                        ? \Illuminate\Support\Str::limit($summary, 140)
+                        : null;
+                };
+            @endphp
+            @php
                 $overdueKnowledgeReminders = collect()
                     ->concat($overdueKnowledgeItemReviews->map(fn ($item) => [
                         'type' => 'item_review',
@@ -647,6 +760,7 @@
                         'detail' => $item->reviewnotes
                             ? \Illuminate\Support\Str::limit(strip_tags($item->reviewnotes), 120)
                             : null,
+                        'summaryPreview' => $knowledgeSummaryPreview($item),
                         'tab' => 'details',
                     ]))
                     ->concat($overdueKnowledgeNoteReviews->map(fn ($note) => [
@@ -656,6 +770,7 @@
                         'title' => 'Note review',
                         'detail' => $note->title
                             ?: ($note->notetype ? ucfirst($note->notetype) . ' note' : 'Knowledge note'),
+                        'summaryPreview' => $knowledgeSummaryPreview($item),
                         'tab' => 'notes',
                     ]))
                     ->concat($overdueKnowledgeReviewFollowUps->map(fn ($reviewLog) => [
@@ -666,6 +781,7 @@
                         'detail' => $reviewLog->reviewtype
                             ? ucfirst(str_replace('_', ' ', $reviewLog->reviewtype))
                             : null,
+                        'summaryPreview' => $knowledgeSummaryPreview($item),
                         'tab' => 'details',
                     ]))
                     ->sortBy('dueDate')
@@ -680,6 +796,7 @@
                         'detail' => $item->reviewnotes
                             ? \Illuminate\Support\Str::limit(strip_tags($item->reviewnotes), 120)
                             : null,
+                        'summaryPreview' => $knowledgeSummaryPreview($item),
                         'tab' => 'details',
                     ]))
                     ->concat($knowledgeNoteReviewsDueToday->map(fn ($note) => [
@@ -689,6 +806,7 @@
                         'title' => 'Note review',
                         'detail' => $note->title
                             ?: ($note->notetype ? ucfirst($note->notetype) . ' note' : 'Knowledge note'),
+                        'summaryPreview' => $knowledgeSummaryPreview($item),
                         'tab' => 'notes',
                     ]))
                     ->concat($knowledgeReviewFollowUpsDueToday->map(fn ($reviewLog) => [
@@ -699,6 +817,7 @@
                         'detail' => $reviewLog->reviewtype
                             ? ucfirst(str_replace('_', ' ', $reviewLog->reviewtype))
                             : null,
+                        'summaryPreview' => $knowledgeSummaryPreview($item),
                         'tab' => 'details',
                     ]))
                     ->sortBy('dueDate')
@@ -713,6 +832,7 @@
                         'detail' => $item->reviewnotes
                             ? \Illuminate\Support\Str::limit(strip_tags($item->reviewnotes), 120)
                             : null,
+                        'summaryPreview' => $knowledgeSummaryPreview($item),
                         'tab' => 'details',
                     ]))
                     ->concat($upcomingKnowledgeNoteReviews->map(fn ($note) => [
@@ -732,6 +852,7 @@
                         'detail' => $reviewLog->reviewtype
                             ? ucfirst(str_replace('_', ' ', $reviewLog->reviewtype))
                             : null,
+                        'summaryPreview' => $knowledgeSummaryPreview($item),
                         'tab' => 'details',
                     ]))
                     ->sortBy('dueDate')
@@ -772,6 +893,8 @@
                     @endforelse
                 </div>
             </section>
+
+            
 
             <section class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-amber-200">
                 <div class="px-4 py-3 border-b border-amber-200 bg-amber-50">
@@ -1319,18 +1442,58 @@
         /*
          * Existing task-row reschedule buttons.
          */
+               function keepOutlookTaskDateRangeValid(taskId, preferredDueDate = null) {
+            const startDateInput = document.getElementById(
+                'outlook-start-date-' + taskId
+            );
+
+            const dueDateInput = document.getElementById(
+                'outlook-due-date-' + taskId
+            );
+
+            if (!dueDateInput) {
+                return;
+            }
+
+            const startDate = startDateInput?.value || '';
+
+            dueDateInput.min = startDate;
+
+            if (preferredDueDate !== null) {
+                dueDateInput.value = preferredDueDate;
+            }
+
+            /*
+             * When Start moves later, or a quick-reschedule date is earlier
+             * than Start, preserve the rule Due Date >= Start Date.
+             */
+            if (startDate && (!dueDateInput.value || dueDateInput.value < startDate)) {
+                dueDateInput.value = startDate;
+            }
+        }
+
+        document.querySelectorAll('[data-outlook-start-date]').forEach(
+            function (startDateInput) {
+                const taskId = startDateInput.dataset.outlookStartDate;
+
+                keepOutlookTaskDateRangeValid(taskId);
+
+                startDateInput.addEventListener('change', function () {
+                    keepOutlookTaskDateRangeValid(taskId);
+                });
+
+                startDateInput.addEventListener('input', function () {
+                    keepOutlookTaskDateRangeValid(taskId);
+                });
+            }
+        );
+
         document.querySelectorAll('[data-reschedule-task]').forEach(function (button) {
             button.addEventListener('click', function () {
-                const taskId = button.dataset.rescheduleTask;
-                const date = button.dataset.date;
-
-                const dueDateInput = document.getElementById(
-                    'outlook-due-date-' + taskId
+                keepOutlookTaskDateRangeValid(
+                    button.dataset.rescheduleTask,
+                    button.dataset.date
                 );
-
-                if (dueDateInput) {
-                    dueDateInput.value = date;
-                }
             });
         });
 
@@ -1441,6 +1604,64 @@
             closeQuickAddTaskButton.addEventListener('click', function () {
                 setQuickAddTaskVisibility(false);
             });
+        }
+                /*
+         * Quick Add Task: do not allow a due date earlier than the selected
+         * start date. Server-side Laravel validation remains authoritative.
+         */
+        const outlookStartDateInput = document.getElementById(
+            'outlook-startdate'
+        );
+
+        const outlookDueDateInput = document.getElementById(
+            'outlook-duedate'
+        );
+
+        function syncOutlookDueDateMinimum() {
+            if (!outlookStartDateInput || !outlookDueDateInput) {
+                return;
+            }
+
+            const startDate = outlookStartDateInput.value;
+            const dueDate = outlookDueDateInput.value;
+
+            /*
+            * A blank Start date means there is no date-range constraint.
+            * Keep the existing Due date unchanged in that case.
+            */
+            if (!startDate) {
+                outlookDueDateInput.min = '';
+                return;
+            }
+
+            outlookDueDateInput.min = startDate;
+
+            /*
+            * Quick Add convenience:
+            * - blank Due date becomes the Start date;
+            * - an earlier Due date moves forward to the Start date;
+            * - a valid later Due date is preserved.
+            *
+            * ISO YYYY-MM-DD strings sort chronologically, so direct string
+            * comparison is valid for native date-input values.
+            */
+            if (!dueDate || dueDate < startDate) {
+                outlookDueDateInput.value = startDate;
+            }
+        }
+
+        if (outlookStartDateInput && outlookDueDateInput) {
+            syncOutlookDueDateMinimum();
+
+            outlookStartDateInput.addEventListener(
+                'change',
+                syncOutlookDueDateMinimum
+            );
+
+            outlookStartDateInput.addEventListener(
+                'input',
+                syncOutlookDueDateMinimum
+            );
         }
     });
 </script>

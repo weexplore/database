@@ -126,8 +126,12 @@ class TaskController extends Controller
             'description'  => ['nullable', 'string'],
             'priority'     => ['nullable', 'in:low,medium,high,urgent'],
             'assigneeid'   => ['nullable', 'exists:users,id'],
-            'startdate'    => ['nullable', 'date'],
-            'duedate'      => ['nullable', 'date'],
+            'startdate' => ['nullable', 'date'],
+            'duedate' => [
+                'nullable',
+                'date',
+                'after_or_equal:startdate',
+            ],
             'labelids'     => ['nullable', 'array'],
             'labelids.*'   => ['integer', 'exists:labels,id'],
             'estimatedefforthours' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
@@ -136,6 +140,8 @@ class TaskController extends Controller
             'statuscomment' => ['nullable', 'string'],
             'knowledgeitemids' => ['nullable', 'array'],
             'knowledgeitemids.*' => ['integer', 'exists:knowledgeitems,id'],
+            'duedate.after_or_equal' =>
+                'The due date must be on or after the start date.',
         ]);
 
         if (!empty($data['parenttaskid'])) {
@@ -209,8 +215,12 @@ class TaskController extends Controller
             'description'  => ['nullable', 'string'],
             'priority'     => ['nullable', 'in:low,medium,high,urgent'],
             'assigneeid'   => ['nullable', 'exists:users,id'],
-            'startdate'    => ['nullable', 'date'],
-            'duedate'      => ['nullable', 'date'],
+            'startdate' => ['nullable', 'date'],
+            'duedate' => [
+                'nullable',
+                'date',
+                'after_or_equal:startdate',
+            ],
             'labelids'     => ['nullable', 'array'],
             'labelids.*'   => ['integer', 'exists:labels,id'],
             'estimatedefforthours' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
@@ -219,6 +229,8 @@ class TaskController extends Controller
             'statuscomment' => ['nullable', 'string'],
             'knowledgeitemids' => ['nullable', 'array'],
             'knowledgeitemids.*' => ['integer', 'exists:knowledgeitems,id'],
+            'duedate.after_or_equal' =>
+                'The due date must be on or after the start date.',
         ]);
 
         foreach ([
@@ -722,6 +734,7 @@ class TaskController extends Controller
         ->whereDate('startdate', '<=', $today->toDateString())
         ->whereDate('duedate', '>', $today->toDateString())
         ->orderBy('duedate')
+        ->orderby('startdate')
         ->orderBy('priority')
         ->orderBy('tasktitle')
         ->get();
@@ -1031,6 +1044,26 @@ class TaskController extends Controller
         ->orderBy('itemname')
         ->get();
 
+    $watchlistItems = KnowledgeItem::query()
+        ->with([
+            'primaryCategory:id,categoryname',
+            'itemType:id,typename',
+        ])
+        ->where('isactive', 1)
+        ->where('iswatchlist', 1)
+        ->orderBy('itemname')
+        ->get([
+            'id',
+            'primarycategoryid',
+            'itemname',
+            'itemtype',
+            'itemstatus',
+            'summary',
+            'nextreviewdate',
+            'isfeatured',
+            'iswatchlist',
+        ]);
+
     $upcomingKnowledgeItemReviews = (clone $knowledgeReviewBaseQuery)
         ->whereDate('nextreviewdate', '>', $today->toDateString())
         ->whereDate('nextreviewdate', '<=', $weekEnd->toDateString())
@@ -1249,6 +1282,8 @@ class TaskController extends Controller
         'knowledgeNoteReviewsDueToday',
         'upcomingKnowledgeNoteReviews',
 
+        'watchlistItems',
+
         'overdueKnowledgeReviewFollowUps',
         'knowledgeReviewFollowUpsDueToday',
         'upcomingKnowledgeReviewFollowUps',
@@ -1374,31 +1409,72 @@ public function storeFromOutlook(Request $request): RedirectResponse
         );
 }
 
-    public function updateFromOutlook(Request $request, Task $task)
-{
-    $data = $request->validate([
-        'duedate' => ['nullable', 'date'],
-        'statusid' => ['required', 'exists:task_statuses,id'],
-        'statuscomment' => ['nullable', 'string'],
-        'estimatedefforthours' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
-        'actualefforthours' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
-    ]);
+    public function updateFromOutlook(
+        Request $request,
+        Task $task
+    ): RedirectResponse {
+        $data = $request->validate([
+            'startdate' => ['nullable', 'date'],
 
-    $status = TaskStatus::findOrFail($data['statusid']);
+            'duedate' => [
+                'nullable',
+                'date',
+                'after_or_equal:startdate',
+            ],
 
-    $task->update([
-        'duedate' => $data['duedate'] ?: null,
-        'statusid' => $status->id,
-        'statuscomment' => $data['statuscomment'] ?? null,
-        'estimatedefforthours' => $data['estimatedefforthours'] ?? null,
-        'actualefforthours' => $data['actualefforthours'] ?? null,
-        'completedat' => $status->iscompletedstatus
-            ? ($task->completedat ?? now())
-            : null,
-    ]);
+            'priority' => [
+                'required',
+                'in:low,medium,high,urgent',
+            ],
 
-    return back()->with('success', 'Task updated.');
-}
+            'statusid' => [
+                'required',
+                'exists:task_statuses,id',
+            ],
+
+            'statuscomment' => ['nullable', 'string'],
+
+            'estimatedefforthours' => [
+                'nullable',
+                'numeric',
+                'min:0',
+                'max:9999.99',
+            ],
+
+            'actualefforthours' => [
+                'nullable',
+                'numeric',
+                'min:0',
+                'max:9999.99',
+            ],
+        ], [
+            'duedate.after_or_equal' =>
+                'The due date must be on or after the start date.',
+        ]);
+
+        $status = TaskStatus::query()
+            ->whereKey($data['statusid'])
+            ->where('projectid', $task->projectid)
+            ->where('isactive', 1)
+            ->firstOrFail();
+
+        $task->update([
+            'startdate' => $data['startdate'] ?: null,
+            'duedate' => $data['duedate'] ?: null,
+            'priority' => $data['priority'],
+            'statusid' => $status->id,
+            'statuscomment' => $data['statuscomment'] ?? null,
+            'estimatedefforthours' =>
+                $data['estimatedefforthours'] ?? null,
+            'actualefforthours' =>
+                $data['actualefforthours'] ?? null,
+            'completedat' => $status->iscompletedstatus
+                ? ($task->completedat ?? now())
+                : null,
+        ]);
+
+        return back()->with('success', 'Task updated.');
+    }
 
     public function makeSubtask(Request $request, Task $task)
     {

@@ -256,6 +256,20 @@
                 </label>
 
                 <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                    <input type="hidden" name="iswatchlist" value="0">
+
+                    <input
+                        type="checkbox"
+                        name="iswatchlist"
+                        value="1"
+                        class="rounded border-gray-300 text-blue-600 shadow-sm"
+                        @checked(old('iswatchlist', $knowledgeItem->iswatchlist ?? false))
+                    >
+
+                    Watchlist
+                </label>
+
+                <label class="inline-flex items-center gap-2 text-sm text-gray-700">
                     <input type="hidden" name="isactive" value="0">
                     <input type="checkbox"
                            name="isactive"
