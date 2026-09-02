@@ -164,11 +164,24 @@
         <table class="min-w-full divide-y divide-gray-200 text-sm">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-4 py-3 text-left font-medium text-gray-700">File</th>
-                    <th class="px-4 py-3 text-left font-medium text-gray-700">Type</th>
-                    <th class="px-4 py-3 text-left font-medium text-gray-700">Uploaded</th>
-                    <th class="px-4 py-3 text-left font-medium text-gray-700">Size</th>
-                    <th class="px-4 py-3 text-right font-medium text-gray-700">Actions</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                        Attachment
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                        Type
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                        Uploaded
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                        Expiry
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                        Size
+                    </th>
+                    <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                        Actions
+                    </th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 bg-white">
@@ -217,6 +230,30 @@
                                 <div class="text-xs text-gray-500 mt-1">
                                     {{ $attachment->uploadedby }}
                                 </div>
+                            @endif
+                        </td>
+
+                        <td class="px-4 py-3 align-top">
+                            @if($pivot?->expirydate)
+                                <div class="text-gray-900">
+                                    {{ $pivot->expirydate->format('d M Y') }}
+                                </div>
+
+                                @if($pivot->expirydate->isPast() && !$pivot->expirydate->isToday())
+                                    <div class="mt-1 text-xs text-red-600">
+                                        Expired
+                                    </div>
+                                @elseif($pivot->expirydate->isToday())
+                                    <div class="mt-1 text-xs text-amber-600">
+                                        Expires today
+                                    </div>
+                                @elseif($pivot->expirydate->lte(today()->addDays(14)))
+                                    <div class="mt-1 text-xs text-amber-600">
+                                        Expires soon
+                                    </div>
+                                @endif
+                            @else
+                                <span class="text-gray-400">—</span>
                             @endif
                         </td>
 

@@ -75,46 +75,45 @@ class KnowledgeAttachmentController extends Controller
     ]))->with('success', 'Attachment uploaded successfully.');
 }
 
-    public function edit(Request $request, KnowledgeItem $knowledgeItem, KnowledgeAttachment $knowledgeAttachment): View
-{
+    public function edit(
+        Request $request,
+        KnowledgeItem $knowledgeItem,
+        KnowledgeAttachment $knowledgeAttachment
+    ): View {
+        $knowledgeAttachment = $knowledgeItem->attachments()
+            ->where('knowledgeattachments.id', $knowledgeAttachment->id)
+            ->firstOrFail();
+
+        $returnTo = $request->input('return_to', route('knowledge.items.edit', [
+            'knowledgeItem' => $knowledgeItem,
+            'tab' => 'attachments',
+        ]));
+
+        $attachments = $knowledgeItem->attachments()
+            ->orderByPivot('isprimary', 'desc')
+            ->orderByPivot('sortorder')
+            ->orderByDesc('uploadedat')
+            ->orderByDesc('knowledgeattachments.id')
+            ->get();
+
+        return view('knowledge-attachments.edit', [
+            'knowledgeAttachment' => $knowledgeAttachment,
+            'knowledgeItem' => $knowledgeItem,
+            'attachmentTypeOptions' => $this->attachmentTypeOptions(),
+            'returnTo' => $returnTo,
+            'attachments' => $attachments,
+        ]);
+    }
+
+    public function update(
+    Request $request,
+    KnowledgeItem $knowledgeItem,
+    KnowledgeAttachment $knowledgeAttachment
+): RedirectResponse {
     abort_unless(
         $knowledgeItem->attachments()
             ->where('knowledgeattachments.id', $knowledgeAttachment->id)
             ->exists(),
-        404
-    );
-
-    $knowledgeAttachment->load([
-        'items' => function ($query) {
-            $query->with('primaryCategory');
-        },
-    ]);
-
-    $returnTo = $request->input('return_to', route('knowledge.items.edit', [
-        'knowledgeItem' => $knowledgeItem,
-        'tab' => 'attachments',
-    ]));
-
-    $attachments = $knowledgeItem->attachments()
-        ->orderByPivot('isprimary', 'desc')
-        ->orderByPivot('sortorder')
-        ->orderByDesc('uploadedat')
-        ->orderByDesc('knowledgeattachments.id')
-        ->get();
-
-    return view('knowledge-attachments.edit', [
-        'knowledgeAttachment' => $knowledgeAttachment,
-        'knowledgeItem' => $knowledgeItem,
-        'attachmentTypeOptions' => $this->attachmentTypeOptions(),
-        'returnTo' => $returnTo,
-        'attachments' => $attachments,
-    ]);
-}
-
-    public function update(Request $request, KnowledgeItem $knowledgeItem, KnowledgeAttachment $knowledgeAttachment): RedirectResponse
-{
-    abort_unless(
-        $knowledgeItem->attachments()->where('knowledgeattachments.id', $knowledgeAttachment->id)->exists(),
         404
     );
 
@@ -123,6 +122,7 @@ class KnowledgeAttachmentController extends Controller
     $data = $request->validate([
         'attachmenttype' => ['nullable', Rule::in($attachmentTypeOptions)],
         'description' => ['nullable', 'string'],
+        'expirydate' => ['nullable', 'date_format:Y-m-d'],
         'uploadedby' => ['nullable', 'string', 'max:100'],
         'isprimary' => ['nullable', 'boolean'],
         'sortorder' => ['nullable', 'integer', 'min:0'],
@@ -133,7 +133,10 @@ class KnowledgeAttachmentController extends Controller
         \DB::table('knowledgeitem_attachments')
             ->where('knowledgeitemid', $knowledgeItem->id)
             ->where('knowledgeattachmentid', '!=', $knowledgeAttachment->id)
-            ->update(['isprimary' => false, 'updated_at' => now()]);
+            ->update([
+                'isprimary' => false,
+                'updated_at' => now(),
+            ]);
     }
 
     $knowledgeAttachment->update([
@@ -141,13 +144,20 @@ class KnowledgeAttachmentController extends Controller
         'uploadedby' => $data['uploadedby'] ?? null,
     ]);
 
-    $knowledgeItem->attachments()->updateExistingPivot($knowledgeAttachment->id, [
-        'description' => $data['description'] ?? null,
-        'expirydate' => $data['expirydate'] ?? null,
-        'isprimary' => !empty($data['isprimary']),
-        'sortorder' => $data['sortorder'] ?? 0,
-        'updated_at' => now(),
-    ]);
+    $expiryDate = $request->filled('expirydate')
+        ? $request->input('expirydate')
+        : null;
+
+    $knowledgeItem->attachments()->updateExistingPivot(
+        $knowledgeAttachment->id,
+        [
+            'description' => $data['description'] ?? null,
+            'expirydate' => $expiryDate,
+            'isprimary' => $request->boolean('isprimary'),
+            'sortorder' => $data['sortorder'] ?? 0,
+            'updated_at' => now(),
+        ]
+    );
 
     return redirect($data['return_to'] ?: route('knowledge.items.edit', [
         'knowledgeItem' => $knowledgeItem,

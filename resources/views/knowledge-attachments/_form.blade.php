@@ -14,7 +14,7 @@
 
     $currentExpiryDate = old(
         'expirydate',
-        optional($knowledgeAttachment?->pivot?->expirydate)->format('Y-m-d')
+        $knowledgeAttachment?->pivot?->expirydate?->format('Y-m-d')
     );
 
     $currentUploadedBy = old(

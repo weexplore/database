@@ -114,6 +114,7 @@ protected $casts = [
             'knowledgeitemid',
             'knowledgeattachmentid'
         )
+            ->using(KnowledgeItemAttachment::class)
             ->withPivot([
                 'description',
                 'expirydate',

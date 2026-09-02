@@ -34,10 +34,7 @@ class KnowledgeAttachment extends Model
     const CREATED_AT = 'createdat';
     const UPDATED_AT = 'updatedat';
 
-    public function item(): BelongsTo
-    {
-        return $this->belongsTo(KnowledgeItem::class, 'knowledgeitemid');
-    }
+    
     public function items(): BelongsToMany
     {
         return $this->belongsToMany(

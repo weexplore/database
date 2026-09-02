@@ -1259,25 +1259,25 @@
 
                                 <div class="flex flex-wrap items-center gap-1">
                                     @if ($activityTask->createdat && $activityTask->createdat->isSameDay($today))
-                                        <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-10px font-semibold text-emerald-800">
+                                        <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
                                             Created today
                                         </span>
                                     @endif
 
                                     @if ($activity['completed'])
-                                        <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-10px font-semibold text-green-800">
+                                        <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
                                             Completed today
                                         </span>
                                     @endif
 
                                     @if ($activity['updated'])
-                                        <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-10px font-semibold text-slate-700">
+                                        <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
                                             Updated today
                                         </span>
                                     @endif
 
                                     @if ($comments->isNotEmpty())
-                                        <span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-10px font-semibold text-blue-800">
+                                        <span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
                                             {{ $comments->count() }}
                                             comment{{ $comments->count() === 1 ? '' : 's' }}
                                             today

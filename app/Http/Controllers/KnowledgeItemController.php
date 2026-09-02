@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\KnowledgeCategory;
 use App\Models\KnowledgeDomain;
+use App\Models\KnowledgeItemAttachment;
 use App\Models\KnowledgeItem;
 use App\Models\KnowledgeItemType;
 use App\Models\KnowledgeNote;
