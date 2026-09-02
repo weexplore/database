@@ -1311,193 +1311,7 @@
         ->all();
 @endphp
 
-<script>
-(function initialiseKnowledgeItemPicker() {
-    function start() {
-        const button = document.getElementById('toggle-knowledge-items-panel');
-        const panel = document.getElementById('knowledge-items-panel');
-        const input = document.getElementById('knowledge-items-search');
-        const list = document.getElementById('knowledge-items-list');
-        const noResults = document.getElementById('knowledge-items-no-results');
 
-        if (!button || !panel || !input || !list) {
-            console.error('Knowledge Item picker was not initialised.', {
-                buttonFound: Boolean(button),
-                panelFound: Boolean(panel),
-                inputFound: Boolean(input),
-                listFound: Boolean(list),
-            });
-
-            return;
-        }
-
-        const searchUrl = @json(route('tasks.knowledge-items.search'));
-
-        let timer = null;
-
-        function setButtonLabel() {
-            button.textContent = panel.classList.contains('hidden')
-                ? 'Add knowledge items'
-                : 'Hide knowledge items';
-        }
-
-        function showMessage(message, className) {
-            list.innerHTML = '';
-
-            const messageElement = document.createElement('p');
-
-            messageElement.className =
-                className || 'py-3 text-center text-xs text-gray-500';
-
-            messageElement.textContent = message;
-
-            list.appendChild(messageElement);
-        }
-
-        function renderItems(items) {
-            list.innerHTML = '';
-
-            if (noResults) {
-                noResults.classList.add('hidden');
-            }
-
-            if (!Array.isArray(items) || items.length === 0) {
-                if (noResults) {
-                    noResults.classList.remove('hidden');
-                } else {
-                    showMessage('No matching active Knowledge Items found.');
-                }
-
-                return;
-            }
-
-            items.forEach(function (item) {
-                const option = document.createElement('label');
-
-                option.className =
-                    'flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-white cursor-pointer';
-
-                const checkbox = document.createElement('input');
-
-                checkbox.type = 'checkbox';
-                checkbox.name = 'knowledgeitemids[]';
-                checkbox.value = String(item.id);
-                checkbox.checked = Boolean(item.selected);
-                checkbox.className =
-                    'rounded border-gray-300 text-indigo-600 shadow-sm';
-
-                const text = document.createElement('span');
-
-                text.className = 'min-w-0 truncate';
-
-                const itemName = document.createElement('span');
-
-                itemName.className = 'font-medium text-gray-800';
-                itemName.textContent = item.itemname;
-
-                text.appendChild(itemName);
-
-                if (item.categoryname) {
-                    const categoryName = document.createElement('span');
-
-                    categoryName.className = 'ml-2 text-xs text-gray-500';
-                    categoryName.textContent = item.categoryname;
-
-                    text.appendChild(categoryName);
-                }
-
-                option.appendChild(checkbox);
-                option.appendChild(text);
-
-                list.appendChild(option);
-            });
-        }
-
-        function searchKnowledgeItems(searchTerm) {
-            showMessage('Searching…');
-
-            if (noResults) {
-                noResults.classList.add('hidden');
-            }
-
-            const url = searchUrl + '?search=' + encodeURIComponent(searchTerm);
-
-            fetch(url, {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            })
-                .then(function (response) {
-                    if (!response.ok) {
-                        throw new Error('HTTP ' + response.status);
-                    }
-
-                    return response.json();
-                })
-                .then(function (data) {
-                    renderItems(data.items || []);
-                })
-                .catch(function (error) {
-                    console.error('Knowledge Item search failed:', error);
-
-                    showMessage(
-                        'Unable to load Knowledge Items: ' + error.message,
-                        'py-3 text-center text-xs text-red-600'
-                    );
-                });
-        }
-
-        button.addEventListener('click', function () {
-            panel.classList.toggle('hidden');
-            setButtonLabel();
-
-            if (!panel.classList.contains('hidden')) {
-                input.focus();
-
-                /*
-                 * Do not automatically load the first 50 items. The page
-                 * remains fast, and the user explicitly searches by typing.
-                 */
-                showMessage('Start typing to search active Knowledge Items.');
-            }
-        });
-
-        input.addEventListener('input', function () {
-            const searchTerm = input.value.trim();
-
-            window.clearTimeout(timer);
-
-            if (searchTerm.length === 0) {
-                showMessage('Start typing to search active Knowledge Items.');
-
-                if (noResults) {
-                    noResults.classList.add('hidden');
-                }
-
-                return;
-            }
-
-            timer = window.setTimeout(function () {
-                searchKnowledgeItems(searchTerm);
-            }, 250);
-        });
-
-        setButtonLabel();
-
-        console.info('Knowledge Item picker initialised.');
-    }
-
-    /*
-     * Works whether this script occurs before or after the picker markup.
-     */
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', start);
-    } else {
-        start();
-    }
-})();
-</script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -1620,43 +1434,7 @@
         });
     </script>
    <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const toggleButton = document.getElementById(
-        'toggle-knowledge-items-panel'
-    );
 
-    const panel = document.getElementById(
-        'knowledge-items-panel'
-    );
-
-    const searchInput = document.getElementById(
-        'knowledge-items-search'
-    );
-
-    if (!toggleButton || !panel) {
-        return;
-    }
-
-    function updateToggleLabel() {
-        toggleButton.textContent = panel.classList.contains('hidden')
-            ? '{{ $task->knowledgeItems->isNotEmpty()
-                ? 'Add or change knowledge items'
-                : 'Add knowledge items' }}'
-            : 'Hide knowledge items';
-    }
-
-    toggleButton.addEventListener('click', function () {
-        panel.classList.toggle('hidden');
-        updateToggleLabel();
-
-        if (!panel.classList.contains('hidden') && searchInput) {
-            searchInput.focus();
-        }
-    });
-
-    updateToggleLabel();
-});
-</script>
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 function bindDateRange(startInput, dueInput) {
@@ -1948,6 +1726,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 return;
             }
+
+            /*
+            * Always display selected Knowledge Items first.
+            *
+            * Do this in the browser rather than relying only on the search endpoint,
+            * because selectedItems is the authoritative state while the user is
+            * editing this Task.
+            */
+            items = items.slice().sort(function (a, b) {
+                const aSelected = selectedItems.has(Number(a.id)) ? 1 : 0;
+                const bSelected = selectedItems.has(Number(b.id)) ? 1 : 0;
+
+                if (aSelected !== bSelected) {
+                    return bSelected - aSelected;
+                }
+
+                return String(a.itemname || '').localeCompare(
+                    String(b.itemname || ''),
+                    undefined,
+                    { numeric: true, sensitivity: 'base' }
+                );
+            });
 
             items.forEach(function (item) {
                 const itemId = Number(item.id);
