@@ -61,6 +61,11 @@ class AdminDashboardController extends Controller
                             'description' => 'Maintain types for destination items.',
                             'route' => route('destination-item-types.index'),
                         ],
+                        [
+                            'title' => 'Fuel Purchases',
+                            'description' => 'Record fuel receipts and allocate unassigned purchases to trips and trip legs.',
+                            'route' => route('fuel-purchases.index'),
+                        ],
                     ],
                 ],
                 [

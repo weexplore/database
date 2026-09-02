@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+
 class Trip extends Model
 {
     protected $table = 'trips';
@@ -169,4 +170,6 @@ class Trip extends Model
     {
         return $this->belongsTo(\App\Models\TripLegSearchProfile::class, 'selectedtriplegsearchprofileid');
     }
+
+   
 }

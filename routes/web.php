@@ -13,6 +13,7 @@ use App\Http\Controllers\RegionController;
 use App\Http\Controllers\PlaceController;
 use App\Http\Controllers\PlaceAliasController;
 use App\Http\Controllers\PlaceNearbyController;
+use App\Http\Controllers\FuelPricePurchaseController;
 
 use App\Http\Controllers\TravellerController;
 use App\Http\Controllers\TripController;
@@ -178,6 +179,17 @@ Route::prefix('vehicles')->name('vehicles.')->group(function () {
 
 Route::resource('fuel-stops', FuelStopController::class)->except(['show']);
 Route::resource('fuel-price-observations', FuelPriceObservationController::class)->except(['show']);
+
+Route::patch(
+    'fuel-purchases/{fuelPurchase}/assign-trip',
+    [FuelPricePurchaseController::class, 'assignTrip']
+)->name('fuel-purchases.assign-trip');
+
+Route::resource('fuel-purchases', FuelPricePurchaseController::class)
+    ->parameters([
+        'fuel-purchases' => 'fuelPurchase',
+    ])
+    ->except(['show']);
 
 /*
 |--------------------------------------------------------------------------

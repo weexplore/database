@@ -8,12 +8,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class FuelPricePurchase extends Model
 {
     protected $table = 'tripfuelpurchases';
+
     protected $primaryKey = 'id';
+
     public $incrementing = true;
+
     protected $keyType = 'int';
 
-    const CREATED_AT = 'createdat';
-    const UPDATED_AT = 'updatedat';
+    public const CREATED_AT = 'createdat';
+
+    public const UPDATED_AT = 'updatedat';
 
     protected $fillable = [
         'tripid',
@@ -38,7 +42,9 @@ class FuelPricePurchase extends Model
         'triplegid' => 'integer',
         'fuelstopid' => 'integer',
         'placeid' => 'integer',
+
         'purchasedate' => 'date',
+
         'odometerkm' => 'decimal:1',
         'distancesincelastfillkm' => 'decimal:1',
         'litres' => 'decimal:3',
@@ -47,6 +53,20 @@ class FuelPricePurchase extends Model
         'servicecosts' => 'decimal:2',
         'repairscost' => 'decimal:2',
     ];
+
+    public static function fuelTypes(): array
+    {
+        return [
+            'diesel' => 'Diesel',
+            'premiumdiesel' => 'Premium Diesel',
+            'unleaded91' => 'Unleaded 91',
+            'unleaded95' => 'Premium Unleaded 95',
+            'unleaded98' => 'Premium Unleaded 98',
+            'lpg' => 'LPG',
+            'adblue' => 'AdBlue',
+            'other' => 'Other',
+        ];
+    }
 
     public function trip(): BelongsTo
     {
@@ -66,5 +86,48 @@ class FuelPricePurchase extends Model
     public function place(): BelongsTo
     {
         return $this->belongsTo(Place::class, 'placeid');
+    }
+
+    public function scopeUnassigned($query)
+    {
+        return $query->whereNull('tripid');
+    }
+
+    public function scopeAssigned($query)
+    {
+        return $query->whereNotNull('tripid');
+    }
+
+    public function getIsAssignedAttribute(): bool
+    {
+        return ! is_null($this->tripid);
+    }
+
+    public function getLocationLabelAttribute(): string
+    {
+        if ($this->fuelStop) {
+            $label = $this->fuelStop->stopname;
+
+            if ($this->fuelStop->place) {
+                $label .= ' – ' . $this->fuelStop->place->placename;
+            }
+
+            return $label;
+        }
+
+        if ($this->place) {
+            return $this->place->placename;
+        }
+
+        return '—';
+    }
+
+    public function getTripLabelAttribute(): string
+    {
+        if (! $this->trip) {
+            return 'Unassigned';
+        }
+
+        return $this->trip->tripname;
     }
 }
