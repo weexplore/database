@@ -253,93 +253,85 @@
                     </div>
 
                     <div>
-                        <div class="flex items-center gap-2 mb-2">
-                            <label class="block text-xs font-medium text-gray-600">
-                                Linked Knowledge Items
-                            </label>
+                   {{-- Linked Knowledge Items --}}
+<div class="space-y-2">
+    <div class="flex items-center gap-2">
+        <label class="block text-xs font-medium text-gray-600">
+            Linked Knowledge Items
+        </label>
 
-                            <button type="button"
-                                    id="toggle-knowledge-items-panel"
-                                    class="text-xs px-2 py-1 rounded border border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100">
-                                {{ $task->knowledgeItems->isNotEmpty()
-                                    ? 'Add or change knowledge items'
-                                    : 'Add knowledge items' }}
-                            </button>
-                        </div>
+        <button type="button"
+                id="toggle-knowledge-items-panel"
+                class="text-xs px-2 py-1 rounded border border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100">
+            {{ $task->knowledgeItems->isNotEmpty()
+                ? 'Add or change knowledge items'
+                : 'Add knowledge items' }}
+        </button>
+    </div>
 
-                        @if ($task->knowledgeItems->isNotEmpty())
-                            <div id="selected-knowledge-items-summary"
-                                class="flex flex-wrap gap-2 mb-2">
-                                @foreach ($task->knowledgeItems as $knowledgeItem)
-                                    <a href="{{ route('knowledge.items.edit', [
-                                            'knowledgeItem' => $knowledgeItem,
-                                            'return_to' => request()->fullUrl(),
-                                        ]) }}"
-                                    class="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-medium text-indigo-800 hover:bg-indigo-200 hover:underline">
-                                        {{ $knowledgeItem->itemname }}
-                                    </a>
-                                @endforeach
-                            </div>
-                        @endif
+    {{-- Current saved links; JavaScript updates this after checkbox changes. --}}
+    <div id="selected-knowledge-items-summary"
+         class="{{ $task->knowledgeItems->isNotEmpty()
+             ? 'flex flex-wrap gap-2'
+             : 'hidden' }}">
 
-                        <div id="knowledge-items-panel"
-                            class="hidden border border-gray-200 rounded-md p-3 bg-gray-50">
+        @foreach ($task->knowledgeItems as $knowledgeItem)
+            <a href="{{ route('knowledge.items.edit', [
+                    'knowledgeItem' => $knowledgeItem,
+                    'returnto' => request()->fullUrl(),
+                ]) }}"
+            class="inline-flex cursor-pointer items-center rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-medium text-indigo-800 hover:bg-indigo-200 hover:underline"
+            title="Open {{ $knowledgeItem->itemname }} in Knowledge Base">
 
-                            <input type="search"
-                                id="knowledge-items-search"
-                                placeholder="Search Knowledge Items..."
-                                autocomplete="off"
-                                class="mb-3 w-full rounded-md border-gray-300 shadow-sm text-sm">
+                <span>{{ $knowledgeItem->itemname }}</span>
 
-                            <div id="knowledge-items-list"
-                                class="max-h-64 overflow-y-auto space-y-2">
+                @if ($knowledgeItem->primaryCategory?->categoryname)
+                    <span class="ml-1 text-indigo-600">
+                        — {{ $knowledgeItem->primaryCategory->categoryname }}
+                    </span>
+                @endif
+            </a>
+        @endforeach
+    </div>
 
-                                @foreach (
-                                    $knowledgeItems->sortByDesc(
-                                        fn ($knowledgeItem) => in_array(
-                                            $knowledgeItem->id,
-                                            $selectedKnowledgeItemIds
-                                        )
-                                    )->values()
-                                    as $knowledgeItem
-                                )
-                                    @php
-                                        $isSelected = in_array(
-                                            $knowledgeItem->id,
-                                            $selectedKnowledgeItemIds
-                                        );
-                                    @endphp
+    {{-- AJAX search picker. This starts hidden but is always rendered. --}}
+    <div id="knowledge-items-panel"
+         class="hidden rounded-md border border-gray-200 bg-gray-50 p-3">
 
-                                    <label class="knowledge-item-option flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-white {{ $isSelected ? 'bg-indigo-50' : '' }}">
-                                        <input type="checkbox"
-                                            name="knowledgeitemids[]"
-                                            value="{{ $knowledgeItem->id }}"
-                                            class="knowledge-item-checkbox rounded border-gray-300 text-indigo-600 shadow-sm"
-                                            @checked($isSelected)>
+        <div class="mb-3 flex items-center justify-between gap-3">
+            <p class="text-xs text-gray-600">
+                Search active Knowledge Items, then tick the items to link to this task.
+            </p>
 
-                                        <span class="min-w-0 truncate">
-                                            <span class="font-medium text-gray-800">
-                                                {{ $knowledgeItem->itemname }}
-                                            </span>
+            <span id="knowledge-items-selected-count"
+                  class="hidden whitespace-nowrap rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800">
+            </span>
+        </div>
 
-                                            @if ($knowledgeItem->primaryCategory?->categoryname)
-                                                <span class="text-xs text-gray-500">
-                                                    — {{ $knowledgeItem->primaryCategory->categoryname }}
-                                                </span>
-                                            @endif
-                                        </span>
-                                    </label>
-                                @endforeach
-                            </div>
+        <input type="search"
+               id="knowledge-items-search"
+               autocomplete="off"
+               placeholder="Search Knowledge Items…"
+               class="mb-3 w-full rounded-md border-gray-300 shadow-sm text-sm">
 
-                            <p id="knowledge-items-no-results"
-                            class="hidden py-3 text-center text-xs text-gray-500">
-                                No matching Knowledge Items.
-                            </p>
-                        </div>
-                    </div>
+        {{-- Search results are built by JavaScript. --}}
+        <div id="knowledge-items-list"
+             class="max-h-64 space-y-1 overflow-y-auto">
+            <p class="py-3 text-center text-xs text-gray-500">
+                Start typing to search active Knowledge Items.
+            </p>
+        </div>
 
-                    <div class="flex items-center justify-between pt-2 border-t border-gray-200">
+        <p id="knowledge-items-no-results"
+           class="hidden py-3 text-center text-xs text-gray-500">
+            No matching active Knowledge Items found.
+        </p>
+
+        {{-- Selected IDs missing from current visible search results go here. --}}
+        <div id="knowledge-items-hidden-inputs"></div>
+    </div>
+</div>
+                    <div class="flex items-center justify-end pt-2 border-t border-gray-200">
                         <button type="submit"
                                 class="px-5 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700">
                             Save Task
@@ -347,8 +339,12 @@
                     </div>
                 </form>
             </div>
+
+            {{-- Visual separation between the Task editor and supporting panels. --}}
+            <div class="border-t border-gray-300 mt-6"></div>
+
             {{-- Comments control --}}
-             <div class="bg-white shadow-sm rounded-lg p-6">
+            <div class="bg-white shadow-sm rounded-lg px-6 pb-6 pt-0">
                 <h3 class="text-sm font-semibold mb-3">Comments</h3>
 
                 <ul class="divide-y divide-gray-100 mb-4">
@@ -1302,91 +1298,205 @@
         });
     </script>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const toggleButton = document.getElementById('toggle-task-labels-panel');
-        const panel = document.getElementById('task-labels-panel');
-        const summary = document.getElementById('selected-task-labels-summary');
+@php
+    $knowledgeItemPickerSelectedItems = $task->knowledgeItems
+        ->map(function ($knowledgeItem) {
+            return [
+                'id' => (int) $knowledgeItem->id,
+                'itemname' => $knowledgeItem->itemname,
+                'categoryname' => $knowledgeItem->primaryCategory?->categoryname,
+            ];
+        })
+        ->values()
+        ->all();
+@endphp
 
-        if (!panel) {
+<script>
+(function initialiseKnowledgeItemPicker() {
+    function start() {
+        const button = document.getElementById('toggle-knowledge-items-panel');
+        const panel = document.getElementById('knowledge-items-panel');
+        const input = document.getElementById('knowledge-items-search');
+        const list = document.getElementById('knowledge-items-list');
+        const noResults = document.getElementById('knowledge-items-no-results');
+
+        if (!button || !panel || !input || !list) {
+            console.error('Knowledge Item picker was not initialised.', {
+                buttonFound: Boolean(button),
+                panelFound: Boolean(panel),
+                inputFound: Boolean(input),
+                listFound: Boolean(list),
+            });
+
             return;
         }
 
-        const checkboxes = Array.from(
-            document.querySelectorAll('.task-label-checkbox')
-        );
+        const searchUrl = @json(route('tasks.knowledge-items.search'));
 
-        function getLabelDetails(checkbox) {
-            const labelChip = checkbox
-                .closest('label')
-                ?.querySelector('span');
+        let timer = null;
 
-            if (!labelChip) {
-                return null;
-            }
-
-            return {
-                text: labelChip.textContent.trim(),
-                colour: labelChip.style.background || '#6b7280',
-            };
+        function setButtonLabel() {
+            button.textContent = panel.classList.contains('hidden')
+                ? 'Add knowledge items'
+                : 'Hide knowledge items';
         }
 
-        function updateSummary() {
-            if (!summary) {
+        function showMessage(message, className) {
+            list.innerHTML = '';
+
+            const messageElement = document.createElement('p');
+
+            messageElement.className =
+                className || 'py-3 text-center text-xs text-gray-500';
+
+            messageElement.textContent = message;
+
+            list.appendChild(messageElement);
+        }
+
+        function renderItems(items) {
+            list.innerHTML = '';
+
+            if (noResults) {
+                noResults.classList.add('hidden');
+            }
+
+            if (!Array.isArray(items) || items.length === 0) {
+                if (noResults) {
+                    noResults.classList.remove('hidden');
+                } else {
+                    showMessage('No matching active Knowledge Items found.');
+                }
+
                 return;
             }
 
-            const selectedLabels = checkboxes
-                .filter(checkbox => checkbox.checked)
-                .map(getLabelDetails)
-                .filter(Boolean);
+            items.forEach(function (item) {
+                const option = document.createElement('label');
 
-            summary.innerHTML = '';
+                option.className =
+                    'flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-white cursor-pointer';
 
-            if (selectedLabels.length === 0) {
-                summary.classList.add('hidden');
-                return;
-            }
+                const checkbox = document.createElement('input');
 
-            summary.classList.remove('hidden');
+                checkbox.type = 'checkbox';
+                checkbox.name = 'knowledgeitemids[]';
+                checkbox.value = String(item.id);
+                checkbox.checked = Boolean(item.selected);
+                checkbox.className =
+                    'rounded border-gray-300 text-indigo-600 shadow-sm';
 
-            selectedLabels.forEach(label => {
-                const chip = document.createElement('span');
+                const text = document.createElement('span');
 
-                chip.className =
-                    'inline-flex items-center px-2.5 py-1 rounded-full text-white text-xs font-medium';
+                text.className = 'min-w-0 truncate';
 
-                chip.style.background = label.colour;
-                chip.textContent = label.text;
+                const itemName = document.createElement('span');
 
-                summary.appendChild(chip);
+                itemName.className = 'font-medium text-gray-800';
+                itemName.textContent = item.itemname;
+
+                text.appendChild(itemName);
+
+                if (item.categoryname) {
+                    const categoryName = document.createElement('span');
+
+                    categoryName.className = 'ml-2 text-xs text-gray-500';
+                    categoryName.textContent = item.categoryname;
+
+                    text.appendChild(categoryName);
+                }
+
+                option.appendChild(checkbox);
+                option.appendChild(text);
+
+                list.appendChild(option);
             });
         }
 
-        function updateToggleLabel() {
-            if (!toggleButton) {
-                return;
+        function searchKnowledgeItems(searchTerm) {
+            showMessage('Searching…');
+
+            if (noResults) {
+                noResults.classList.add('hidden');
             }
 
-            toggleButton.textContent = panel.classList.contains('hidden')
-                ? 'Add or change labels'
-                : 'Hide labels';
+            const url = searchUrl + '?search=' + encodeURIComponent(searchTerm);
+
+            fetch(url, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('HTTP ' + response.status);
+                    }
+
+                    return response.json();
+                })
+                .then(function (data) {
+                    renderItems(data.items || []);
+                })
+                .catch(function (error) {
+                    console.error('Knowledge Item search failed:', error);
+
+                    showMessage(
+                        'Unable to load Knowledge Items: ' + error.message,
+                        'py-3 text-center text-xs text-red-600'
+                    );
+                });
         }
 
-        if (toggleButton) {
-            toggleButton.addEventListener('click', function () {
-                panel.classList.toggle('hidden');
-                updateToggleLabel();
-            });
-        }
+        button.addEventListener('click', function () {
+            panel.classList.toggle('hidden');
+            setButtonLabel();
 
-        checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', updateSummary);
+            if (!panel.classList.contains('hidden')) {
+                input.focus();
+
+                /*
+                 * Do not automatically load the first 50 items. The page
+                 * remains fast, and the user explicitly searches by typing.
+                 */
+                showMessage('Start typing to search active Knowledge Items.');
+            }
         });
 
-        updateSummary();
-        updateToggleLabel();
-    });
+        input.addEventListener('input', function () {
+            const searchTerm = input.value.trim();
+
+            window.clearTimeout(timer);
+
+            if (searchTerm.length === 0) {
+                showMessage('Start typing to search active Knowledge Items.');
+
+                if (noResults) {
+                    noResults.classList.add('hidden');
+                }
+
+                return;
+            }
+
+            timer = window.setTimeout(function () {
+                searchKnowledgeItems(searchTerm);
+            }, 250);
+        });
+
+        setButtonLabel();
+
+        console.info('Knowledge Item picker initialised.');
+    }
+
+    /*
+     * Works whether this script occurs before or after the picker markup.
+     */
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', start);
+    } else {
+        start();
+    }
+})();
 </script>
 
     <script>
@@ -1509,70 +1619,44 @@
             );
         });
     </script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const toggleButton = document.getElementById('toggle-knowledge-items-panel');
-            const panel = document.getElementById('knowledge-items-panel');
-            const searchInput = document.getElementById('knowledge-items-search');
-            const options = Array.from(
-                document.querySelectorAll('.knowledge-item-option')
-            );
-            const noResults = document.getElementById('knowledge-items-no-results');
+   <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const toggleButton = document.getElementById(
+        'toggle-knowledge-items-panel'
+    );
 
-            if (!panel) {
-                return;
-            }
+    const panel = document.getElementById(
+        'knowledge-items-panel'
+    );
 
-            function updateToggleLabel() {
-                if (!toggleButton) {
-                    return;
-                }
+    const searchInput = document.getElementById(
+        'knowledge-items-search'
+    );
 
-                toggleButton.textContent = panel.classList.contains('hidden')
-                    ? 'Add or change knowledge items'
-                    : 'Hide knowledge items';
-            }
+    if (!toggleButton || !panel) {
+        return;
+    }
 
-            if (toggleButton) {
-                toggleButton.addEventListener('click', function () {
-                    panel.classList.toggle('hidden');
-                    updateToggleLabel();
+    function updateToggleLabel() {
+        toggleButton.textContent = panel.classList.contains('hidden')
+            ? '{{ $task->knowledgeItems->isNotEmpty()
+                ? 'Add or change knowledge items'
+                : 'Add knowledge items' }}'
+            : 'Hide knowledge items';
+    }
 
-                    if (!panel.classList.contains('hidden') && searchInput) {
-                        searchInput.focus();
-                    }
-                });
-            }
+    toggleButton.addEventListener('click', function () {
+        panel.classList.toggle('hidden');
+        updateToggleLabel();
 
-            if (searchInput) {
-                searchInput.addEventListener('input', function () {
-                    const searchTerm = searchInput.value.trim().toLowerCase();
-                    let visibleCount = 0;
+        if (!panel.classList.contains('hidden') && searchInput) {
+            searchInput.focus();
+        }
+    });
 
-                    options.forEach(function (option) {
-                        const matches = option.textContent
-                            .toLowerCase()
-                            .includes(searchTerm);
-
-                        option.classList.toggle('hidden', !matches);
-
-                        if (matches) {
-                            visibleCount++;
-                        }
-                    });
-
-                    if (noResults) {
-                        noResults.classList.toggle(
-                            'hidden',
-                            visibleCount > 0
-                        );
-                    }
-                });
-            }
-
-            updateToggleLabel();
-        });
-        </script>
+    updateToggleLabel();
+});
+</script>
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 function bindDateRange(startInput, dueInput) {
@@ -1654,4 +1738,397 @@
                 );
             });
         </script>
+        <script>
+(function () {
+    function initialiseKnowledgeItemPicker() {
+        const button = document.getElementById('toggle-knowledge-items-panel');
+        const panel = document.getElementById('knowledge-items-panel');
+        const searchInput = document.getElementById('knowledge-items-search');
+        const resultList = document.getElementById('knowledge-items-list');
+        const noResults = document.getElementById('knowledge-items-no-results');
+        const hiddenInputs = document.getElementById('knowledge-items-hidden-inputs');
+        const selectedCount = document.getElementById('knowledge-items-selected-count');
+        const selectedSummary = document.getElementById('selected-knowledge-items-summary');
+
+        /*
+         * Do nothing unless every required element exists.
+         * This avoids JavaScript errors on any page that does not contain
+         * the Task Knowledge Item picker.
+         */
+        if (
+            !button ||
+            !panel ||
+            !searchInput ||
+            !resultList ||
+            !hiddenInputs
+        ) {
+            return;
+        }
+
+        const searchUrl = @json(route('tasks.knowledge-items.search'));
+
+        /*
+         * Start with currently linked Knowledge Items.
+         *
+         * Do not use a multi-line Blade JSON expression around a closure. Blade parsing can
+         * fail in that situation. These simple individual JSON values are
+         * safe for item names containing apostrophes or quotes.
+         */
+        const selectedItems = new Map();
+
+        @foreach ($task->knowledgeItems as $knowledgeItem)
+            selectedItems.set(
+                {{ (int) $knowledgeItem->id }},
+                {
+                    id: {{ (int) $knowledgeItem->id }},
+                    itemname: @json($knowledgeItem->itemname),
+                    categoryname: @json($knowledgeItem->primaryCategory?->categoryname)
+                }
+            );
+        @endforeach
+
+        let searchTimer = null;
+        let firstOpen = true;
+        let requestSerial = 0;
+
+        function setButtonText() {
+            if (panel.classList.contains('hidden')) {
+                button.textContent = selectedItems.size > 0
+                    ? 'Add or change knowledge items'
+                    : 'Add knowledge items';
+
+                return;
+            }
+
+            button.textContent = 'Hide knowledge items';
+        }
+
+        function updateSelectedCount() {
+            if (!selectedCount) {
+                return;
+            }
+
+            if (selectedItems.size === 0) {
+                selectedCount.textContent = '';
+                selectedCount.classList.add('hidden');
+
+                return;
+            }
+
+            selectedCount.textContent = selectedItems.size === 1
+                ? '1 item selected'
+                : selectedItems.size + ' items selected';
+
+            selectedCount.classList.remove('hidden');
+        }
+
+        function updateSelectedSummary() {
+    if (!selectedSummary) {
+        return;
+    }
+
+    selectedSummary.innerHTML = '';
+
+    if (selectedItems.size === 0) {
+        selectedSummary.className = 'hidden';
+        return;
+    }
+
+    selectedSummary.className = 'flex flex-wrap gap-2 mb-2';
+
+    selectedItems.forEach(function (item) {
+        const chip = document.createElement('a');
+
+        /*
+         * This is the exact existing Knowledge Item edit route pattern.
+         * The ID placeholder is replaced in JavaScript for each selected
+         * Knowledge Item. returnto restores the current Task page.
+         */
+        const itemEditUrl = '{{ route('knowledge.items.edit', [
+            'knowledgeItem' => '__KNOWLEDGE_ITEM_ID__',
+            'return_to' => '__RETURN_TO__',
+        ]) }}';
+
+        chip.href = itemEditUrl
+            .replace('__KNOWLEDGE_ITEM_ID__', String(item.id))
+            .replace('__RETURN_TO__', encodeURIComponent(window.location.href));
+
+        chip.title = 'Open ' + item.itemname + ' in Knowledge Base';
+
+        chip.className =
+            'inline-flex cursor-pointer items-center rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-medium text-indigo-800 hover:bg-indigo-200 hover:underline';
+
+        const itemName = document.createElement('span');
+        itemName.textContent = item.itemname;
+
+        chip.appendChild(itemName);
+
+        if (item.categoryname) {
+            const categoryName = document.createElement('span');
+
+            categoryName.className = 'ml-1 text-indigo-600';
+            categoryName.textContent = '— ' + item.categoryname;
+
+            chip.appendChild(categoryName);
+        }
+
+        selectedSummary.appendChild(chip);
+    });
+}
+
+        function getVisibleCheckboxIds() {
+            const visibleIds = new Set();
+
+            const checkboxes = resultList.querySelectorAll(
+                'input[data-knowledge-item-checkbox="1"]'
+            );
+
+            checkboxes.forEach(function (checkbox) {
+                visibleIds.add(Number(checkbox.value));
+            });
+
+            return visibleIds;
+        }
+
+        /*
+         * Important: results are replaced after every search. A selected
+         * record that is not in the current results must remain represented
+         * by a hidden field, otherwise sync() would detach it on Save Task.
+         */
+        function updateHiddenInputs() {
+            const visibleIds = getVisibleCheckboxIds();
+
+            hiddenInputs.innerHTML = '';
+
+            selectedItems.forEach(function (item, id) {
+                if (visibleIds.has(id)) {
+                    return;
+                }
+
+                const hiddenInput = document.createElement('input');
+
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'knowledgeitemids[]';
+                hiddenInput.value = String(id);
+
+                hiddenInputs.appendChild(hiddenInput);
+            });
+        }
+
+        function showMessage(message, className) {
+            resultList.innerHTML = '';
+
+            const messageNode = document.createElement('p');
+
+            messageNode.className = className ||
+                'py-3 text-center text-xs text-gray-500';
+
+            messageNode.textContent = message;
+
+            resultList.appendChild(messageNode);
+        }
+
+        function renderResults(items) {
+            resultList.innerHTML = '';
+
+            if (noResults) {
+                noResults.classList.add('hidden');
+            }
+
+            if (!Array.isArray(items) || items.length === 0) {
+                if (noResults) {
+                    noResults.classList.remove('hidden');
+                } else {
+                    showMessage('No matching active Knowledge Items found.');
+                }
+
+                updateHiddenInputs();
+                updateSelectedCount();
+                updateSelectedSummary();
+
+                return;
+            }
+
+            items.forEach(function (item) {
+                const itemId = Number(item.id);
+
+                const option = document.createElement('label');
+
+                option.className =
+                    'flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-white';
+
+                const checkbox = document.createElement('input');
+
+                checkbox.type = 'checkbox';
+                checkbox.name = 'knowledgeitemids[]';
+                checkbox.value = String(itemId);
+                checkbox.dataset.knowledgeItemCheckbox = '1';
+                checkbox.checked = selectedItems.has(itemId);
+                checkbox.className =
+                    'rounded border-gray-300 text-indigo-600 shadow-sm';
+
+                const text = document.createElement('span');
+
+                text.className = 'min-w-0 truncate';
+
+                const itemName = document.createElement('span');
+
+                itemName.className = 'font-medium text-gray-800';
+                itemName.textContent = item.itemname;
+
+                text.appendChild(itemName);
+
+                if (item.categoryname) {
+                    const categoryName = document.createElement('span');
+
+                    categoryName.className = 'ml-2 text-xs text-gray-500';
+                    categoryName.textContent = item.categoryname;
+
+                    text.appendChild(categoryName);
+                }
+
+                checkbox.addEventListener('change', function () {
+                    if (checkbox.checked) {
+                        selectedItems.set(itemId, {
+                            id: itemId,
+                            itemname: item.itemname,
+                            categoryname: item.categoryname || null
+                        });
+                    } else {
+                        selectedItems.delete(itemId);
+                    }
+
+                    updateHiddenInputs();
+                    updateSelectedCount();
+                    updateSelectedSummary();
+                    setButtonText();
+                });
+
+                option.appendChild(checkbox);
+                option.appendChild(text);
+
+                resultList.appendChild(option);
+            });
+
+            updateHiddenInputs();
+            updateSelectedCount();
+            updateSelectedSummary();
+        }
+
+        function searchKnowledgeItems(searchTerm) {
+            const thisRequest = ++requestSerial;
+
+            const url = new URL(searchUrl, window.location.origin);
+
+            if (searchTerm !== '') {
+                url.searchParams.set('search', searchTerm);
+            }
+
+            selectedItems.forEach(function (item, id) {
+                url.searchParams.append('selected[]', String(id));
+            });
+
+            showMessage('Searching…');
+
+            if (noResults) {
+                noResults.classList.add('hidden');
+            }
+
+            fetch(url.toString(), {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('HTTP ' + response.status);
+                    }
+
+                    return response.json();
+                })
+                .then(function (data) {
+                    /*
+                     * Ignore a slower old result after a newer search has
+                     * already been sent.
+                     */
+                    if (thisRequest !== requestSerial) {
+                        return;
+                    }
+
+                    renderResults(
+                        Array.isArray(data.items) ? data.items : []
+                    );
+                })
+                .catch(function (error) {
+                    if (thisRequest !== requestSerial) {
+                        return;
+                    }
+
+                    showMessage(
+                        'Unable to load Knowledge Items: ' + error.message,
+                        'py-3 text-center text-xs text-red-600'
+                    );
+
+                    console.error('Knowledge Item search failed:', error);
+                });
+        }
+
+        button.addEventListener('click', function () {
+            panel.classList.toggle('hidden');
+            setButtonText();
+
+            if (!panel.classList.contains('hidden')) {
+                searchInput.focus();
+
+                /*
+                 * Show a small initial list once. This verifies the route
+                 * immediately and provides a usable browse list without
+                 * rendering thousands of options in the page HTML.
+                 */
+                if (firstOpen) {
+                    firstOpen = false;
+                    searchKnowledgeItems('');
+                }
+            }
+        });
+
+        searchInput.addEventListener('input', function () {
+            const searchTerm = searchInput.value.trim();
+
+            window.clearTimeout(searchTimer);
+
+            if (searchTerm === '') {
+                searchTimer = window.setTimeout(function () {
+                    searchKnowledgeItems('');
+                }, 150);
+
+                return;
+            }
+
+            searchTimer = window.setTimeout(function () {
+                searchKnowledgeItems(searchTerm);
+            }, 250);
+        });
+
+        updateHiddenInputs();
+        updateSelectedCount();
+        updateSelectedSummary();
+        setButtonText();
+    }
+
+    /*
+     * This works whether the script is rendered before or after the main
+     * Task form and the picker HTML.
+     */
+    if (document.readyState === 'loading') {
+        document.addEventListener(
+            'DOMContentLoaded',
+            initialiseKnowledgeItemPicker
+        );
+    } else {
+        initialiseKnowledgeItemPicker();
+    }
+})();
+</script>
 </x-app-layout>

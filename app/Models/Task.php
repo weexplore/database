@@ -71,7 +71,7 @@ class Task extends Model
     public function comments()
     {
         return $this->hasMany(TaskComment::class, 'taskid')
-            ->orderBy('createdat', 'desc');
+            ->latest('createdat');
     }
 
     public function recurrence()
@@ -114,6 +114,6 @@ class Task extends Model
             'taskknowledgeitems',
             'taskid',
             'knowledgeitemid'
-        )->withTimestamps();
+        )->withTimestamps('createdat', 'updatedat');
     }
 }

@@ -71,50 +71,103 @@ class TaskController extends Controller
     }
 
     public function show(Task $task)
-    {
-        $task->load([
-            'project',
-            'status',
-            'assignee',
-            'labels',
-            'recurrence',
-            'knowledgeItems.primaryCategory',
-            'subtasks.status',
-            'subtasks.labels',
-            'comments.user',
-            'dependencies.dependsOnTask.status',
-        ]);
+{
+    $task->load([
+        'project:id,projectname',
+        'status:id,statuslabel',
+        'assignee:id,name',
 
-        $projects = Project::orderBy('projectname')->get();
+        'labels:id,labelname,colourhex',
 
-        $statuses = $task->project
-            ->taskStatuses()
-            ->orderBy('sortorder')
-            ->get();
+        'recurrence',
 
-        $labels = Label::orderBy('labelname')->get();
+        'knowledgeItems:id,itemname,primarycategoryid',
+        'knowledgeItems.primaryCategory:id,categoryname',
 
-        $projectTasks = $task->project
-            ->tasks()
-            ->where('id', '!=', $task->id)
-            ->orderBy('tasktitle')
-            ->get();
+        'subtasks:id,projectid,parenttaskid,tasktitle,startdate,duedate,priority,statusid,estimatedefforthours,actualefforthours',
+        'subtasks.status:id,statuslabel',
+        'subtasks.labels:id,labelname,colourhex',
 
-        $knowledgeItems = KnowledgeItem::query()
-            ->with('primaryCategory')
-            ->where('isactive', 1)
-            ->orderBy('itemname')
-            ->get();
+        'comments' => fn ($query) => $query
+            ->with('user:id,name')
+            ->orderByDesc('createdat'),
 
-        return view('tasks.show', compact(
-            'task',
-            'projects',
-            'statuses',
-            'labels',
-            'knowledgeItems',
-            'projectTasks'
-        ));
-    }
+        'dependencies:id,taskid,dependsontaskid,dependencytype,lagdays',
+        'dependencies.dependsOnTask:id,tasktitle,statusid',
+        'dependencies.dependsOnTask.status:id,statuslabel',
+    ]);
+
+    $projectId = (int) $task->projectid;
+
+    /*
+     * Required for the primary task form and the subtask inline table.
+     */
+    $statuses = $task->project
+        ->taskStatuses()
+        ->select(['id', 'projectid', 'statuslabel', 'sortorder'])
+        ->orderBy('sortorder')
+        ->get();
+
+    /*
+     * Only retrieve project-task choices if they are needed by the
+     * dependency or "Make task a subtask" controls.
+     *
+     * This preserves current functionality while avoiding full model
+     * loading and unnecessary columns.
+     */
+    $projectTasks = $task->project
+        ->tasks()
+        ->select([
+            'id',
+            'projectid',
+            'parenttaskid',
+            'tasktitle',
+            'statusid',
+        ])
+        ->where('id', '!=', $task->id)
+        ->orderBy('tasktitle')
+        ->get();
+
+    /*
+     * Retain the current Labels control, but load only display fields.
+     * If labels are entity/project scoped in your schema, add that scope
+     * here rather than exposing every label globally.
+     */
+    $labels = Label::query()
+        ->select(['id', 'labelname', 'colourhex'])
+        ->orderBy('labelname')
+        ->get();
+
+    /*
+     * Do not load every active Knowledge Item here.
+     *
+     * The current task's selected Knowledge Items are already available
+     * through $task->knowledgeItems. The full searchable picker should
+     * be loaded asynchronously only when the user opens it.
+     */
+    $knowledgeItems = collect();
+
+    /*
+     * The project list is only needed by "Move task to another project".
+     * Keep the variable for compatibility with the existing Blade, but
+     * retrieve minimal columns.
+     *
+     * For best performance, load it via AJAX only when that panel opens.
+     */
+    $projects = Project::query()
+        ->select(['id', 'projectname'])
+        ->orderBy('projectname')
+        ->get();
+
+    return view('tasks.show', compact(
+        'task',
+        'projects',
+        'statuses',
+        'labels',
+        'knowledgeItems',
+        'projectTasks'
+    ));
+}
 
     public function store(Request $request)
     {
@@ -550,100 +603,186 @@ class TaskController extends Controller
 }
 
     public function allIndex(Request $request)
-{
-    $projectId = $request->input('projectid');
-    $labelId   = $request->input('labelid');
-    $search    = trim((string) $request->input('search', ''));
-    $hideClosed = $request->boolean('hideclosed', true);
-    $templatesOnly = $request->boolean('templatesonly');
+    {
+        $projectId = $request->input('projectid');
+        $labelId   = $request->input('labelid');
+        $search    = trim((string) $request->input('search', ''));
+        $hideClosed = $request->boolean('hideclosed', true);
+        $templatesOnly = $request->boolean('templatesonly');
 
-    $allowedSorts = ['tasktitle', 'startdate', 'duedate', 'projectname'];
-    $sort = $request->input('sort', 'duedate');
-    if (! in_array($sort, $allowedSorts, true)) {
-        $sort = 'duedate';
-    }
+        $allowedSorts = ['tasktitle', 'startdate', 'duedate', 'projectname'];
+        $sort = $request->input('sort', 'duedate');
+        if (! in_array($sort, $allowedSorts, true)) {
+            $sort = 'duedate';
+        }
 
-    $dir = $request->input('dir', 'asc');
-    if (! in_array($dir, ['asc', 'desc'], true)) {
-        $dir = 'asc';
-    }
+        $dir = $request->input('dir', 'asc');
+        if (! in_array($dir, ['asc', 'desc'], true)) {
+            $dir = 'asc';
+        }
 
-    $tasksQuery = Task::query()
-        ->with([
-            'project',
-            'labels',
-            'status',
-            'parentTask',
-            'recurrence' => function ($q) {
-                $q->where('isactive', 1);
-            },
-        ])
-        ->withCount('subtasks')
-        ->withCount([
-            'subtasks as open_subtasks_count' => function (Builder $query) {
-                $query->where(function (Builder $statusQuery) {
-                    $statusQuery->whereHas('status', function (Builder $query) {
-                        $query->where('iscompletedstatus', false);
+        $tasksQuery = Task::query()
+            ->with([
+                'project',
+                'labels',
+                'status',
+                'parentTask',
+                'recurrence' => function ($q) {
+                    $q->where('isactive', 1);
+                },
+            ])
+            ->withCount('subtasks')
+            ->withCount([
+                'subtasks as open_subtasks_count' => function (Builder $query) {
+                    $query->where(function (Builder $statusQuery) {
+                        $statusQuery->whereHas('status', function (Builder $query) {
+                            $query->where('iscompletedstatus', false);
+                        })
+                        ->orWhereNull('statusid');
+                    });
+                },
+            ])
+            ->when($projectId, function (Builder $q) use ($projectId) {
+                $q->where('projectid', $projectId);
+            })
+            ->when($labelId, function (Builder $q) use ($labelId) {
+                $q->whereHas('labels', function (Builder $q2) use ($labelId) {
+                    $q2->where('labels.id', $labelId);
+                });
+            })
+            ->when($search, function (Builder $q) use ($search) {
+                $q->where(function (Builder $q2) use ($search) {
+                    $q2->where('tasktitle', 'like', '%'.$search.'%')
+                    ->orWhere('description', 'like', '%'.$search.'%');
+                });
+            })
+            ->when($templatesOnly, function (Builder $query) {
+                $query->where('isrecurringtemplate', 1);
+            })
+            ->when($hideClosed, function (Builder $q) {
+                $q->where(function (Builder $q2) {
+                    $q2->whereHas('status', function (Builder $q3) {
+                        $q3->where('iscompletedstatus', false);
                     })
                     ->orWhereNull('statusid');
                 });
-            },
-        ])
-        ->when($projectId, function (Builder $q) use ($projectId) {
-            $q->where('projectid', $projectId);
-        })
-        ->when($labelId, function (Builder $q) use ($labelId) {
-            $q->whereHas('labels', function (Builder $q2) use ($labelId) {
-                $q2->where('labels.id', $labelId);
             });
-        })
-        ->when($search, function (Builder $q) use ($search) {
-            $q->where(function (Builder $q2) use ($search) {
-                $q2->where('tasktitle', 'like', '%'.$search.'%')
-                   ->orWhere('description', 'like', '%'.$search.'%');
-            });
-        })
-        ->when($templatesOnly, function (Builder $query) {
-            $query->where('isrecurringtemplate', 1);
-        })
-        ->when($hideClosed, function (Builder $q) {
-            $q->where(function (Builder $q2) {
-                $q2->whereHas('status', function (Builder $q3) {
-                    $q3->where('iscompletedstatus', false);
-                })
-                ->orWhereNull('statusid');
-            });
-        });
 
-    if ($sort === 'projectname') {
-        $tasksQuery->join('projects', 'tasks.projectid', '=', 'projects.id')
-            ->select('tasks.*')
-            ->orderBy('projects.projectname', $dir);
-    } elseif ($sort === 'duedate') {
-        $tasksQuery->orderByRaw('duedate IS NULL')
-            ->orderBy('duedate', $dir);
-    } else {
-        $tasksQuery->orderBy($sort, $dir);
+        if ($sort === 'projectname') {
+            $tasksQuery->join('projects', 'tasks.projectid', '=', 'projects.id')
+                ->select('tasks.*')
+                ->orderBy('projects.projectname', $dir);
+        } elseif ($sort === 'duedate') {
+            $tasksQuery->orderByRaw('duedate IS NULL')
+                ->orderBy('duedate', $dir);
+        } else {
+            $tasksQuery->orderBy($sort, $dir);
+        }
+
+        $tasks = $tasksQuery->paginate(25)->withQueryString();
+
+        $projects = Project::orderBy('projectname')->get();
+        $labels   = Label::orderBy('labelname')->get();
+
+        return view('tasks.all-index', [
+            'tasks'       => $tasks,
+            'projects'    => $projects,
+            'labels'      => $labels,
+            'currentSort' => $sort,
+            'currentDir'  => $dir,
+            'projectId'   => $projectId,
+            'labelId'     => $labelId,
+            'hideClosed'  => $hideClosed,
+            'templatesOnly' => $templatesOnly,
+            'search'      => $search,
+        ]);
     }
 
-    $tasks = $tasksQuery->paginate(25)->withQueryString();
+    public function searchKnowledgeItems(Request $request)
+    {
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'selected' => ['nullable', 'array'],
+            'selected.*' => ['integer', 'exists:knowledgeitems,id'],
+        ]);
 
-    $projects = Project::orderBy('projectname')->get();
-    $labels   = Label::orderBy('labelname')->get();
+        $search = trim((string) ($validated['search'] ?? ''));
 
-    return view('tasks.all-index', [
-        'tasks'       => $tasks,
-        'projects'    => $projects,
-        'labels'      => $labels,
-        'currentSort' => $sort,
-        'currentDir'  => $dir,
-        'projectId'   => $projectId,
-        'labelId'     => $labelId,
-        'hideClosed'  => $hideClosed,
-        'templatesOnly' => $templatesOnly,
-        'search'      => $search,
-    ]);
-}
+        $selectedIds = collect($validated['selected'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $matchingItems = KnowledgeItem::query()
+            ->select([
+                'id',
+                'primarycategoryid',
+                'itemname',
+            ])
+            ->with('primaryCategory:id,categoryname')
+            ->where('isactive', 1)
+            ->when(
+                $search !== '',
+                fn ($query) => $query->where(
+                    'itemname',
+                    'like',
+                    '%' . $search . '%'
+                )
+            )
+            ->orderBy('itemname')
+            ->limit(50)
+            ->get();
+
+        /*
+        * Include selected records separately. This ensures saved links remain
+        * checked and visible even if their names do not match the search term.
+        */
+        $matchingIds = $matchingItems
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $missingSelectedIds = array_values(array_diff(
+            $selectedIds,
+            $matchingIds
+        ));
+
+        $selectedItems = $missingSelectedIds === []
+            ? collect()
+            : KnowledgeItem::query()
+                ->select([
+                    'id',
+                    'primarycategoryid',
+                    'itemname',
+                ])
+                ->with('primaryCategory:id,categoryname')
+                ->whereIn('id', $missingSelectedIds)
+                ->orderBy('itemname')
+                ->get();
+
+        /*
+        * Selected records first, followed by ordinary matching results. The
+        * unique() key prevents duplicates when a selected item matched search.
+        */
+        $items = $selectedItems
+            ->concat($matchingItems)
+            ->unique('id')
+            ->map(function (KnowledgeItem $item) use ($selectedIds) {
+                return [
+                    'id' => (int) $item->id,
+                    'itemname' => $item->itemname,
+                    'categoryname' => $item->primaryCategory?->categoryname,
+                    'selected' => in_array((int) $item->id, $selectedIds, true),
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'items' => $items,
+        ]);
+    }
 
     public function bulkUpdate(Request $request)
     {

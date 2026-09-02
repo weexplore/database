@@ -720,6 +720,20 @@ Route::get('/tasks/outlook', [TaskController::class, 'outlook'])
 Route::post('/tasks/outlook', [TaskController::class, 'storeFromOutlook']
     )->name('tasks.outlook.store');
 
+
+/*
+|--------------------------------------------------------------------------
+| Task Knowledge Item picker
+|--------------------------------------------------------------------------
+|
+| Lightweight AJAX endpoint for the Task Show page.
+| Returns a small, searchable list rather than rendering every active
+| Knowledge Item in the initial page HTML.
+*/
+Route::get('/tasks/knowledge-items/search', [TaskController::class, 'searchKnowledgeItems'])
+    ->name('tasks.knowledge-items.search');
+
+
 // Standard task creation.
 Route::post('/tasks', [TaskController::class, 'store'])
     ->name('tasks.store');

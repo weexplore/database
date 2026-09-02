@@ -41,7 +41,7 @@ protected $fillable = [
 
 protected $casts = [
     'primarycategoryid' => 'integer',
-    'itemtype' => 'integer',
+    'itemtype' => 'string',
     'parentitemid' => 'integer',
     'placeid' => 'integer',
     'startdate' => 'date',
@@ -180,6 +180,6 @@ protected $casts = [
             'taskknowledgeitems',
             'knowledgeitemid',
             'taskid'
-        )->withTimestamps();
+        )->withTimestamps('createdat', 'updatedat');
     }
 }
