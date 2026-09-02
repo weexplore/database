@@ -69,6 +69,14 @@
                             </span>
                         @endif
                     @endif
+
+                    @if ($task->updatedat)
+                        <span>·</span>
+
+                        <span>
+                            Updated {{ $task->updatedat->timezone('Australia/Sydney')->format('j M Y, g:i A') }}
+                        </span>
+                    @endif
                 </div>
 
                 @if ($task->labels->isNotEmpty())

@@ -392,6 +392,10 @@
                                         @if (filled($watchlistItem->itemstatus))
                                             · {{ ucfirst($watchlistItem->itemstatus) }}
                                         @endif
+
+                                        @if ($watchlistItem->updatedat)
+                                            · Updated {{ $watchlistItem->updatedat->timezone('Australia/Sydney')->format('j M Y, g:i A') }}
+                                        @endif
                                     </p>
                                 </div>
 
@@ -1254,20 +1258,26 @@
                                 </div>
 
                                 <div class="flex flex-wrap items-center gap-1">
+                                    @if ($activityTask->createdat && $activityTask->createdat->isSameDay($today))
+                                        <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-10px font-semibold text-emerald-800">
+                                            Created today
+                                        </span>
+                                    @endif
+
                                     @if ($activity['completed'])
-                                        <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800">
+                                        <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-10px font-semibold text-green-800">
                                             Completed today
                                         </span>
                                     @endif
 
                                     @if ($activity['updated'])
-                                        <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                                        <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-10px font-semibold text-slate-700">
                                             Updated today
                                         </span>
                                     @endif
 
                                     @if ($comments->isNotEmpty())
-                                        <span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-800">
+                                        <span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-10px font-semibold text-blue-800">
                                             {{ $comments->count() }}
                                             comment{{ $comments->count() === 1 ? '' : 's' }}
                                             today
@@ -1303,8 +1313,10 @@
                             No task activity has been recorded today.
                         </p>
                     @endforelse
-                </div>
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-violet-200">
+                    </div>
+                </section>
+
+                <section class="overflow-hidden border border-violet-200 bg-white shadow-sm sm:rounded-lg">
                     <div class="px-4 py-3 border-b border-violet-200 bg-violet-50">
                         <div class="flex items-center justify-between gap-4">
                             <div>
@@ -1503,13 +1515,11 @@
         const projectSelect = document.getElementById('outlook-projectid');
         const statusSelect = document.getElementById('outlook-statusid');
 
-        const statusesByProject = {{ \Illuminate\Support\Js::from(
-            $outlookStatusesByProject
-        ) }};
+        const statusesByProject = @json($outlookStatusesByProject);
 
-        const oldStatusId = {{ \Illuminate\Support\Js::from(
-            old('statusid')
-        ) }};
+        const oldStatusId = @json(old('statusid'));
+
+        projectSelect.addEventListener('change', function () 
 
         function populateOutlookStatuses(selectedStatusId = null) {
             if (!projectSelect || !statusSelect) {

@@ -1201,6 +1201,7 @@ class TaskController extends Controller
             'nextreviewdate',
             'isfeatured',
             'iswatchlist',
+            'updatedat',
         ]);
 
     $upcomingKnowledgeItemReviews = (clone $knowledgeReviewBaseQuery)
