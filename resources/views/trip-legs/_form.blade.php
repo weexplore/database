@@ -1381,6 +1381,7 @@ document.addEventListener('DOMContentLoaded', function () {
         filterToDestinations();
         filterToDestinationItems();
         updateTitle();
+        
         bindAllLegPointRows();
         emitTripLegSelectionUpdated();
     }
@@ -1429,8 +1430,20 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    bindAllLegPointRows();
-    refreshDependentUi();
+    /*
+    * The edit/create page inserts new Leg Point rows dynamically.
+    * Bind filtering after the row has been added to the DOM.
+    */
+    document.addEventListener('trip-leg:leg-point-row-added', function (event) {
+        const row = event.detail?.row;
+
+        if (!row) {
+            return;
+        }
+
+        bindLegPointRow(row);
+        emitTripLegSelectionUpdated();
+    });
 });
 </script>
 </query>

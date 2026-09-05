@@ -11,314 +11,330 @@
 
 <input type="hidden" name="return_to" value="{{ $returnTo }}">
 
-        <div class="space-y-6">
-            {{-- One complete planning-item entry area: no save button here. --}}
-            <section class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 sm:p-6 space-y-6">
-                <div>
-                    <h3 class="text-base font-semibold text-gray-900">
-                        {{ $tripPlanItem->exists ? 'Edit Planning Item' : 'New Planning Item' }}
-                    </h3>
+<div class="space-y-6">
+    <section class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 sm:p-5 space-y-5">
+        <div>
+            <h3 class="text-base font-semibold text-gray-900">
+                {{ $tripPlanItem->exists ? 'Edit Planning Item' : 'New Planning Item' }}
+            </h3>
+            <p class="mt-1 text-sm text-gray-600">
+                Choose the trip date, place or destination, and any Destination Items to create.
+            </p>
+        </div>
 
-                    <p class="mt-1 text-sm text-gray-600">
-                        Choose the trip date, place or destination, and any Destination Items to create.
-                        Further planning details are available below.
-                    </p>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
+        {{-- Primary plan details: compact two-row layout. --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
             <div>
-                <label for="planneddate" class="block text-sm font-medium text-gray-700">
-                    Planned date
-                </label>
-
+                <label for="planneddate" class="block text-sm font-medium text-gray-700">Planned date</label>
                 <input type="date"
-                    name="planneddate"
-                    id="planneddate"
-                    value="{{ old('planneddate', optional($tripPlanItem->planneddate)->format('Y-m-d')) }}"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                    autofocus>
+                       name="planneddate"
+                       id="planneddate"
+                       value="{{ old('planneddate', optional($tripPlanItem->planneddate)->format('Y-m-d')) }}"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                       autofocus>
             </div>
 
             <div>
-                <label for="plannedenddate" class="block text-sm font-medium text-gray-700">
-                    Planned end date
-                </label>
-
+                <label for="plannedenddate" class="block text-sm font-medium text-gray-700">Planned end date</label>
                 <input type="date"
-                    name="plannedenddate"
-                    id="plannedenddate"
-                    value="{{ old('plannedenddate', optional($tripPlanItem->plannedenddate)->format('Y-m-d')) }}"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                       name="plannedenddate"
+                       id="plannedenddate"
+                       value="{{ old('plannedenddate', optional($tripPlanItem->plannedenddate)->format('Y-m-d')) }}"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
             </div>
 
             <div>
-                <label for="plantype" class="block text-sm font-medium text-gray-700">
-                    Planning type
-                </label>
-
+                <label for="plantype" class="block text-sm font-medium text-gray-700">Planning type</label>
                 <select name="plantype"
                         id="plantype"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                         required>
                     <option value="">Select type</option>
-
                     @foreach($planTypeOptions as $value => $label)
-                        <option value="{{ $value }}"
-                            @selected(old('plantype', $tripPlanItem->plantype) === $value)>
+                        <option value="{{ $value }}" @selected(old('plantype', $tripPlanItem->plantype) === $value)>
                             {{ $label }}
                         </option>
                     @endforeach
                 </select>
             </div>
 
-            <div class="xl:col-span-2">
-                <label for="title" class="block text-sm font-medium text-gray-700">
-                    Title
-                </label>
-
+            <div class="xl:col-span-3">
+                <label for="title" class="block text-sm font-medium text-gray-700">Title</label>
                 <input type="text"
-                    name="title"
-                    id="title"
-                    value="{{ old('title', $tripPlanItem->title) }}"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                    maxlength="200"
-                    placeholder="e.g. Travel to Bendigo">
+                       name="title"
+                       id="title"
+                       value="{{ old('title', $tripPlanItem->title) }}"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                       maxlength="200"
+                       placeholder="e.g. Travel to Bendigo">
             </div>
+        </div>
 
-            <div>
-                <div class="flex items-center justify-between gap-2">
-                    <label for="placeid" class="block text-sm font-medium text-gray-700">
+        <div class="space-y-3">
+            {{-- Place and Destination: always kept together from medium width upward. --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {{-- Place --}}
+                <div class="flex min-w-0 items-center gap-2">
+                    <label for="placeid"
+                        class="shrink-0 text-sm font-medium text-gray-700">
                         Place
                     </label>
 
+                    <select name="placeid"
+                            id="placeid"
+                            class="min-w-0 flex-1 rounded-md border-gray-300 shadow-sm js-place-select">
+                        <option value="">Select place</option>
+
+                        @foreach($places as $place)
+                            <option value="{{ $place->id }}"
+                                @selected($selectedPlaceId === (string) $place->id)>
+                                {{ $place->placename }}
+                            </option>
+                        @endforeach
+                    </select>
+
                     <button type="button"
                             id="nearby_places_toggle"
-                            class="inline-flex items-center px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-xs font-medium disabled:opacity-50"
+                            class="shrink-0 inline-flex items-center px-2 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-xs font-medium disabled:opacity-50"
                             disabled>
                         Nearby
                     </button>
                 </div>
 
-                <select name="placeid"
-                        id="placeid"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm js-place-select">
-                    <option value="">None</option>
+                {{-- Destination --}}
+                <div class="flex min-w-0 items-center gap-2">
+                    <label for="destinationid"
+                        class="shrink-0 text-sm font-medium text-gray-700">
+                        Destination
+                    </label>
 
-                    @foreach($places as $place)
-                        <option value="{{ $place->id }}"
-                            @selected($selectedPlaceId === (string) $place->id)>
-                            {{ $place->placename }}
+                    <select name="destinationid"
+                            id="destinationid"
+                            class="min-w-0 flex-1 rounded-md border-gray-300 shadow-sm js-destination-select"
+                            @disabled(blank($selectedPlaceId))>
+                        <option value="">
+                            {{ blank($selectedPlaceId) ? 'Select place first' : 'None' }}
                         </option>
-                    @endforeach
-                </select>
-            </div>
-        </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label for="destinationid" class="block text-sm font-medium text-gray-700">
-                    Destination
+                        @foreach($destinations as $destination)
+                            @php
+                                $matchesSelectedPlace = filled($selectedPlaceId)
+                                    && (string) $destination->placeid === $selectedPlaceId;
+                            @endphp
+
+                            <option value="{{ $destination->id }}"
+                                    data-place-id="{{ $destination->placeid }}"
+                                    @selected($selectedDestinationId === (string) $destination->id)
+                                    @disabled(! $matchesSelectedPlace)
+                                    @if(! $matchesSelectedPlace) hidden @endif>
+                                {{ $destination->destinationname }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            {{-- Flags and compact guidance: independent second row. --}}
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <label class="inline-flex items-center gap-1.5 whitespace-nowrap">
+                    <input type="hidden" name="isrouteanchor" value="0">
+
+                    <input type="checkbox"
+                        name="isrouteanchor"
+                        value="1"
+                        class="rounded border-gray-300 text-blue-600 shadow-sm"
+                        @checked((bool) old('isrouteanchor', $tripPlanItem->isrouteanchor))>
+
+                    <span class="text-sm text-gray-700">Route anchor</span>
                 </label>
 
-                <select name="destinationid"
-                        id="destinationid"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm js-destination-select">
-                    <option value="">None</option>
+                <label class="inline-flex items-center gap-1.5 whitespace-nowrap">
+                    <input type="hidden" name="isgovia" value="0">
 
-                    @foreach($destinations as $destination)
-                        @php
-                            $matchesSelectedPlace = blank($selectedPlaceId)
-                                || (string) $destination->placeid === $selectedPlaceId;
-                        @endphp
+                    <input type="checkbox"
+                        name="isgovia"
+                        value="1"
+                        class="rounded border-gray-300 text-blue-600 shadow-sm"
+                        @checked((bool) old('isgovia', $tripPlanItem->isgovia))>
 
-                        <option value="{{ $destination->id }}"
-                                data-place-id="{{ $destination->placeid }}"
-                                @selected($selectedDestinationId === (string) $destination->id)
-                                @disabled(! $matchesSelectedPlace)
-                                @if(! $matchesSelectedPlace) hidden @endif>
-                            {{ $destination->destinationname }}
-                            @if($destination->place)
-                                · {{ $destination->place->placename }}
-                            @endif
-                        </option>
-                    @endforeach
-                </select>
+                    <span class="text-sm text-gray-700">Go via</span>
+                </label>
 
-                <p class="mt-1 text-xs text-gray-500">
-                    Destination options are limited to the selected place.
-                </p>
+                <label class="inline-flex items-center gap-1.5 whitespace-nowrap">
+                    <input type="hidden" name="isovernight" value="0">
+
+                    <input type="checkbox"
+                        name="isovernight"
+                        value="1"
+                        class="rounded border-gray-300 text-blue-600 shadow-sm"
+                        @checked((bool) old('isovernight', $tripPlanItem->isovernight))>
+
+                    <span class="text-sm text-gray-700">Overnight</span>
+                </label>
+
+                <label class="inline-flex items-center gap-1.5 whitespace-nowrap">
+                    <input type="hidden" name="isstaytarget" value="0">
+
+                    <input type="checkbox"
+                        name="isstaytarget"
+                        value="1"
+                        class="rounded border-gray-300 text-blue-600 shadow-sm"
+                        @checked((bool) old('isstaytarget', $tripPlanItem->isstaytarget))>
+
+                    <span class="text-sm text-gray-700">Stay target</span>
+                </label>
+
+                <span class="text-xs text-gray-500">
+                    — Destination options and Destination Items are limited to the selected Place.
+                </span>
             </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-x-5 gap-y-3">
-            <label class="inline-flex items-center gap-2">
-                <input type="hidden" name="isrouteanchor" value="0">
-                <input type="checkbox"
-                       name="isrouteanchor"
-                       value="1"
-                       class="rounded border-gray-300 text-blue-600 shadow-sm"
-                       @checked((bool) old('isrouteanchor', $tripPlanItem->isrouteanchor))>
-                <span class="text-sm text-gray-700">Route anchor</span>
-            </label>
 
-            <label class="inline-flex items-center gap-2">
-                <input type="hidden" name="isgovia" value="0">
-                <input type="checkbox"
-                       name="isgovia"
-                       value="1"
-                       class="rounded border-gray-300 text-blue-600 shadow-sm"
-                       @checked((bool) old('isgovia', $tripPlanItem->isgovia))>
-                <span class="text-sm text-gray-700">Go via</span>
-            </label>
-
-            <label class="inline-flex items-center gap-2">
-                <input type="hidden" name="isovernight" value="0">
-                <input type="checkbox"
-                       name="isovernight"
-                       value="1"
-                       class="rounded border-gray-300 text-blue-600 shadow-sm"
-                       @checked((bool) old('isovernight', $tripPlanItem->isovernight))>
-                <span class="text-sm text-gray-700">Overnight</span>
-            </label>
-
-            <label class="inline-flex items-center gap-2">
-                <input type="hidden" name="isstaytarget" value="0">
-                <input type="checkbox"
-                       name="isstaytarget"
-                       value="1"
-                       class="rounded border-gray-300 text-blue-600 shadow-sm"
-                       @checked((bool) old('isstaytarget', $tripPlanItem->isstaytarget))>
-                <span class="text-sm text-gray-700">Stay target</span>
-            </label>
-        </div>
-
-        {{-- Destination Items belong with the main creation controls. --}}
-        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        {{-- Destination Items: compact cards rather than a single tall scrolling list. --}}
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h4 class="text-sm font-semibold text-gray-900">
                         Destination Items
                     </h4>
 
-                    <p class="mt-1 text-xs text-gray-500">
-                        Tick one or more items to create separate planning rows for them when this planning item is saved.
+                    <p id="related_destinationitem_help"
+                    class="mt-0.5 text-xs text-gray-500">
+                        {{ blank($selectedPlaceId)
+                            ? 'Select a Place to display Destination Items.'
+                            : 'Tick items to create separate planning rows when saved.' }}
                     </p>
                 </div>
 
-                <label class="inline-flex items-center gap-2 text-sm text-gray-700 shrink-0">
+                <label id="related_toggle_all_wrap"
+                    class="{{ blank($selectedPlaceId) ? 'hidden' : '' }} inline-flex items-center gap-2 text-sm text-gray-700 shrink-0">
                     <input type="checkbox"
-                           id="related_toggle_all"
-                           class="rounded border-gray-300">
+                        id="related_toggle_all"
+                        class="rounded border-gray-300">
                     <span>Select all visible</span>
                 </label>
             </div>
 
-            <div class="max-h-64 overflow-y-auto border border-gray-200 rounded-md divide-y divide-gray-100 bg-white"
-                 id="related_destinationitem_list">
+            <div id="related_destinationitem_list"
+                class="{{ blank($selectedPlaceId) ? 'hidden' : 'grid' }} mt-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-h-80 overflow-y-auto rounded-md border border-gray-200 bg-white p-3">
                 @foreach($destinationItems as $item)
                     @php
                         $resolvedPlaceId = (string) ($item->placeid ?? $item->destination?->placeid ?? '');
                         $resolvedDestinationId = (string) ($item->destinationid ?? '');
-                        $matchesPlace = blank($selectedPlaceId) || $resolvedPlaceId === $selectedPlaceId;
-                        $matchesDestination = blank($selectedDestinationId) || $resolvedDestinationId === $selectedDestinationId;
-                        $isVisibleInitially = $selectedDestinationId
-                            ? $matchesDestination
-                            : ($selectedPlaceId ? $matchesPlace : true);
+
+                        $matchesPlace = filled($selectedPlaceId)
+                            && $resolvedPlaceId === $selectedPlaceId;
+
+                        $matchesDestination = blank($selectedDestinationId)
+                            || $resolvedDestinationId === $selectedDestinationId;
+
+                        $isVisibleInitially = $matchesPlace && $matchesDestination;
                     @endphp
 
-                    <label class="related-destination-item-row flex items-start gap-3 px-3 py-2 hover:bg-gray-50"
-                           data-place-id="{{ $resolvedPlaceId }}"
-                           data-destination-id="{{ $resolvedDestinationId }}"
-                           @if(! $isVisibleInitially) style="display:none;" @endif>
+                    <label class="related-destination-item-row flex items-start gap-3 rounded-md border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50"
+                        data-place-id="{{ $resolvedPlaceId }}"
+                        data-destination-id="{{ $resolvedDestinationId }}"
+                        @if(! $isVisibleInitially) style="display:none;" @endif>
                         <input type="checkbox"
-                               name="selected_destinationitemids[]"
-                               value="{{ $item->id }}"
-                               class="related-destination-item-checkbox mt-1 rounded border-gray-300"
-                               @checked(in_array((int) $item->id, $selectedDestinationItemIdsForForm, true))>
+                            name="selected_destinationitemids[]"
+                            value="{{ $item->id }}"
+                            class="related-destination-item-checkbox mt-1 rounded border-gray-300"
+                            @checked(in_array((int) $item->id, $selectedDestinationItemIdsForForm, true))>
 
                         <span class="min-w-0">
-                            <span class="block text-xs font-medium text-gray-900">
+                            <span class="block text-sm font-medium text-gray-900">
                                 {{ $item->itemname }}
                             </span>
 
-                            <span class="mt-0.5 block text-[11px] text-gray-500">
+                            <span class="mt-0.5 block text-xs text-gray-500">
                                 {{ $item->destination->destinationname ?? 'No destination' }}
-                                @if($item->place || $item->destination?->place)
-                                    · {{ $item->place->placename ?? $item->destination?->place?->placename }}
-                                @endif
                             </span>
                         </span>
                     </label>
                 @endforeach
             </div>
 
-            <p class="text-[11px] text-gray-400">
-                The list filters automatically when you change Place or Destination. Leave all items unticked to create only one planning row.
+            <p id="related_destinationitem_empty_state"
+            class="{{ blank($selectedPlaceId) ? 'hidden' : '' }} mt-3 rounded-md border border-dashed border-gray-300 bg-white px-3 py-2 text-xs text-gray-500">
+                No Destination Items are linked to the selected Place.
             </p>
         </div>
     </section>
 
-    {{-- Detail areas remain in the same form, below the unified creation area. --}}
+    {{-- Secondary planning details: one compact row at desktop width. --}}
+    <section class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 sm:p-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4 items-end">
+            <div>
+                <label for="sequence_no" class="block text-sm font-medium text-gray-700">Sequence</label>
+                <input type="number"
+                       min="1"
+                       name="sequence_no"
+                       id="sequence_no"
+                       value="{{ old('sequence_no', $tripPlanItem->sequence_no) }}"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            </div>
+
+            <div>
+                <label for="sortgroup" class="block text-sm font-medium text-gray-700">Sort group</label>
+                <input type="text"
+                       name="sortgroup"
+                       id="sortgroup"
+                       value="{{ old('sortgroup', $tripPlanItem->sortgroup) }}"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                       maxlength="30">
+            </div>
+
+            <div>
+                <label for="starttime" class="block text-sm font-medium text-gray-700">Start time</label>
+                <input type="time"
+                       name="starttime"
+                       id="starttime"
+                       value="{{ old('starttime', $tripPlanItem->starttime ? \Illuminate\Support\Carbon::parse($tripPlanItem->starttime)->format('H:i') : '') }}"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            </div>
+
+            <div>
+                <label for="endtime" class="block text-sm font-medium text-gray-700">End time</label>
+                <input type="time"
+                       name="endtime"
+                       id="endtime"
+                       value="{{ old('endtime', $tripPlanItem->endtime ? \Illuminate\Support\Carbon::parse($tripPlanItem->endtime)->format('H:i') : '') }}"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            </div>
+
+            <div>
+                <label for="staytype" class="block text-sm font-medium text-gray-700">Stay type</label>
+                <select name="staytype"
+                        id="staytype"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    <option value="">None</option>
+                    @foreach($stayTypeOptions as $value => $label)
+                        <option value="{{ $value }}" @selected(old('staytype', $tripPlanItem->staytype) === $value)>
+                            {{ $label }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label for="nightsplanned" class="block text-sm font-medium text-gray-700">Nights planned</label>
+                <input type="number"
+                       min="0"
+                       name="nightsplanned"
+                       id="nightsplanned"
+                       value="{{ old('nightsplanned', $tripPlanItem->nightsplanned) }}"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            </div>
+        </div>
+
+        <p class="mt-2 text-xs text-gray-500">
+            Leave Sequence blank to allocate the next available sequence number automatically.
+        </p>
+    </section>
+
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div class="xl:col-span-2 space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label for="sequence_no" class="block text-sm font-medium text-gray-700">
-                        Sequence
-                    </label>
-
-                    <input type="number"
-                           min="1"
-                           name="sequence_no"
-                           id="sequence_no"
-                           value="{{ old('sequence_no', $tripPlanItem->sequence_no) }}"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-
-                    <p class="mt-1 text-xs text-gray-500">
-                        Leave blank to use the next available sequence number automatically.
-                    </p>
-                </div>
-
-                <div>
-                    <label for="sortgroup" class="block text-sm font-medium text-gray-700">
-                        Sort group
-                    </label>
-
-                    <input type="text"
-                           name="sortgroup"
-                           id="sortgroup"
-                           value="{{ old('sortgroup', $tripPlanItem->sortgroup) }}"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                           maxlength="30">
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                    <label for="starttime" class="block text-sm font-medium text-gray-700">
-                        Start time
-                    </label>
-
-                    <input type="time"
-                           name="starttime"
-                           id="starttime"
-                           value="{{ old('starttime', $tripPlanItem->starttime ? \Illuminate\Support\Carbon::parse($tripPlanItem->starttime)->format('H:i') : '') }}"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                </div>
-
-                <div>
-                    <label for="endtime" class="block text-sm font-medium text-gray-700">
-                        End time
-                    </label>
-
-                    <input type="time"
-                           name="endtime"
-                           id="endtime"
-                           value="{{ old('endtime', $tripPlanItem->endtime ? \Illuminate\Support\Carbon::parse($tripPlanItem->endtime)->format('H:i') : '') }}"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                </div>
-            </div>
-
             <x-forms.markdown-display-editor
                 name="notes"
                 id="notes"
@@ -345,7 +361,6 @@
                             <label for="nearby_radius_km" class="block text-xs font-medium text-gray-700 mb-1">
                                 Radius
                             </label>
-
                             <select id="nearby_radius_km" class="rounded-md border-gray-300 shadow-sm text-sm">
                                 <option value="25">25 km</option>
                                 <option value="50" selected>50 km</option>
@@ -383,7 +398,6 @@
                                 <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                             </tr>
                         </thead>
-
                         <tbody id="nearby_places_results" class="divide-y divide-gray-100 bg-white">
                             <tr>
                                 <td colspan="4" class="px-3 py-4 text-center text-sm text-gray-500">
@@ -401,56 +415,14 @@
         </div>
 
         <div class="space-y-6">
-            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
-                <h3 class="text-sm font-semibold text-gray-900">Stay details</h3>
-
-                <div>
-                    <label for="staytype" class="block text-sm font-medium text-gray-700">
-                        Stay type
-                    </label>
-
-                    <select name="staytype"
-                            id="staytype"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                        <option value="">None</option>
-
-                        @foreach($stayTypeOptions as $value => $label)
-                            <option value="{{ $value }}"
-                                @selected(old('staytype', $tripPlanItem->staytype) === $value)>
-                                {{ $label }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div>
-                    <label for="nightsplanned" class="block text-sm font-medium text-gray-700">
-                        Nights planned
-                    </label>
-
-                    <input type="number"
-                           min="0"
-                           name="nightsplanned"
-                           id="nightsplanned"
-                           value="{{ old('nightsplanned', $tripPlanItem->nightsplanned) }}"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                </div>
-            </div>
-
             @if(isset($tripLegs) && isset($tripStays) && $tripLegs->count() + $tripStays->count() > 0)
                 <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
                     <h3 class="text-sm font-semibold text-gray-900">Linked outputs</h3>
 
                     <div>
-                        <label for="triplegid" class="block text-sm font-medium text-gray-700">
-                            Trip Leg
-                        </label>
-
-                        <select name="triplegid"
-                                id="triplegid"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <label for="triplegid" class="block text-sm font-medium text-gray-700">Trip Leg</label>
+                        <select name="triplegid" id="triplegid" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                             <option value="">None</option>
-
                             @foreach($tripLegs as $leg)
                                 <option value="{{ $leg->id }}"
                                     @selected((string) old('triplegid', $tripPlanItem->triplegid) === (string) $leg->id)>
@@ -461,15 +433,9 @@
                     </div>
 
                     <div>
-                        <label for="tripstayid" class="block text-sm font-medium text-gray-700">
-                            Trip Stay
-                        </label>
-
-                        <select name="tripstayid"
-                                id="tripstayid"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <label for="tripstayid" class="block text-sm font-medium text-gray-700">Trip Stay</label>
+                        <select name="tripstayid" id="tripstayid" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                             <option value="">None</option>
-
                             @foreach($tripStays as $stay)
                                 <option value="{{ $stay->id }}"
                                     @selected((string) old('tripstayid', $tripPlanItem->tripstayid) === (string) $stay->id)>
@@ -483,7 +449,6 @@
 
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
                 <h3 class="text-sm font-semibold text-gray-900">Actions</h3>
-
                 <p class="text-xs text-gray-500">
                     Save creates the main planning item and any selected Destination Item rows together.
                 </p>
@@ -550,7 +515,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         destinationOptions.forEach(option => {
             const optionPlaceId = option.dataset.placeId || '';
-            const visible = !selectedPlaceId || optionPlaceId === selectedPlaceId;
+            const visible = !!selectedPlaceId && optionPlaceId === selectedPlaceId;
 
             option.hidden = !visible;
             option.disabled = !visible;
@@ -560,7 +525,17 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        if (currentDestinationId && !selectedDestinationIsVisible) {
+        destinationSelect.disabled = !selectedPlaceId;
+
+        const placeholder = destinationSelect.querySelector('option[value=""]');
+
+        if (placeholder) {
+            placeholder.textContent = selectedPlaceId
+                ? 'None'
+                : 'Select a place first';
+        }
+
+        if (!selectedPlaceId || (currentDestinationId && !selectedDestinationIsVisible)) {
             destinationSelect.value = '';
         }
     }
@@ -569,15 +544,26 @@ document.addEventListener('DOMContentLoaded', function () {
         const selectedPlaceId = placeSelect.value || '';
         const selectedDestinationId = destinationSelect.value || '';
 
+        const list = document.getElementById('related_destinationitem_list');
+        const help = document.getElementById('related_destinationitem_help');
+        const emptyState = document.getElementById('related_destinationitem_empty_state');
+        const toggleAllWrap = document.getElementById('related_toggle_all_wrap');
+
+        let visibleRowCount = 0;
+
         rows.forEach(row => {
             const rowPlaceId = row.dataset.placeId || '';
             const rowDestinationId = row.dataset.destinationId || '';
 
-            const visible = selectedDestinationId
-                ? rowDestinationId === selectedDestinationId
-                : (selectedPlaceId ? rowPlaceId === selectedPlaceId : true);
+            const visible = !!selectedPlaceId
+                && rowPlaceId === selectedPlaceId
+                && (!selectedDestinationId || rowDestinationId === selectedDestinationId);
 
             row.style.display = visible ? '' : 'none';
+
+            if (visible) {
+                visibleRowCount += 1;
+            }
 
             const checkbox = row.querySelector('.related-destination-item-checkbox');
 
@@ -586,8 +572,39 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
+        const hasPlace = !!selectedPlaceId;
+        const hasVisibleItems = visibleRowCount > 0;
+
+        if (list) {
+            list.classList.toggle('hidden', !hasPlace || !hasVisibleItems);
+            list.classList.toggle('grid', hasPlace && hasVisibleItems);
+        }
+
+        if (toggleAllWrap) {
+            toggleAllWrap.classList.toggle('hidden', !hasPlace || !hasVisibleItems);
+        }
+
+        if (emptyState) {
+            emptyState.classList.toggle('hidden', !hasPlace || hasVisibleItems);
+
+            if (hasPlace && !hasVisibleItems) {
+                emptyState.textContent = selectedDestinationId
+                    ? 'No Destination Items are linked to the selected Destination.'
+                    : 'No Destination Items are linked to the selected Place.';
+            }
+        }
+
+        if (help) {
+            help.textContent = !hasPlace
+                ? 'Select a Place to display Destination Items.'
+                : (selectedDestinationId
+                    ? 'Showing items for the selected Destination.'
+                    : 'Showing items for the selected Place.');
+        }
+
         if (toggleAll) {
             toggleAll.checked = false;
+            toggleAll.disabled = !hasPlace || !hasVisibleItems;
         }
     }
 
@@ -647,7 +664,6 @@ document.addEventListener('DOMContentLoaded', function () {
         finalUrl.searchParams.set('radius_km', nearbyRadius.value || '50');
 
         nearbyStatus.textContent = 'Loading nearby places...';
-
         nearbyResults.innerHTML = `
             <tr>
                 <td colspan="4" class="px-3 py-4 text-center text-sm text-gray-500">
@@ -666,14 +682,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const data = await response.json();
-
-            nearbyStatus.textContent =
-                `Showing places within ${data.radius_km} km of ${data.place.placename}.`;
-
+            nearbyStatus.textContent = `Showing places within ${data.radius_km} km of ${data.place.placename}.`;
             renderNearbyRows(data.nearby_places || []);
         } catch (error) {
             nearbyStatus.textContent = 'Could not load nearby places.';
-
             nearbyResults.innerHTML = `
                 <tr>
                     <td colspan="4" class="px-3 py-4 text-center text-sm text-red-600">
