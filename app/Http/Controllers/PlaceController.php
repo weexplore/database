@@ -44,6 +44,28 @@ class PlaceController extends Controller
     $selectedStateId = $request->filled('state_id') ? (int) $request->state_id : null;
     $selectedRegionId = $request->filled('region_id') ? (int) $request->region_id : null;
 
+    /*
+     * Content-completeness filters:
+     *
+     * destination_status:
+     *   blank = all places
+     *   none  = destination count is zero
+     *   has   = one or more destinations
+     *
+     * destination_item_status:
+     *   blank = all places
+     *   none  = Destination Item count is zero
+     *   has   = one or more Destination Items
+     *
+     * coordinates_status:
+     *   blank   = all places
+     *   missing = latitude or longitude is absent
+     *   has     = both latitude and longitude are present
+     */
+    $destinationStatus = $request->input('destination_status');
+    $destinationItemStatus = $request->input('destination_item_status');
+    $coordinatesStatus = $request->input('coordinates_status');
+
     $filterStates = State::query()
         ->when(
             $selectedCountryId,
@@ -109,6 +131,41 @@ class PlaceController extends Controller
         $query->where('isactive', (int) $request->status);
     }
 
+    /*
+     * Places with zero or one-or-more Destinations.
+     */
+    if ($destinationStatus === 'none') {
+        $query->doesntHave('destinations');
+    } elseif ($destinationStatus === 'has') {
+        $query->has('destinations');
+    }
+
+    /*
+     * Places with zero or one-or-more Destination Items.
+     *
+     * This uses the direct Place::destinationItems() relationship—the same
+     * relationship already used for destination_items_count above.
+     */
+    if ($destinationItemStatus === 'none') {
+        $query->doesntHave('destinationItems');
+    } elseif ($destinationItemStatus === 'has') {
+        $query->has('destinationItems');
+    }
+
+    /*
+     * A coordinate pair is only complete when BOTH values exist.
+     * Therefore, "No" means latitude OR longitude is null.
+     */
+    if ($coordinatesStatus === 'missing') {
+        $query->where(function ($coordinateQuery) {
+            $coordinateQuery->whereNull('latitude')
+                ->orWhereNull('longitude');
+        });
+    } elseif ($coordinatesStatus === 'has') {
+        $query->whereNotNull('latitude')
+            ->whereNotNull('longitude');
+    }
+
     if ($request->filled('search')) {
         $search = trim((string) $request->search);
 
@@ -121,11 +178,11 @@ class PlaceController extends Controller
     }
 
     $statesByCountryForJs = $statesByCountry
-    ->map(fn ($states) => $states->map(fn ($state) => [
-        'id' => $state->id,
-        'name' => $state->statename,
-    ])->values())
-    ->toArray();
+        ->map(fn ($states) => $states->map(fn ($state) => [
+            'id' => $state->id,
+            'name' => $state->statename,
+        ])->values())
+        ->toArray();
 
     $regionsByCountryForJs = $regionsByCountry
         ->map(fn ($regions) => $regions->map(fn ($region) => [

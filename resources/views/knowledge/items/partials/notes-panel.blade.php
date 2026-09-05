@@ -171,9 +171,12 @@
                                 </div>
 
                                 <template x-if="note.notecontent_html">
-                                    <div class="mt-3 markdown-content prose prose-sm max-w-none text-gray-700"
-                                         x-html="note.notecontent_html">
-                                    </div>
+                                    <div
+                                        class="mt-3 markdown-content prose prose-sm max-w-none text-gray-700"
+                                        x-html="note.notecontent_html"
+                                        x-init="$nextTick(() => window.renderMarkdownMath($el))"
+                                        x-effect="$nextTick(() => window.renderMarkdownMath($el))"
+                                    ></div>
                                 </template>
                             </div>
                         </div>

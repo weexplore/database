@@ -16,6 +16,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 
 class TripPlanItemController extends Controller
 {
@@ -292,14 +293,33 @@ return [
         ]);
     }
 
-    public function store(Request $request, Trip $trip)
+    public function store(Request $request, Trip $trip): RedirectResponse
 {
     $validated = $this->validateData($request, $trip);
 
-    $selectedDestinationItemIds = collect($request->input('selected_destinationitemids', []))
+    $selectedDestinationItemIds = collect(
+        $request->input('selected_destinationitemids', [])
+    )
         ->filter(fn ($id) => filled($id))
         ->map(fn ($id) => (int) $id)
+        ->unique()
         ->values();
+
+    $mainDestinationItemId = filled($validated['destinationitemid'] ?? null)
+        ? (int) $validated['destinationitemid']
+        : null;
+
+    /*
+     * Include the primary selection in the list so a single destination
+     * item works whether it comes from destinationitemid, the multi-select
+     * array, or both.
+     */
+    if ($mainDestinationItemId) {
+        $selectedDestinationItemIds = $selectedDestinationItemIds
+            ->prepend($mainDestinationItemId)
+            ->unique()
+            ->values();
+    }
 
     $validated['tripid'] = $trip->id;
     $validated['nightsplanned'] = $this->calculateNightsPlanned(
@@ -308,20 +328,28 @@ return [
         !empty($validated['isovernight']) || !empty($validated['isstaytarget'])
     );
 
-    DB::transaction(function () use ($trip, &$validated, $selectedDestinationItemIds) {
+    DB::transaction(function () use (
+        $trip,
+        $validated,
+        $selectedDestinationItemIds
+    ) {
         $currentMaxSequence = (int) TripPlanItem::query()
             ->where('tripid', $trip->id)
             ->max('sequence_no');
 
         $baseSequence = filled($validated['sequence_no'] ?? null)
             ? (int) $validated['sequence_no']
-            : ($currentMaxSequence + 1);
+            : $currentMaxSequence + 1;
 
-        $validated['sequence_no'] = $baseSequence;
-
-        TripPlanItem::create($validated);
-
+        /*
+         * Standard planner item:
+         * only create it where no destination item has been selected.
+         */
         if ($selectedDestinationItemIds->isEmpty()) {
+            $validated['sequence_no'] = $baseSequence;
+
+            TripPlanItem::create($validated);
+
             return;
         }
 
@@ -331,66 +359,66 @@ return [
             ->get()
             ->keyBy('id');
 
-        if ($destinationItems->isEmpty()) {
-            return;
-        }
-
         $orderedDestinationItems = $selectedDestinationItemIds
-            ->map(fn ($id) => $destinationItems->get($id))
-            ->filter();
-
-        if (filled($validated['destinationitemid'] ?? null)) {
-            $mainDestinationItemId = (int) $validated['destinationitemid'];
-
-            $orderedDestinationItems = $orderedDestinationItems->reject(
-                fn ($item) => (int) $item->id === $mainDestinationItemId
-            )->values();
-        }
+            ->map(fn (int $id) => $destinationItems->get($id))
+            ->filter()
+            ->values();
 
         if ($orderedDestinationItems->isEmpty()) {
             return;
         }
-
-        $nextSequence = $baseSequence;
 
         $startDate = $validated['planneddate'] ?? null;
         $endDate = $validated['plannedenddate'] ?? null;
         $startTime = $validated['starttime'] ?? null;
         $endTime = $validated['endtime'] ?? null;
         $sortGroup = $validated['sortgroup'] ?? null;
+
         $nightsPlanned = $this->calculateNightsPlanned(
             $startDate,
             $endDate,
             !empty($validated['isovernight']) || !empty($validated['isstaytarget'])
         );
 
-        foreach ($orderedDestinationItems as $destinationItem) {
-            $nextSequence++;
-
+        foreach ($orderedDestinationItems as $index => $destinationItem) {
             $placeId = $destinationItem->placeid
                 ?: $destinationItem->destination?->placeid;
 
-            $destinationId = $destinationItem->destinationid;
-
             TripPlanItem::create([
                 'tripid' => $trip->id,
-                'sequence_no' => $nextSequence,
+                'sequence_no' => $baseSequence + $index,
                 'plantype' => 'destination_item',
                 'title' => $destinationItem->itemname,
                 'sortgroup' => $sortGroup,
                 'placeid' => $placeId,
-                'destinationid' => $destinationId,
+                'destinationid' => $destinationItem->destinationid,
                 'destinationitemid' => $destinationItem->id,
                 'planneddate' => $startDate,
                 'plannedenddate' => $endDate,
                 'starttime' => $startTime,
                 'endtime' => $endTime,
-                'notes' => null,
-                'isrouteanchor' => 0,
-                'isovernight' => 0,
-                'isstaytarget' => 0,
-                'staytype' => null,
-                'nightsplanned' => $nightsPlanned,
+
+                /*
+                 * Preserve planner-level notes and flags on the first
+                 * destination item only. Extra selected items are normal
+                 * activity items, rather than duplicate overnight stops.
+                 */
+                'notes' => $index === 0 ? ($validated['notes'] ?? null) : null,
+                'isrouteanchor' => $index === 0
+                    ? !empty($validated['isrouteanchor'])
+                    : false,
+                'isovernight' => $index === 0
+                    ? !empty($validated['isovernight'])
+                    : false,
+                'isstaytarget' => $index === 0
+                    ? !empty($validated['isstaytarget'])
+                    : false,
+                'staytype' => $index === 0
+                    ? ($validated['staytype'] ?? null)
+                    : null,
+                'nightsplanned' => $index === 0
+                    ? $nightsPlanned
+                    : 0,
                 'triplegid' => null,
                 'tripstayid' => null,
             ]);
@@ -399,7 +427,10 @@ return [
 
     return redirect()
         ->route('trips.planner.index', $trip)
-        ->with('success', 'Planning item created with any selected destination items.');
+        ->with(
+            'success',
+            'Planning item created with selected destination items.'
+        );
 }
 
     public function edit(Request $request, Trip $trip, TripPlanItem $tripPlanItem)

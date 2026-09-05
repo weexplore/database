@@ -87,20 +87,112 @@
                     </div>
 
                     <div class="bg-white shadow-sm sm:rounded-lg p-4">
-                        <h3 class="text-sm font-semibold text-gray-900">This Item’s Attachments</h3>
+                        <h3 class="text-sm font-semibold text-gray-900">
+                            This Item’s Attachments
+                        </h3>
+
                         <div class="mt-3 space-y-2">
                             @forelse($attachments as $attachment)
-                                <div class="rounded border border-gray-200 p-3 text-sm">
-                                    <div class="font-medium text-gray-900">{{ $attachment->originalfilename }}</div>
-                                    <div class="mt-1 text-xs text-gray-500">
-                                        {{ $attachment->attachmenttype ?: 'document' }}
-                                        @if($attachment->isprimary)
-                                            · Primary
-                                        @endif
+                                @php
+                                    $isCurrentAttachment = (int) $attachment->id === (int) $knowledgeAttachment->id;
+                                    $expiryDate = $attachment->pivot?->expirydate;
+                                @endphp
+
+                                <div
+                                    @class([
+                                        'rounded border p-3 text-sm',
+                                        'border-blue-300 bg-blue-50' => $isCurrentAttachment,
+                                        'border-gray-200 bg-white' => !$isCurrentAttachment,
+                                    ])
+                                >
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0 flex-1">
+                                            <div class="break-words font-medium text-gray-900">
+                                                {{ $attachment->originalfilename }}
+                                            </div>
+
+                                            <div class="mt-1 text-xs text-gray-500">
+                                                {{ $attachment->attachmenttype ?: 'document' }}
+
+                                                @if($attachment->pivot?->isprimary)
+                                                    · Primary
+                                                @endif
+                                            </div>
+
+                                            @if(filled($attachment->pivot?->description))
+                                                <div class="mt-1 text-xs text-gray-600">
+                                                    {{ $attachment->pivot->description }}
+                                                </div>
+                                            @endif
+
+                                            @if($expiryDate)
+                                                <div
+                                                    @class([
+                                                        'mt-1 text-xs font-medium',
+                                                        'text-red-700' => $expiryDate->isPast()
+                                                            && !$expiryDate->isToday(),
+                                                        'text-amber-700' => $expiryDate->isToday()
+                                                            || $expiryDate->between(
+                                                                today(),
+                                                                today()->copy()->addDays(14)
+                                                            ),
+                                                        'text-gray-500' => !$expiryDate->isPast()
+                                                            && !$expiryDate->isToday()
+                                                            && !$expiryDate->between(
+                                                                today(),
+                                                                today()->copy()->addDays(14)
+                                                            ),
+                                                    ])
+                                                >
+                                                    Expires {{ $expiryDate->format('d M Y') }}
+
+                                                    @if($expiryDate->isPast() && !$expiryDate->isToday())
+                                                        · Expired
+                                                    @elseif($expiryDate->isToday())
+                                                        · Expires today
+                                                    @elseif($expiryDate->between(
+                                                        today(),
+                                                        today()->copy()->addDays(14)
+                                                    ))
+                                                        · Expires soon
+                                                    @endif
+                                                </div>
+                                            @endif
+                                        </div>
+
+                                        <div class="flex shrink-0 flex-wrap gap-1">
+                                            <a
+                                                href="{{ route('knowledge.attachments.view', $attachment) }}"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                class="inline-flex items-center rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
+                                            >
+                                                View
+                                            </a>
+
+                                            @if(!$isCurrentAttachment)
+                                                <a
+                                                    href="{{ route('knowledge.attachments.edit', [
+                                                        'knowledgeItem' => $knowledgeItem,
+                                                        'knowledgeAttachment' => $attachment,
+                                                        'return_to' => $returnTo,
+                                                    ]) }}"
+                                                    class="inline-flex items-center rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                                                >
+                                                    Edit
+                                                </a>
+                                            @else
+                                                <span class="inline-flex items-center rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white">
+                                                    Editing
+                                                </span>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
                             @empty
-                                <div class="text-sm text-gray-500">No attachments found.</div>
+                                <div class="text-sm text-gray-500">
+                                    No attachments found.
+                                </div>
                             @endforelse
                         </div>
                     </div>

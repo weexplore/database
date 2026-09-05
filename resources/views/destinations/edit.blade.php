@@ -35,11 +35,90 @@
             @include('partials.admin.validation-summary')
 
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                <div class="xl:col-span-2">
+                <div class="xl:col-span-2 space-y-6">
+
+                    {{-- Destination context heading --}}
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500">
+                                Destination
+                            </p>
+
+                            <h3 class="mt-1 text-2xl font-semibold text-gray-900">
+                                {{ $destination->destinationname }}
+                            </h3>
+
+                            @if($destination->place)
+                                <p class="mt-1 text-sm text-gray-500">
+                                    Place:
+                                    <a href="{{ route('places.edit', [
+                                            'place' => $destination->place,
+                                            'return_to' => url()->full(),
+                                        ]) }}"
+                                    class="font-medium text-blue-600 hover:text-blue-800 hover:underline">
+                                        {{ $destination->place->placename }}
+                                    </a>
+                                </p>
+                            @endif
+                        </div>
+                    </div>
+
+                    {{-- Destination Item navigation --}}
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="px-6 py-4 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-900">
+                                    Destination Items
+                                </h3>
+
+                                <p class="mt-1 text-xs text-gray-500">
+                                    {{ $destination->items->count() }}
+                                    {{ $destination->items->count() === 1 ? 'destination item' : 'destination items' }}
+                                </p>
+                            </div>
+
+                            <a href="{{ route('destinations.destination-items.create-from-destination', [
+                                    'destination' => $destination,
+                                    'return_to' => url()->full(),
+                                ]) }}"
+                            class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium">
+                                Add Destination Item
+                            </a>
+                        </div>
+
+                        <div class="p-6">
+                            @if($destination->items->isNotEmpty())
+                                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                                    @foreach($destination->items as $item)
+                                        <a href="{{ route('destination-items.edit', [
+                                                'destinationItem' => $item,
+                                                'return_to' => url()->full(),
+                                            ]) }}"
+                                        class="block rounded-md border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-gray-100 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <div class="text-sm font-medium text-gray-900">
+                                                {{ $item->itemname }}
+                                            </div>
+
+                                            <div class="mt-1 text-xs text-gray-500">
+                                                Type:
+                                                {{ $item->itemTypes->pluck('typename')->filter()->join(', ') ?: 'Not specified' }}
+                                            </div>
+                                        </a>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-3 text-sm text-gray-500">
+                                    No destination items are currently linked to this destination.
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+
+                    {{-- Existing destination editor begins here --}}
                     <form method="POST"
-                          action="{{ route('destinations.update', $destination) }}"
-                          id="destination-edit-form"
-                          class="space-y-6">
+                        action="{{ route('destinations.update', $destination) }}"
+                        id="destination-edit-form"
+                        class="space-y-6">
                         @csrf
                         @method('PUT')
 
@@ -336,55 +415,7 @@
                         </div>
                     @endif
 
-                    <div class="bg-white shadow-sm sm:rounded-lg">
-                        <div class="px-4 py-3 border-b border-gray-200">
-                            <h3 class="text-sm font-semibold text-gray-900">
-                                Destination Items
-                            </h3>
-                            <p class="mt-1 text-xs text-gray-500">
-                                {{ $destination->items->count() }} linked record{{ $destination->items->count() === 1 ? '' : 's' }}
-                            </p>
-                        </div>
-
-                        <div class="p-4">
-                            @if ($destination->items->isNotEmpty())
-                                <ul class="space-y-3">
-                                    @foreach ($destination->items as $item)
-                                        <li>
-                                            <a
-                                                href="{{ route('destination-items.edit', [
-                                                    'destinationItem' => $item,
-                                                    'return_to' => url()->full(),
-                                                ]) }}"
-                                                class="block border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            >
-                                                <div class="text-sm font-medium text-gray-900">
-                                                    {{ $item->itemname }}
-                                                </div>
-                                                <div class="mt-1 text-xs text-gray-500">
-                                                    Type:
-                                                    {{ $item->itemTypes->pluck('typename')->join(', ') ?: '—' }}
-                                                </div>
-                                            </a>
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            @else
-                                <p class="text-sm text-gray-500">
-                                    No destination items are currently linked to this destination.
-                                </p>
-                            @endif
-
-                            <a href="{{ route('destinations.destination-items.create-from-destination', [
-                                    'destination' => $destination,
-                                    'return_to' => url()->full(),
-                                ]) }}"
-                               class="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-700 rounded hover:bg-green-100 text-xs">
-                                + Add Destination Item
-                            </a>
-                        </div>
-                    </div>
-
+                    
                     <div class="bg-white shadow-sm sm:rounded-lg">
                         <div class="px-4 py-3 border-b border-gray-200">
                             <h3 class="text-sm font-semibold text-gray-900">Attachments</h3>

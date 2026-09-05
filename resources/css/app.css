@@ -67,6 +67,21 @@ body {
     margin-bottom: 0.25rem;
 }
 
+.markdown-content .katex-display {
+    margin: 0.75rem 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.25rem 0;
+}
+
+.markdown-content .katex {
+    font-size: 1em;
+}
+
+.markdown-content .katex-display > .katex {
+    text-align: center;
+}
+
 @layer components {
     .markdown-content h1,
     .markdown-content h2,

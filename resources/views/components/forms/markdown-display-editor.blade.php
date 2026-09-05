@@ -41,19 +41,21 @@
         </button>
     </div>
 
-    {{-- Display mode: server-rendered initial Markdown; browser-side fallback once edited --}}
-    <div x-show="!editing"
-         class="p-4">
-        <div class="markdown-content prose prose-sm max-w-none text-gray-700"
-             x-show="content.trim() !== ''">
-             @include('partials.markdown.rendered-block', [
+    {{-- Display mode --}}
+    <div x-show="!editing" class="p-4">
+        <div
+            class="markdown-content prose prose-sm max-w-none text-gray-700"
+            x-show="content.trim() !== ''"
+            x-init="$nextTick(() => window.renderMarkdownMath($el))"
+        >
+            @include('partials.markdown.rendered-block', [
                 'content' => $fieldValue,
                 'collapsible' => false,
-             ])
+            ])
         </div>
 
         <p x-show="content.trim() === ''"
-           class="text-sm italic text-gray-500">
+        class="text-sm italic text-gray-500">
             No {{ strtolower($label) }} entered yet.
         </p>
     </div>
@@ -71,7 +73,9 @@
         </textarea>
 
         <p class="text-xs text-gray-500">
-            Markdown is supported. Changes are saved with the main “Save Changes” button.
+            Markdown is supported. Use <code>$$...$$</code> for a displayed
+            mathematical, logical, or flow expression. Changes are saved with the
+            main “Save Changes” button.
         </p>
     </div>
 

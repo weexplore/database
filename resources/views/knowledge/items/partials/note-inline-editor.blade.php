@@ -49,7 +49,9 @@
         </textarea>
 
         <p class="mt-1 text-xs text-gray-500">
-            Markdown is supported, including headings, lists, emphasis, links, and tables.
+            Markdown is supported, including headings, lists, emphasis, links, tables,
+            and mathematics. Use <code>\(...\)</code> for inline maths or
+            <code>\[...\]</code> for a displayed expression.
         </p>
     </div>
 

@@ -24,6 +24,11 @@
             @include('partials.admin.flash-messages')
             @include('partials.admin.validation-summary')
 
+            {{--
+                This form intentionally comes first in the page flow.
+                It is therefore displayed above any planner map, timeline,
+                list of planning items, nearby-place tools, or danger zone.
+            --}}
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h3 class="text-sm font-semibold text-gray-900">Planning item details</h3>
@@ -34,10 +39,16 @@
 
                 <form method="POST"
                       action="{{ route('trips.planner.update', ['trip' => $trip->id, 'tripPlanItem' => $tripPlanItem->id]) }}"
+                      id="trip-plan-item-form"
                       class="p-6 space-y-6">
                     @csrf
                     @method('PUT')
 
+                    {{--
+                        The included partial has one unified Planning Item section first:
+                        date, type, title, place, destination, flags, and Destination Items.
+                        It has no submit button above the Destination Items selector.
+                    --}}
                     @include('trip-planner._form', [
                         'tripPlanItem' => $tripPlanItem,
                         'trip' => $trip,
@@ -95,6 +106,7 @@
             const nearbyResults = document.getElementById('nearby_places_results');
             const deleteButton = document.getElementById('delete-trip-plan-item-button');
             const deleteForm = document.getElementById('delete-trip-plan-item-form');
+            const tripPlanItemForm = document.getElementById('trip-plan-item-form');
 
             if (nearbyResults && addAfterForm && addAfterPlaceIdInput) {
                 nearbyResults.addEventListener('click', function (event) {
@@ -125,8 +137,29 @@
                     deleteForm.submit();
                 });
             }
+
+            /*
+             * Avoid accidental form submission when Enter is pressed in a
+             * single-line field while choosing the date/place/destination.
+             * Enter continues to work normally in Notes text areas and on an
+             * explicitly focused submit button.
+             */
+            if (tripPlanItemForm) {
+                tripPlanItemForm.addEventListener('keydown', function (event) {
+                    if (event.key !== 'Enter') {
+                        return;
+                    }
+
+                    const target = event.target;
+                    const isTextArea = target instanceof HTMLTextAreaElement;
+                    const isSubmitButton = target instanceof HTMLButtonElement
+                        && target.type === 'submit';
+
+                    if (!isTextArea && !isSubmitButton) {
+                        event.preventDefault();
+                    }
+                });
+            }
         });
     </script>
-
 </x-app-layout>
-

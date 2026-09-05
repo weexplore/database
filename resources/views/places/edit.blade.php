@@ -54,10 +54,125 @@
             @include('partials.admin.validation-summary')
 
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                <div class="xl:col-span-2">
+                <div class="xl:col-span-2 space-y-6">
+
+                    {{-- Place context heading --}}
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <form
-                            id="place-edit-form"
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500">
+                                Place
+                            </p>
+
+                            <h3 class="mt-1 text-2xl font-semibold text-gray-900">
+                                {{ $place->placename }}
+                            </h3>
+                        </div>
+                    </div>
+
+                    {{-- Navigation: destinations and items --}}
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="px-6 py-4 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-900">
+                                    Destinations and Items
+                                </h3>
+
+                                <p class="mt-1 text-xs text-gray-500">
+                                    {{ $place->destinations->count() }}
+                                    {{ $place->destinations->count() === 1 ? 'destination' : 'destinations' }}
+                                    ·
+                                    {{ $place->destinationItems->count() }}
+                                    {{ $place->destinationItems->count() === 1 ? 'destination item' : 'destination items' }}
+                                </p>
+                            </div>
+
+                            <button type="submit"
+                                    form="place-edit-form"
+                                    formnovalidate
+                                    name="createdestinationaftersave"
+                                    value="1"
+                                    class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700">
+                                Add destination
+                            </button>
+                        </div>
+
+                        <div class="p-6">
+                            @if($place->destinations->isNotEmpty())
+                                <div class="space-y-4">
+                                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 px-3">
+                                        <div class="lg:col-span-1">
+                                            <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                Destinations
+                                            </h4>
+                                        </div>
+
+                                        <div class="lg:col-span-2">
+                                            <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                Destination Items
+                                            </h4>
+                                        </div>
+                                    </div>
+
+                                    @foreach($place->destinations as $destination)
+                                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 border-t border-gray-200 pt-4 first:border-t-0 first:pt-0">
+                                            {{-- One Destination --}}
+                                            <div class="lg:col-span-1">
+                                                <a href="{{ route('destinations.edit', [
+                                                        'destination' => $destination,
+                                                        'return_to' => url()->full(),
+                                                    ]) }}"
+                                                class="block rounded-md border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-gray-100 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                    <div class="text-sm font-medium text-gray-900">
+                                                        {{ $destination->destinationname }}
+                                                    </div>
+
+                                                    <div class="mt-1 text-xs text-gray-500">
+                                                        Type: {{ $destination->destinationtype ?: 'Not specified' }}
+                                                    </div>
+                                                </a>
+                                            </div>
+
+                                            {{-- Items belonging to this specific Destination only --}}
+                                            <div class="lg:col-span-2">
+                                                @if($destination->items->isNotEmpty())
+                                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        @foreach($destination->items as $item)
+                                                            <a href="{{ route('destination-items.edit', [
+                                                                    'destinationItem' => $item,
+                                                                    'return_to' => url()->full(),
+                                                                ]) }}"
+                                                            class="block rounded-md border border-gray-200 px-3 py-2 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                                <div class="text-sm font-medium text-gray-900">
+                                                                    {{ $item->itemname }}
+                                                                </div>
+
+                                                                <div class="mt-1 text-xs text-gray-500">
+                                                                    Type:
+                                                                    {{ $item->itemTypes->pluck('typename')->filter()->join(', ') ?: 'Not specified' }}
+                                                                </div>
+                                                            </a>
+                                                        @endforeach
+                                                    </div>
+                                                @else
+                                                    <p class="rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                                                        No destination items linked to this destination.
+                                                    </p>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-3 text-sm text-gray-500">
+                                    No destinations are currently linked to this place.
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+
+                    {{-- Existing Place editor begins here --}}
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <form id="place-edit-form"
                             method="POST"
                             action="{{ route('places.update', $place) }}"
                             class="p-6 space-y-6"
@@ -423,74 +538,7 @@
                 </div>
 
                 <div class="xl:col-span-1 space-y-6">
-                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-3">
-                            <div>
-                                <h3 class="text-sm font-semibold text-gray-900">Destinations and Items</h3>
-                                <p class="mt-1 text-xs text-gray-500">
-                                    {{ $place->destinations->count() }} destination{{ $place->destinations->count() === 1 ? '' : 's' }}
-                                    · {{ $destinationItems->count() }} destination item{{ $destinationItems->count() === 1 ? '' : 's' }}
-                                </p>
-                            </div>
-                            
-
-                            <div class="flex items-center gap-2">
-                                <button type="submit"
-                                        form="place-edit-form"
-                                        formnovalidate
-                                        name="createdestinationaftersave"
-                                        value="1"
-                                        class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">
-                                    Add destination
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="p-4">
-                            @if($place->destinations->isNotEmpty())
-                                <div class="space-y-4">
-                                    @foreach($place->destinations as $destination)
-                                        <div class="border border-gray-200 rounded-lg">
-                                            <a href="{{ route('destinations.edit', [
-                                                    'destination' => $destination,
-                                                    'return_to' => url()->full(),
-                                                ]) }}"
-                                            class="block px-3 py-2 border-b border-gray-200 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                                <div class="text-sm font-medium text-gray-900">
-                                                    {{ $destination->destinationname }}
-                                                </div>
-                                                <div class="mt-1 text-xs text-gray-500">
-                                                    Type: {{ $destination->destinationtype ?: '—' }}
-                                                </div>
-                                            </a>
-
-                                            <div class="p-3">
-                                                @if($destination->items->isNotEmpty())
-                                                    <ul class="space-y-2">
-                                                        @foreach($destination->items as $item)
-                                                            <li>
-                                                                <a href="{{ route('destination-items.edit', ['destinationItem' => $item, 'return_to' => url()->full()]) }}"
-                                                                class="block border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 hover:border-gray-300">
-                                                                    <div class="text-sm font-medium text-gray-900">{{ $item->itemname }}</div>
-                                                                    <div class="mt-1 text-xs text-gray-500">
-                                                                        Type: {{ $item->itemTypes->pluck('typename')->join(', ') ?: '—' }}
-                                                                    </div>
-                                                                </a>
-                                                            </li>
-                                                        @endforeach
-                                                    </ul>
-                                                @else
-                                                    <p class="text-xs text-gray-500">No destination items linked to this destination.</p>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @else
-                                <p class="text-sm text-gray-500">No destinations are currently linked to this place.</p>
-                            @endif
-                        </div>
-                    </div>
+                    
 
                     
 

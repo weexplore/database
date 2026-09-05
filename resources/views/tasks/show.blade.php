@@ -86,9 +86,44 @@
                     </div>
 
                     <div>
-                        <label class="block text-xs font-medium text-gray-600">Description</label>
-                        <textarea name="description" rows="4"
-                                  class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm">{{ $task->description }}</textarea>
+                        <label for="description" class="block text-xs font-medium text-gray-600">
+                            Description
+                        </label>
+
+                        <textarea
+                            name="description"
+                            id="description"
+                            rows="4"
+                            data-min-rows="4"
+                            data-max-rows="14"
+                            data-markdown-render-target-id="description-rendered"
+                            class="js-auto-resize-textarea js-markdown-source mt-1 w-full rounded-md border-gray-300 text-sm shadow-sm"
+                            placeholder="Describe the task using Markdown..."
+                        >{{ old('description', $task->description) }}</textarea>
+
+                        <p class="mt-1 text-xs text-gray-500">
+                            Markdown is supported. The preview updates as you type.
+                        </p>
+
+                        <div
+                            id="description-rendered-container"
+                            class="js-markdown-rendered-block mt-3 overflow-hidden rounded-md border border-gray-200 bg-gray-50"
+                        >
+                            <div
+                                id="description-rendered"
+                                class="markdown-content prose prose-sm max-w-none p-3 text-gray-700"
+                                data-empty-html="<p class='markdown-rendered-empty'>No description entered yet.</p>"
+                            ></div>
+                        </div>
+
+                        <div class="mt-2 text-right">
+                            <button
+                                type="button"
+                                class="js-markdown-rendered-toggle hidden text-xs font-medium text-blue-600 hover:text-blue-800"
+                            >
+                                Show more
+                            </button>
+                        </div>
                     </div>
 
                     <div>
@@ -1272,6 +1307,7 @@
             
         </div>
     </div>
+@include('partials.markdown.markdown-styles')
 
     {{-- JS toggles --}}
     <script>
@@ -1430,6 +1466,13 @@
                 'dependencies-panel',
                 'Show dependencies',
                 'Hide dependencies{{ $hasDependencies ? ' ('.$task->dependencies->count().')' : '' }}'
+            );
+
+            setupToggle(
+                'toggle-task-labels-panel',
+                'task-labels-panel',
+                'Add or change labels',
+                'Hide labels'
             );
         });
     </script>

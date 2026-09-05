@@ -26,6 +26,11 @@
         'isprimary',
         $knowledgeAttachment?->pivot?->isprimary ?? false
     );
+
+    $currentSortOrder = old(
+        'sortorder',
+        $knowledgeAttachment?->pivot?->sortorder ?? 0
+    );
 @endphp
 
 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -102,17 +107,56 @@
     </div>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
     <div>
-        <label for="uploadedby" class="block text-sm font-medium text-gray-700 mb-1">Uploaded by</label>
-        <input type="text" id="uploadedby" name="uploadedby" value="{{ $currentUploadedBy }}" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+        <label for="uploadedby" class="mb-1 block text-sm font-medium text-gray-700">
+            Uploaded by
+        </label>
+
+        <input
+            type="text"
+            id="uploadedby"
+            name="uploadedby"
+            value="{{ $currentUploadedBy }}"
+            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+        >
     </div>
 
-    <div class="flex items-end">
+    <div>
+        <label for="sortorder" class="mb-1 block text-sm font-medium text-gray-700">
+            Sort order
+        </label>
+
+        <input
+            type="number"
+            id="sortorder"
+            name="sortorder"
+            value="{{ $currentSortOrder }}"
+            min="0"
+            step="1"
+            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+        >
+
+        <p class="mt-1 text-xs text-gray-500">
+            Lower values appear first. Use 0 for the normal/default position.
+        </p>
+    </div>
+
+    <div class="flex items-end pb-2">
         <label class="inline-flex items-center gap-2">
             <input type="hidden" name="isprimary" value="0">
-            <input type="checkbox" name="isprimary" value="1" class="rounded border-gray-300 text-blue-600 shadow-sm" @checked((bool) $currentIsPrimary)>
-            <span class="text-sm text-gray-700">Primary attachment</span>
+
+            <input
+                type="checkbox"
+                name="isprimary"
+                value="1"
+                class="rounded border-gray-300 text-blue-600 shadow-sm"
+                @checked((bool) $currentIsPrimary)
+            >
+
+            <span class="text-sm text-gray-700">
+                Primary attachment
+            </span>
         </label>
     </div>
 </div>

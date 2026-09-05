@@ -256,9 +256,12 @@
                                         Imported summary
                                     </p>
 
-                                    <div class="markdown-content prose prose-sm max-w-none text-gray-700"
-                                         x-html="source.importedsummary_html">
-                                    </div>
+                                    <div
+                                        class="markdown-content prose prose-sm max-w-none text-gray-700"
+                                        x-html="source.importedsummary_html"
+                                        x-init="$nextTick(() => window.renderMarkdownMath($el))"
+                                        x-effect="$nextTick(() => window.renderMarkdownMath($el))"
+                                    ></div>
                                 </div>
                             </template>
 
@@ -268,9 +271,12 @@
                                         Imported notes
                                     </p>
 
-                                    <div class="markdown-content prose prose-sm max-w-none text-gray-700"
-                                         x-html="source.importednotes_html">
-                                    </div>
+                                    <div
+                                        class="markdown-content prose prose-sm max-w-none text-gray-700"
+                                        x-html="source.importednotes_html"
+                                        x-init="$nextTick(() => window.renderMarkdownMath($el))"
+                                        x-effect="$nextTick(() => window.renderMarkdownMath($el))"
+                                    ></div>
                                 </div>
                             </template>
 
@@ -280,9 +286,12 @@
                                         Internal notes
                                     </p>
 
-                                    <div class="markdown-content prose prose-sm max-w-none text-amber-950"
-                                         x-html="source.internalnotes_html">
-                                    </div>
+                                    <div
+                                        class="markdown-content prose prose-sm max-w-none text-amber-950"
+                                        x-html="source.internalnotes_html"
+                                        x-init="$nextTick(() => window.renderMarkdownMath($el))"
+                                        x-effect="$nextTick(() => window.renderMarkdownMath($el))"
+                                    ></div>
                                 </div>
                             </template>
                         </div>

@@ -19,7 +19,7 @@
                         method="GET"
                         action="{{ route('places.index') }}"
                         id="places-filter-form"
-                        class="grid grid-cols-1 md:grid-cols-7 gap-4"
+                        class="grid grid-cols-1 md:grid-cols-2 lg xl:grid-cols-5 gap-4"
                     >
                         <div>
                             <label for="search" class="block text-sm font-medium text-gray-700 mb-1">
@@ -143,6 +143,62 @@
                                 <option value="0" @selected(request('status') === '0')>Inactive</option>
                             </select>
                         </div>
+                        <div>
+                            <label for="destination_status" class="block text-sm font-medium text-gray-700 mb-1">
+                                Destinations
+                            </label>
+                            <select
+                                name="destination_status"
+                                id="destination_status"
+                                class="w-full rounded-md border-gray-300 shadow-sm"
+                            >
+                                <option value="">All</option>
+                                <option value="none" @selected(request('destination_status') === 'none')>
+                                    None (0)
+                                </option>
+                                <option value="has" @selected(request('destination_status') === 'has')>
+                                    Has destination
+                                </option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="destination_item_status" class="block text-sm font-medium text-gray-700 mb-1">
+                                Destination items
+                            </label>
+                            <select
+                                name="destination_item_status"
+                                id="destination_item_status"
+                                class="w-full rounded-md border-gray-300 shadow-sm"
+                            >
+                                <option value="">All</option>
+                                <option value="none" @selected(request('destination_item_status') === 'none')>
+                                    None (0)
+                                </option>
+                                <option value="has" @selected(request('destination_item_status') === 'has')>
+                                    Has items
+                                </option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="coordinates_status" class="block text-sm font-medium text-gray-700 mb-1">
+                                Coordinates
+                            </label>
+                            <select
+                                name="coordinates_status"
+                                id="coordinates_status"
+                                class="w-full rounded-md border-gray-300 shadow-sm"
+                            >
+                                <option value="">All</option>
+                                <option value="missing" @selected(request('coordinates_status') === 'missing')>
+                                    No
+                                </option>
+                                <option value="has" @selected(request('coordinates_status') === 'has')>
+                                    Yes
+                                </option>
+                            </select>
+                        </div>
 
                         <div class="flex items-end gap-2">
                             <button
@@ -158,6 +214,7 @@
                                 Reset
                             </a>
                         </div>
+                        
                     </form>
                 </div>
 
@@ -167,8 +224,18 @@
 
                     <input type="hidden" name="return_to" value="{{ url()->full() }}">
 
-                    @foreach (request()->only(['search', 'country_id', 'state_id', 'region_id', 'placetype', 'status', 'page']) as $key => $value)
-                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                    @foreach (request()->only([
+                        'search',
+                        'country_id',
+                        'state_id',
+                        'region_id',
+                        'placetype',
+                        'status',
+                        'destination_status',
+                        'destination_item_status',
+                        'coordinates_status',
+                        'page',
+                    ]) as $key => $value)
                     @endforeach
 
                     <div class="overflow-x-auto">
@@ -176,6 +243,7 @@
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Place</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Content</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Country</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">State</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>
@@ -218,6 +286,23 @@
                                                 name="existing[{{ $place->id }}][placename]"
                                                 value="{{ $place->placename }}"
                                             >
+                                        </td>
+                                        <td class="px-4 py-3 min-w-[150px]">
+                                            <div class="space-y-1 text-xs">
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <span class="text-gray-500">Destinations</span>
+                                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 font-medium {{ ($place->destinations_count ?? 0) > 0 ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800' }}">
+                                                        {{ $place->destinations_count ?? 0 }}
+                                                    </span>
+                                                </div>
+
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <span class="text-gray-500">Items</span>
+                                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 font-medium {{ ($place->destination_items_count ?? 0) > 0 ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800' }}">
+                                                        {{ $place->destination_items_count ?? 0 }}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </td>
 
                                         <td class="px-4 py-3">
@@ -328,24 +413,6 @@
                                                 </span>
                                             @endif
                                         </td>
-<td class="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
-    <div class="flex items-center gap-2">
-        @if(($place->destinations_count ?? 0) > 0)
-            <span class="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
-                Yes
-            </span>
-        @else
-            <span class="inline-flex items-center px-2 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-medium">
-                Missing
-            </span>
-        @endif
-
-        <span class="text-xs text-gray-500">
-            Destinations: {{ $place->destinations_count ?? 0 }},
-            Items: {{ $place->destination_items_count ?? 0 }}
-        </span>
-    </div>
-</td>
 
                                         <td class="px-4 py-3 text-center whitespace-nowrap">
                                             <a
@@ -369,7 +436,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="9" class="px-4 py-6 text-center text-gray-500">
+                                        <td colspan="11" class="px-4 py-6 text-center text-gray-500">
                                             No places found.
                                         </td>
                                     </tr>
@@ -401,6 +468,9 @@
                                             class="w-full min-w-[180px] rounded-md border-gray-300 shadow-sm"
                                             placeholder="New place name"
                                         >
+                                    </td>
+                                    <td class="px-4 py-3 text-center text-xs text-gray-400 whitespace-nowrap">
+                                        Save first
                                     </td>
 
                                     <td class="px-4 py-3">
@@ -527,17 +597,20 @@
                         <p class="text-sm text-gray-500">
                             Edit existing rows or enter a new place in the final row, then save once.
                         </p>
-<a href="{{ route('reports.places.reference-book', request()->only([
-        'search',
-        'country_id',
-        'state_id',
-        'region_id',
-        'placetype',
-        'status',
-    ])) }}"
-   class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-    Reference Book Report
-</a>
+                            <a href="{{ route('reports.places.reference-book', request()->only([
+                                    'search',
+                                    'country_id',
+                                    'state_id',
+                                    'region_id',
+                                    'placetype',
+                                    'status',
+                                    'destination_status',
+                                    'destination_item_status',
+                                    'coordinates_status',
+                                ])) }}"
+                            class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                                Reference Book Report
+                            </a>
                         <button
                             type="submit"
                             class="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700"
@@ -555,7 +628,18 @@
 
                 @include('partials.admin.compact-delete-form', [
                     'formId' => 'delete-place-form',
-                    'query' => request()->only(['search', 'country_id', 'state_id', 'region_id', 'placetype', 'status', 'page']),
+                    'query' => request()->only([
+                        'search',
+                        'country_id',
+                        'state_id',
+                        'region_id',
+                        'placetype',
+                        'status',
+                        'destination_status',
+                        'destination_item_status',
+                        'coordinates_status',
+                        'page',
+                    ]),
                 ])
             </div>
         </div>

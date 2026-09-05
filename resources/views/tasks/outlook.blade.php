@@ -1519,7 +1519,9 @@
 
         const oldStatusId = @json(old('statusid'));
 
-        projectSelect.addEventListener('change', function () 
+        projectSelect.addEventListener('change', function () {
+            populateOutlookStatuses(null);
+        });
 
         function populateOutlookStatuses(selectedStatusId = null) {
             if (!projectSelect || !statusSelect) {

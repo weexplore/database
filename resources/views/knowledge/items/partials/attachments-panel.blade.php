@@ -9,13 +9,38 @@
     ];
 
     $attachments = $knowledgeItem->attachments
-        ->sortBy([
-            fn ($attachment) => -(int) ($attachment->pivot->isprimary ?? 0),
-            fn ($attachment) => (int) ($attachment->pivot->sortorder ?? 0),
-            fn ($attachment) => -(optional($attachment->uploadedat)?->timestamp ?? 0),
-            fn ($attachment) => -(int) $attachment->id,
-        ])
-        ->values();
+    ->sort(function ($left, $right) {
+        $leftPrimary = (int) ($left->pivot?->isprimary ?? 0);
+        $rightPrimary = (int) ($right->pivot?->isprimary ?? 0);
+
+        if ($leftPrimary !== $rightPrimary) {
+            return $rightPrimary <=> $leftPrimary;
+        }
+
+        $leftSortOrder = (int) ($left->pivot?->sortorder ?? 0);
+        $rightSortOrder = (int) ($right->pivot?->sortorder ?? 0);
+
+        $leftIsRanked = $leftSortOrder > 0;
+        $rightIsRanked = $rightSortOrder > 0;
+
+        if ($leftIsRanked !== $rightIsRanked) {
+            return $leftIsRanked ? -1 : 1;
+        }
+
+        if ($leftIsRanked && $leftSortOrder !== $rightSortOrder) {
+            return $leftSortOrder <=> $rightSortOrder;
+        }
+
+        $leftUploadedAt = optional($left->uploadedat)?->timestamp ?? 0;
+        $rightUploadedAt = optional($right->uploadedat)?->timestamp ?? 0;
+
+        if ($leftUploadedAt !== $rightUploadedAt) {
+            return $rightUploadedAt <=> $leftUploadedAt;
+        }
+
+        return (int) $right->id <=> (int) $left->id;
+    })
+    ->values();
 
     $linkedAttachmentIds = $knowledgeItem->attachments->pluck('id')->all();
 

@@ -90,9 +90,21 @@ class KnowledgeAttachmentController extends Controller
         ]));
 
         $attachments = $knowledgeItem->attachments()
-            ->orderByPivot('isprimary', 'desc')
-            ->orderByPivot('sortorder')
-            ->orderByDesc('uploadedat')
+            ->orderByDesc('knowledgeitem_attachments.isprimary')
+            ->orderByRaw(
+                'CASE
+                    WHEN COALESCE(knowledgeitem_attachments.sortorder, 0) > 0 THEN 0
+                    ELSE 1
+                END'
+            )
+            ->orderByRaw(
+                'CASE
+                    WHEN COALESCE(knowledgeitem_attachments.sortorder, 0) > 0
+                        THEN knowledgeitem_attachments.sortorder
+                    ELSE 999999
+                END'
+            )
+            ->orderByDesc('knowledgeattachments.uploadedat')
             ->orderByDesc('knowledgeattachments.id')
             ->get();
 
