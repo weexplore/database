@@ -227,29 +227,26 @@
                     </button>
                 </div>
             </div>
-
-            {{-- Save --}}
-            <div class="shrink-0 pt-[21px]">
-                <button
-                    type="submit"
-                    class="inline-flex items-center justify-center rounded bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700"
-                >
-                    Save
-                </button>
-            </div>
         </div>
 
-        {{-- Compact second line: status comment --}}
-        <div class="flex items-center gap-2">
-            <label class="shrink-0 text-[11px] font-medium text-gray-500">
+        {{-- Status comment and save action --}}
+        <div class="flex items-center gap-3">
+            <label for="statuscomment-{{ $task->id }}"
+                class="shrink-0 text-[11px] font-medium text-gray-500">
                 Status comment
             </label>
 
             <input type="text"
-                   name="statuscomment"
-                   value="{{ $task->statuscomment }}"
-                   placeholder="Progress, blocker, or next action"
-                   class="min-w-0 flex-1 rounded border-gray-300 px-2 py-1.5 text-xs shadow-sm">
-        </div>
+                name="statuscomment"
+                id="statuscomment-{{ $task->id }}"
+                value="{{ $task->statuscomment }}"
+                placeholder="Progress, blocker, or next action"
+                class="min-w-0 flex-1 rounded border-gray-300 px-2 py-1.5 text-xs shadow-sm">
+
+            <button type="submit"
+                    class="shrink-0 inline-flex items-center justify-center rounded bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700">
+                Save
+            </button>
+        </div>      
     </div>
 </form>
