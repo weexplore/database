@@ -9,25 +9,32 @@
       @submit.prevent="{{ $saveAction }}">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="new-relationship-relateditemid"
+                class="mb-1 block text-sm font-medium text-gray-700">
                 Related Item
             </label>
 
-            <select x-model="{{ $draftReference }}.relateditemid"
-                    class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                    required>
+            <select
+                id="new-relationship-relateditemid"
+                x-ref="newRelationshipRelatedItem"
+                x-model="{{ $draftReference }}.relateditemid"
+                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                required
+            >
                 <option value="">Select related item</option>
 
                 <template x-for="item in relationshipItems" :key="item.id">
-                    <option :value="item.id"
-                            x-text="`${item.category}: ${item.name}`">
-                    </option>
+                    <option
+                        :value="item.id"
+                        x-text="`${item.category}: ${item.name}`"
+                    ></option>
                 </template>
             </select>
 
             <p class="mt-1 text-xs text-gray-500"
-               x-show="{{ $draftReference }}.direction === 'incoming'">
-                This relationship is displayed as incoming, so the selected item is the source side of the stored relationship.
+            x-show="{{ $draftReference }}.direction === 'incoming'">
+                This relationship is displayed as incoming, so the selected item is
+                the source side of the stored relationship.
             </p>
         </div>
 

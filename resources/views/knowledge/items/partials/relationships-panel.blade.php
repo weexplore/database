@@ -328,6 +328,10 @@
                 this.closeAllEditors();
                 this.newRelationship = this.emptyDraft();
                 this.disableSortable();
+
+                this.$nextTick(() => {
+                    this.$refs.newRelationshipRelatedItem?.focus();
+                });
             },
 
             cancelNewRelationship() {

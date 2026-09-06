@@ -307,6 +307,10 @@
                 this.errorMessage = '';
                 this.closeAllEditors();
                 this.newNote = this.emptyDraft();
+
+                this.$nextTick(() => {
+                    this.$refs.newNoteTypeSelect?.focus();
+                });
             },
 
             cancelNewNote() {

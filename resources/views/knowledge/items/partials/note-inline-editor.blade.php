@@ -9,13 +9,18 @@
       @submit.prevent="{{ $saveAction }}">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="new-note-notetype"
+                class="mb-1 block text-sm font-medium text-gray-700">
                 Note type
             </label>
 
-            <select x-model="{{ $draftReference }}.notetype"
-                    class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                    required>
+            <select
+                id="new-note-notetype"
+                x-ref="newNoteTypeSelect"
+                x-model="{{ $draftReference }}.notetype"
+                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                required
+            >
                 <option value="">Select note type</option>
 
                 <template x-for="[value, label] in Object.entries(noteTypes)" :key="value">

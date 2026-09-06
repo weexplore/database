@@ -9,13 +9,18 @@
       @submit.prevent="{{ $saveAction }}">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="new-source-sourcetype"
+                class="mb-1 block text-sm font-medium text-gray-700">
                 Source type
             </label>
 
-            <select x-model="{{ $draftReference }}.sourcetype"
-                    class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                    required>
+            <select
+                id="new-source-sourcetype"
+                x-ref="newSourceTypeSelect"
+                x-model="{{ $draftReference }}.sourcetype"
+                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                required
+            >
                 <option value="">Select source type</option>
 
                 <template x-for="[value, label] in Object.entries(sourceTypes)" :key="value">

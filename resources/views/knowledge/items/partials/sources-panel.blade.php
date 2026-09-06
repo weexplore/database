@@ -428,6 +428,10 @@
                 this.showFetchPanel = false;
                 this.closeAllEditors();
                 this.newSource = this.emptyDraft();
+
+                this.$nextTick(() => {
+                    this.$refs.newSourceTypeSelect?.focus();
+                });
             },
 
             cancelNewSource() {

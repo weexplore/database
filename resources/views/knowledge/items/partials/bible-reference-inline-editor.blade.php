@@ -9,18 +9,20 @@
       @submit.prevent="{{ $saveAction }}">
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div>
-            <label class="mb-1 block text-sm font-medium text-gray-700">
+            <label for="versionid" class="mb-1 block text-sm font-medium text-gray-700">
                 Version
             </label>
 
-            <select x-model="{{ $draftReference }}.versionid"
-                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+            <select
+                id="versionid"
+                x-ref="versionSelect"
+                x-model="{{ $draftReference }}.versionid"
+                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+            >
                 <option value="">Select</option>
 
                 <template x-for="version in versions" :key="version.id">
-                    <option :value="version.id"
-                            x-text="version.name">
-                    </option>
+                    <option :value="version.id" x-text="version.name"></option>
                 </template>
             </select>
         </div>

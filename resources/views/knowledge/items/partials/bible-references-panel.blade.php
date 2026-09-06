@@ -327,6 +327,10 @@
                 this.clearMessages();
                 this.closeEditors();
                 this.newReference = this.emptyDraft();
+
+                this.$nextTick(() => {
+                    this.$refs.versionSelect?.focus();
+                });
             },
 
             cancelNewReference() {

@@ -89,13 +89,19 @@
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="new-log-reviewdate"
+                        class="mb-1 block text-sm font-medium text-gray-700">
                         Review date
                     </label>
-                    <input type="date"
-                           x-model="newLog.reviewdate"
-                           class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                           required>
+
+                    <input
+                        id="new-log-reviewdate"
+                        x-ref="newLogReviewDate"
+                        type="date"
+                        x-model="newLog.reviewdate"
+                        class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                        required
+                    >
                 </div>
 
                 <div>
@@ -369,6 +375,10 @@
                 this.errorMessage = '';
                 this.closeAllEditors();
                 this.newLog = this.emptyDraft();
+
+                this.$nextTick(() => {
+                    this.$refs.newLogReviewDate?.focus();
+                });
             },
 
             cancelNewLog() {
