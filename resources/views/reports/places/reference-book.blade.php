@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
 
     <x-slot name="header">
+        <x-report-print-styles />
         <div class="flex items-center justify-between gap-4">
             <div>
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
@@ -16,7 +17,7 @@
                 </p>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="print-hideflex items-center gap-2">
                 <button type="button"
                     onclick="window.print()"
                     class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">

@@ -11,14 +11,14 @@
 <body class="font-sans antialiased bg-gray-100">
     <div class="min-h-screen">
         @if (isset($header))
-            <header class="bg-white shadow">
+            <header class="bg-white shadow print-hide">
                 <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
                     {{ $header }}
                 </div>
             </header>
         @endif
 
-        <nav class="bg-blue-700 border-b border-blue-800">
+        <nav class="bg-blue-700 border-b border-blue-800 print-hide">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex flex-wrap gap-x-8">
                     <a href="{{ url('/') }}"
