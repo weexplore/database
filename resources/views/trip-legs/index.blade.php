@@ -181,6 +181,7 @@
                                     <th class="px-4 py-3 text-left font-medium text-gray-600">From</th>
                                     <th class="px-4 py-3 text-left font-medium text-gray-600">To</th>
                                     <th class="px-4 py-3 text-left font-medium text-gray-600">Distance</th>
+                                    <th class="px-4 py-3 text-left font-medium text-gray-600">Fuel Estimate</th>
                                     <th class="px-4 py-3 text-left font-medium text-gray-600">Title</th>
                                     <th class="px-4 py-3 text-right font-medium text-gray-600">Actions</th>
                                 </tr>
@@ -248,6 +249,26 @@
 
                                         <td class="px-4 py-3 align-top">
                                             {{ $leg->distancekm !== null ? number_format((float) $leg->distancekm, 1) . ' km' : '—' }}
+                                        </td>
+
+                                        <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700">
+                                            @if ($leg->estimated_fuel_litres !== null)
+                                                <div>
+                                                    {{ number_format($leg->estimated_fuel_litres, 1) }} L
+                                                </div>
+
+                                                @if ($leg->estimated_fuel_cost !== null)
+                                                    <div class="mt-0.5 text-xs text-gray-500">
+                                                        ${{ number_format($leg->estimated_fuel_cost, 2) }}
+                                                    </div>
+                                                @else
+                                                    <div class="mt-0.5 text-xs text-amber-600">
+                                                        Fuel price not set
+                                                    </div>
+                                                @endif
+                                            @else
+                                                <span class="text-gray-400">—</span>
+                                            @endif
                                         </td>
 
                                         <td class="px-4 py-3 align-top">

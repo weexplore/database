@@ -845,6 +845,65 @@
                                class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                     </div>
                 </div>
+                <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                    <h3 class="text-sm font-semibold text-blue-900">
+                        Fuel estimate
+                    </h3>
+
+                    @if ($tripLeg->estimated_fuel_litres !== null)
+                        <dl class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            <div>
+                                <dt class="text-xs font-medium text-blue-700">
+                                    Assumed consumption
+                                </dt>
+                                <dd class="mt-1 text-sm font-semibold text-blue-950">
+                                    {{ number_format((float) $trip->defaultfuelconsumptionlper100km, 1) }} L/100 km
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt class="text-xs font-medium text-blue-700">
+                                    Estimated fuel
+                                </dt>
+                                <dd class="mt-1 text-sm font-semibold text-blue-950">
+                                    {{ number_format($tripLeg->estimated_fuel_litres, 1) }} L
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt class="text-xs font-medium text-blue-700">
+                                    Estimated cost
+                                </dt>
+                                <dd class="mt-1 text-sm font-semibold text-blue-950">
+                                    @if ($tripLeg->estimated_fuel_cost !== null)
+                                        ${{ number_format($tripLeg->estimated_fuel_cost, 2) }}
+                                    @else
+                                        <span class="font-normal text-amber-700">
+                                            Set trip fuel price
+                                        </span>
+                                    @endif
+                                </dd>
+                            </div>
+                        </dl>
+
+                        <p class="mt-3 text-xs text-blue-700">
+                            Based on {{ number_format((float) $tripLeg->distancekm, 1) }} km,
+                            the Trip default of
+                            {{ number_format((float) $trip->defaultfuelconsumptionlper100km, 1) }} L/100 km,
+                            and
+                            @if ($trip->defaultfuelpriceperlitre !== null)
+                                ${{ number_format((float) $trip->defaultfuelpriceperlitre, 3) }}/L.
+                            @else
+                                no default fuel price.
+                            @endif
+                        </p>
+                    @else
+                        <p class="text-sm text-blue-800">
+                            Enter a leg distance and set the Trip’s default fuel consumption
+                            to calculate an estimated fuel requirement.
+                        </p>
+                    @endif
+                </div>
             </div>
 
             <div class="trip-leg-tab-panel hidden space-y-6" data-trip-leg-tab-panel="vehicles">
@@ -1444,6 +1503,11 @@ document.addEventListener('DOMContentLoaded', function () {
         bindLegPointRow(row);
         emitTripLegSelectionUpdated();
     });
+    /*
+    * Apply the same filtering to values already selected when the
+    * Trip Leg create/edit page initially loads.
+    */
+    refreshDependentUi();
 });
 </script>
 </query>

@@ -223,4 +223,48 @@ class TripLeg extends Model
 
         return $this->trip?->tripLegSearchProfile;
     }
+
+    public function estimatedFuelLitres(): ?float
+    {
+        $distanceKm = $this->distancekm;
+        $consumptionLitresPer100Km = $this->trip?->defaultfuelconsumptionlper100km;
+
+        if (
+            $distanceKm === null
+            || $distanceKm === ''
+            || $consumptionLitresPer100Km === null
+            || $consumptionLitresPer100Km === ''
+        ) {
+            return null;
+        }
+
+        return ((float) $distanceKm / 100)
+            * (float) $consumptionLitresPer100Km;
+    }
+
+    public function estimatedFuelCost(): ?float
+    {
+        $estimatedLitres = $this->estimatedFuelLitres();
+        $fuelPricePerLitre = $this->trip?->defaultfuelpriceperlitre;
+
+        if (
+            $estimatedLitres === null
+            || $fuelPricePerLitre === null
+            || $fuelPricePerLitre === ''
+        ) {
+            return null;
+        }
+
+        return $estimatedLitres * (float) $fuelPricePerLitre;
+    }
+
+    public function getEstimatedFuelLitresAttribute(): ?float
+    {
+        return $this->estimatedFuelLitres();
+    }
+
+    public function getEstimatedFuelCostAttribute(): ?float
+    {
+        return $this->estimatedFuelCost();
+    }
 }

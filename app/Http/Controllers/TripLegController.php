@@ -27,6 +27,7 @@ class TripLegController extends Controller
     public function index(Request $request, Trip $trip)
     {
         $query = TripLeg::with([
+            'trip',
             'fromPlace',
             'fromDestination',
             'fromDestinationItem',
@@ -54,6 +55,10 @@ class TripLegController extends Controller
         $legs = $query->orderBy('legnumber')
             ->orderBy('sortorder')
             ->get();
+
+        $legs->each(function (TripLeg $leg) use ($trip) {
+            $leg->setRelation('trip', $trip);
+        });
 
         $places = Place::orderBy('placename')->get();
 
