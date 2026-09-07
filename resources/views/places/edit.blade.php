@@ -489,24 +489,32 @@
                                     preview-title="General Notes Preview"
                                 />
 
-<div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-    <a href="{{ $returnTo }}"
-       class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
-        Cancel
-    </a>
+                            <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+                                <a
+                                    href="{{ $returnTo }}"
+                                    class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm"
+                                >
+                                    Cancel
+                                </a>
 
-    <button type="submit"
-            class="inline-flex items-center px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-        Save Place
-    </button>
+                                <button
+                                    type="submit"
+                                    name="saveaction"
+                                    value="save"
+                                    class="inline-flex items-center px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                                >
+                                    Save Place
+                                </button>
 
-    <button type="submit"
-            name="createdestinationaftersave"
-            value="1"
-            class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-        Save and Add Destination
-    </button>
-</div>
+                                <button
+                                    type="submit"
+                                    name="saveaction"
+                                    value="save_and_add_destination"
+                                    class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                                >
+                                    Save and Add Destination
+                                </button>
+                            </div>
                         </form>
                     </div>
 
@@ -1121,5 +1129,64 @@
             map.invalidateSize();
         }, 150);
     });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.querySelector('form');
+
+            if (!form) {
+                return;
+            }
+
+            form.addEventListener('keydown', function (event) {
+                if (event.key !== 'Enter') {
+                    return;
+                }
+
+                const target = event.target;
+
+                /*
+                * Allow normal Enter behaviour in textareas and buttons.
+                * A textarea needs Enter for a new line.
+                */
+                if (
+                    target instanceof HTMLTextAreaElement ||
+                    target instanceof HTMLButtonElement
+                ) {
+                    return;
+                }
+
+                /*
+                * Do not interfere with selects, checkbox/radio controls,
+                * or map/search-specific controls.
+                */
+                if (
+                    target instanceof HTMLSelectElement ||
+                    target instanceof HTMLInputElement && [
+                        'checkbox',
+                        'radio',
+                        'button',
+                        'submit',
+                    ].includes(target.type)
+                ) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                /*
+                * Submit as the ordinary Save Place action.
+                */
+                const saveButton = form.querySelector(
+                    'button[type="submit"][name="saveaction"][value="save"]'
+                );
+
+                if (saveButton) {
+                    form.requestSubmit(saveButton);
+                } else {
+                    form.requestSubmit();
+                }
+            });
+        });
     </script>
 </x-app-layout>

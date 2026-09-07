@@ -1028,6 +1028,9 @@ public function generateApply(Request $request, Trip $trip)
     $candidateStayItems = $candidates['candidateStayItems'];
     $candidateTripItems = $candidates['candidateTripItems'];
     $candidateLegPoints = $candidates['candidateLegPoints'];
+    $resolvePlaceId = $candidates['resolvePlaceId'];
+    $resolveDestinationId = $candidates['resolveDestinationId'];
+    $resolveDestinationItemId = $candidates['resolveDestinationItemId'];
 
     $createdLegsCount = 0;
     $createdStaysCount = 0;
@@ -1044,6 +1047,9 @@ public function generateApply(Request $request, Trip $trip)
         $candidateStayItems,
         $candidateTripItems,
         $candidateLegPoints,
+        $resolvePlaceId,
+        $resolveDestinationId,
+        $resolveDestinationItemId,
         $defaultVehicleSync,
         &$createdLegsCount,
         &$createdStaysCount,
@@ -1084,20 +1090,75 @@ public function generateApply(Request $request, Trip $trip)
             $fromItem = $legData['from_item'];
             $toItem = $legData['to_item'];
 
+            $estimatedDistanceKm = null;
+
+            if (($legData['leg_kind'] ?? 'transfer') === 'day_trip') {
+                $dayTripTarget = $legData['day_trip_first_item'] ?? null;
+
+                if ($dayTripTarget) {
+                    $outboundKm = $this->estimatePlanningLegDistanceKm(
+                        $fromItem,
+                        $dayTripTarget
+                    );
+
+                    $returnKm = $this->estimatePlanningLegDistanceKm(
+                        $dayTripTarget,
+                        $toItem
+                    );
+
+                    if ($outboundKm !== null && $returnKm !== null) {
+                        $estimatedDistanceKm = round($outboundKm + $returnKm, 1);
+                    }
+                }
+            } else {
+                $estimatedDistanceKm = $this->estimatePlanningLegDistanceKm(
+                    $fromItem,
+                    $toItem
+                );
+            }
+
+            /*
+            * A normal travel leg inherits its destination context from its arrival
+            * / “to” planner item. A day trip instead uses the off-base activity
+            * which caused the day-trip candidate to be created.
+            */
+            $legPlaceId = ($legData['leg_kind'] ?? 'transfer') === 'day_trip'
+                ? ($legData['day_trip_placeid'] ?? $resolvePlaceId($toItem))
+                : ($legData['to_placeid'] ?? $resolvePlaceId($toItem));
+
+            $legDestinationId = ($legData['leg_kind'] ?? 'transfer') === 'day_trip'
+                ? ($legData['day_trip_destinationid'] ?? $resolveDestinationId($toItem))
+                : ($legData['to_destinationid'] ?? $resolveDestinationId($toItem));
+
+            $legDestinationItemId = ($legData['leg_kind'] ?? 'transfer') === 'day_trip'
+                ? ($legData['day_trip_destinationitemid'] ?? $resolveDestinationItemId($toItem))
+                : ($legData['to_destinationitemid'] ?? $resolveDestinationItemId($toItem));
+
             $leg = TripLeg::create([
                 'tripid' => $trip->id,
                 'legnumber' => $nextLegNumber++,
                 'startdate' => $legData['start_date'],
                 'enddate' => $legData['end_date'],
                 'nightsplanned' => null,
-                'fromplaceid' => $fromItem->placeid ?? null,
-                'toplaceid' => $toItem->placeid ?? null,
-                'destinationid' => $toItem->destinationid ?? null,
-                'fromdestinationitemid' => $fromItem->destinationitemid ?? null,
-                'destinationitemid' => $toItem->destinationitemid ?? null,
+
+                'fromplaceid' => $legData['from_placeid'] ?? $resolvePlaceId($fromItem),
+                'toplaceid' => $legData['to_placeid'] ?? $resolvePlaceId($toItem),
+
+                'fromdestinationid' => $legData['from_destinationid']
+                    ?? $resolveDestinationId($fromItem),
+
+                'todestinationid' => $legData['to_destinationid']
+                    ?? $resolveDestinationId($toItem),
+
+                'fromdestinationitemid' => $legData['from_destinationitemid']
+                    ?? $resolveDestinationItemId($fromItem),
+
+                'todestinationitemid' => $legData['to_destinationitemid']
+                    ?? $resolveDestinationItemId($toItem),
+
                 'title' => trim($legData['from_label'] . ' → ' . $legData['to_label']),
                 'description' => null,
-                'distancekm' => null,
+                'distancekm' => $estimatedDistanceKm,
                 'elevationgainm' => null,
                 'elevationlossm' => null,
                 'drivingnotes' => null,
@@ -1213,8 +1274,11 @@ public function generateApply(Request $request, Trip $trip)
             $stay = TripStay::create([
                 'tripid' => $trip->id,
                 'triplegid' => $matchedLeg?->id,
-                'placeid' => $stayItem->placeid ?? null,
-                'destinationitemid' => $stayItem->destinationitemid ?? null,
+
+                'placeid' => $resolvePlaceId($stayItem),
+                'destinationid' => $resolveDestinationId($stayItem),
+                'destinationitemid' => $resolveDestinationItemId($stayItem),
+
                 'stayname' => $stayItem->display_title,
                 'staytype' => $stayItem->staytype ?? null,
                 'checkindate' => $checkIn,
@@ -1246,9 +1310,11 @@ public function generateApply(Request $request, Trip $trip)
                 'tripid' => $trip->id,
                 'triplegid' => $matchedLeg?->id,
                 'tripstayid' => null,
-                'destinationid' => $item->destinationid ?? null,
-                'destinationitemid' => $item->destinationitemid ?? null,
-                'placeid' => $item->placeid ?? null,
+
+                'placeid' => $resolvePlaceId($item),
+                'destinationid' => $resolveDestinationId($item),
+                'destinationitemid' => $resolveDestinationItemId($item),
+
                 'itemdate' => $item->planneddate ?? null,
                 'startdatetime' => null,
                 'enddatetime' => null,
@@ -1290,9 +1356,11 @@ public function generateApply(Request $request, Trip $trip)
                 'triplegid' => $matchedLeg->id,
                 'sequence_no' => $legPointSequenceByLeg[$matchedLeg->id],
                 'pointtype' => $pointItem->isgovia ? 'govia' : 'waypoint',
-                'placeid' => $pointItem->placeid ?? null,
-                'destinationid' => $pointItem->destinationid ?? null,
-                'destinationitemid' => $pointItem->destinationitemid ?? null,
+
+                'placeid' => $resolvePlaceId($pointItem),
+                'destinationid' => $resolveDestinationId($pointItem),
+                'destinationitemid' => $resolveDestinationItemId($pointItem),
+
                 'title' => $pointItem->display_title,
                 'notes' => $pointItem->notes ?? null,
             ]);
@@ -1362,7 +1430,7 @@ private function buildGenerationCandidates(Trip $trip): array
             ->orderByRaw('planneddate IS NULL, planneddate ASC')
             ->orderByRaw('plannedenddate IS NOT NULL, plannedenddate ASC')
             ->orderBy('sequence_no')
-            ->orderBy('id')
+            ->orderBy('id'),
     ]);
 
     $planItems = $trip->planItems
@@ -1372,20 +1440,57 @@ private function buildGenerationCandidates(Trip $trip): array
         ])
         ->values();
 
-    $resolvePlaceId = function ($item): int {
-        return (int) (
-            $item->placeid
+    /*
+     * Prefer the explicitly selected Place. If the planning item was
+     * created from a Destination Item or Destination, fall back through
+     * those related records to obtain its effective Place.
+     */
+    $resolvePlaceId = function ($item): ?int {
+        $placeId = $item->placeid
             ?: $item->destinationItem?->placeid
             ?: $item->destinationItem?->destination?->placeid
             ?: $item->destination?->placeid
-            ?: 0
-        );
+            ?: null;
+
+        return filled($placeId)
+            ? (int) $placeId
+            : null;
     };
 
-    $hasPlanningLocation = function ($item) use ($resolvePlaceId): bool {
-        return $resolvePlaceId($item) > 0
-            || ! empty($item->destinationid)
-            || ! empty($item->destinationitemid);
+    /*
+     * Prefer the planning item's explicit Destination. A selected
+     * Destination Item also identifies its owning Destination, so use
+     * that as a safe fallback where destinationid is not populated.
+     */
+    $resolveDestinationId = function ($item): ?int {
+        $destinationId = $item->destinationid
+            ?: $item->destinationItem?->destinationid
+            ?: null;
+
+        return filled($destinationId)
+            ? (int) $destinationId
+            : null;
+    };
+
+    /*
+     * A Destination Item must be explicitly linked on the planning item.
+     * It cannot be inferred merely from the selected Place or Destination,
+     * because many items may exist beneath the same destination.
+     */
+    $resolveDestinationItemId = function ($item): ?int {
+        return filled($item->destinationitemid)
+            ? (int) $item->destinationitemid
+            : null;
+    };
+
+    $hasPlanningLocation = function ($item) use (
+        $resolvePlaceId,
+        $resolveDestinationId,
+        $resolveDestinationItemId
+    ): bool {
+        return $resolvePlaceId($item) !== null
+            || $resolveDestinationId($item) !== null
+            || $resolveDestinationItemId($item) !== null;
     };
 
     $samePlace = function ($a, $b) use ($resolvePlaceId): bool {
@@ -1396,11 +1501,15 @@ private function buildGenerationCandidates(Trip $trip): array
         $aPlaceId = $resolvePlaceId($a);
         $bPlaceId = $resolvePlaceId($b);
 
-        return $aPlaceId > 0
-            && $bPlaceId > 0
+        return $aPlaceId !== null
+            && $bPlaceId !== null
             && $aPlaceId === $bPlaceId;
     };
 
+    /*
+     * A planning item becomes a candidate Stay when it has a location and
+     * is marked as an overnight stop or a stay target.
+     */
     $candidateStayItems = $planItems
         ->filter(function ($item) use ($hasPlanningLocation) {
             return $hasPlanningLocation($item)
@@ -1414,6 +1523,10 @@ private function buildGenerationCandidates(Trip $trip): array
         return $hasPlanningLocation($item);
     });
 
+    /*
+     * If there is a located planning item before the first candidate stay,
+     * generate an initial transfer leg to that first stay.
+     */
     if ($candidateStayItems->isNotEmpty()) {
         $firstStay = $candidateStayItems->first();
 
@@ -1425,17 +1538,30 @@ private function buildGenerationCandidates(Trip $trip): array
             $candidateLegs->push([
                 'from_item' => $firstLocatedItem,
                 'to_item' => $firstStay,
+
                 'from_label' => $firstLocatedItem->display_title,
                 'to_label' => $firstStay->display_title,
+
                 'from_sequence' => (int) ($firstLocatedItem->sequence_no ?? 0),
                 'to_sequence' => (int) ($firstStay->sequence_no ?? 0),
+
+                'from_placeid' => $resolvePlaceId($firstLocatedItem),
+                'from_destinationid' => $resolveDestinationId($firstLocatedItem),
+                'from_destinationitemid' => $resolveDestinationItemId($firstLocatedItem),
+
+                'to_placeid' => $resolvePlaceId($firstStay),
+                'to_destinationid' => $resolveDestinationId($firstStay),
+                'to_destinationitemid' => $resolveDestinationItemId($firstStay),
+
                 'planned_start' => $firstStay->planneddate,
                 'planned_end' => $firstStay->planneddate,
                 'start_date' => $firstStay->planneddate,
                 'end_date' => $firstStay->planneddate,
-                'day_key' => ! empty($firstStay->planneddate)
+
+                'day_key' => filled($firstStay->planneddate)
                     ? Carbon::parse($firstStay->planneddate)->toDateString()
                     : null,
+
                 'leg_kind' => 'transfer',
             ]);
         }
@@ -1453,27 +1579,47 @@ private function buildGenerationCandidates(Trip $trip): array
                 })
                 ->values();
 
+            /*
+             * Different Places mean this is a conventional transfer leg.
+             */
             if (! $samePlace($fromStay, $toStay)) {
                 $candidateLegs->push([
                     'from_item' => $fromStay,
                     'to_item' => $toStay,
+
                     'from_label' => $fromStay->display_title,
                     'to_label' => $toStay->display_title,
+
                     'from_sequence' => (int) ($fromStay->sequence_no ?? 0),
                     'to_sequence' => (int) ($toStay->sequence_no ?? 0),
+
+                    'from_placeid' => $resolvePlaceId($fromStay),
+                    'from_destinationid' => $resolveDestinationId($fromStay),
+                    'from_destinationitemid' => $resolveDestinationItemId($fromStay),
+
+                    'to_placeid' => $resolvePlaceId($toStay),
+                    'to_destinationid' => $resolveDestinationId($toStay),
+                    'to_destinationitemid' => $resolveDestinationItemId($toStay),
+
                     'planned_start' => $toStay->planneddate,
                     'planned_end' => $toStay->planneddate,
                     'start_date' => $toStay->planneddate,
                     'end_date' => $toStay->planneddate,
-                    'day_key' => ! empty($toStay->planneddate)
+
+                    'day_key' => filled($toStay->planneddate)
                         ? Carbon::parse($toStay->planneddate)->toDateString()
                         : null,
+
                     'leg_kind' => 'transfer',
                 ]);
 
                 continue;
             }
 
+            /*
+             * The two stays are at the same Place. Look for intervening
+             * non-stay records at another Place; these create a day trip.
+             */
             $offBaseItems = $betweenItems
                 ->filter(function ($item) use ($fromStay, $samePlace, $hasPlanningLocation) {
                     if (! $hasPlanningLocation($item)) {
@@ -1498,19 +1644,49 @@ private function buildGenerationCandidates(Trip $trip): array
             $candidateLegs->push([
                 'from_item' => $fromStay,
                 'to_item' => $toStay,
+
                 'from_label' => $fromStay->display_title,
                 'to_label' => $toStay->display_title,
+
+                /*
+                 * For a day trip, the effective sequence boundaries are the
+                 * off-base points, so related planned activities fall inside
+                 * the generated day-trip leg.
+                 */
                 'from_sequence' => (int) ($firstOffBase->sequence_no ?? $fromStay->sequence_no ?? 0),
                 'to_sequence' => (int) ($lastOffBase->sequence_no ?? $toStay->sequence_no ?? 0),
+
+                'from_placeid' => $resolvePlaceId($fromStay),
+                'from_destinationid' => $resolveDestinationId($fromStay),
+                'from_destinationitemid' => $resolveDestinationItemId($fromStay),
+
+                'to_placeid' => $resolvePlaceId($toStay),
+                'to_destinationid' => $resolveDestinationId($toStay),
+                'to_destinationitemid' => $resolveDestinationItemId($toStay),
+
+                /*
+                 * Preserve the actual off-base destination context separately.
+                 * This is particularly useful if the later generator wants
+                 * the day-trip target to define the leg title/destination.
+                 */
+                'day_trip_first_item' => $firstOffBase,
+                'day_trip_last_item' => $lastOffBase,
+
+                'day_trip_placeid' => $resolvePlaceId($firstOffBase),
+                'day_trip_destinationid' => $resolveDestinationId($firstOffBase),
+                'day_trip_destinationitemid' => $resolveDestinationItemId($firstOffBase),
+
                 'planned_start' => $firstOffBase->planneddate ?? $fromStay->planneddate,
                 'planned_end' => $lastOffBase->planneddate ?? $toStay->planneddate,
                 'start_date' => $firstOffBase->planneddate ?? $fromStay->planneddate,
                 'end_date' => $lastOffBase->planneddate ?? $toStay->planneddate,
-                'day_key' => ! empty($firstOffBase->planneddate)
+
+                'day_key' => filled($firstOffBase->planneddate)
                     ? Carbon::parse($firstOffBase->planneddate)->toDateString()
-                    : (! empty($fromStay->planneddate)
+                    : (filled($fromStay->planneddate)
                         ? Carbon::parse($fromStay->planneddate)->toDateString()
                         : null),
+
                 'leg_kind' => 'day_trip',
             ]);
         }
@@ -1518,7 +1694,7 @@ private function buildGenerationCandidates(Trip $trip): array
 
     $candidateLegs = $candidateLegs
         ->sortBy(function ($leg) {
-            $startTimestamp = ! empty($leg['start_date'])
+            $startTimestamp = filled($leg['start_date'] ?? null)
                 ? Carbon::parse($leg['start_date'])->startOfDay()->timestamp
                 : PHP_INT_MAX;
 
@@ -1546,7 +1722,7 @@ private function buildGenerationCandidates(Trip $trip): array
         ->filter(fn ($item) => $candidateLegBoundaryIds->contains((int) $item->id))
         ->values();
 
-    $isItemWithinLeg = function ($item, array $leg) {
+    $isItemWithinLeg = function ($item, array $leg): bool {
         $sequence = (int) ($item->sequence_no ?? 0);
 
         if (($leg['leg_kind'] ?? null) === 'day_trip') {
@@ -1558,6 +1734,11 @@ private function buildGenerationCandidates(Trip $trip): array
             && $sequence < (int) ($leg['to_sequence'] ?? PHP_INT_MAX);
     };
 
+    /*
+     * These are located non-stay items specifically marked as “Go via”.
+     * They are excluded from normal generated Trip Items because they are
+     * intended to become route points for a generated Trip Leg.
+     */
     $candidateLegPoints = $planItems
         ->filter(function ($item) use (
             $candidateStayItems,
@@ -1582,10 +1763,16 @@ private function buildGenerationCandidates(Trip $trip): array
                 return false;
             }
 
-            return $candidateLegs->contains(fn ($leg) => $isItemWithinLeg($item, $leg));
+            return $candidateLegs->contains(
+                fn ($leg) => $isItemWithinLeg($item, $leg)
+            );
         })
         ->values();
 
+    /*
+     * These become normal generated Trip Items. They are neither stays,
+     * leg boundaries, nor route/via points.
+     */
     $candidateTripItems = $planItems
         ->filter(function ($item) use (
             $candidateStayItems,
@@ -1611,17 +1798,29 @@ private function buildGenerationCandidates(Trip $trip): array
                 return false;
             }
 
-            return $candidateLegs->contains(fn ($leg) => $isItemWithinLeg($item, $leg));
+            return $candidateLegs->contains(
+                fn ($leg) => $isItemWithinLeg($item, $leg)
+            );
         })
         ->values();
 
     return [
         'planItems' => $planItems,
+
         'candidateLegs' => $candidateLegs,
         'candidateStayItems' => $candidateStayItems,
         'candidateTripItems' => $candidateTripItems,
         'candidateLegPoints' => $candidateLegPoints,
         'candidateLegBoundaries' => $candidateLegBoundaries,
+
+        /*
+         * These closures are returned so the later persistence/generation
+         * method can use exactly the same fallback rules when it maps
+         * planning records into Trip Legs, Stays, Items, or Leg Points.
+         */
+        'resolvePlaceId' => $resolvePlaceId,
+        'resolveDestinationId' => $resolveDestinationId,
+        'resolveDestinationItemId' => $resolveDestinationItemId,
     ];
 }
 protected function resolvePlanningItemCoordinates(TripPlanItem $item): array
@@ -1673,6 +1872,27 @@ protected function estimateCaravanDrivingMinutes(float $roadDistanceKm): int
     }
 
     return (int) round(($roadDistanceKm / $averageSpeedKph) * 60);
+}
+
+protected function estimatePlanningLegDistanceKm(
+    TripPlanItem $fromItem,
+    TripPlanItem $toItem
+): ?float {
+    $fromCoordinates = $this->resolvePlanningItemCoordinates($fromItem);
+    $toCoordinates = $this->resolvePlanningItemCoordinates($toItem);
+
+    if (! $fromCoordinates['has_coordinates'] || ! $toCoordinates['has_coordinates']) {
+        return null;
+    }
+
+    $straightLineKm = $this->haversineDistanceKm(
+        $fromCoordinates['latitude'],
+        $fromCoordinates['longitude'],
+        $toCoordinates['latitude'],
+        $toCoordinates['longitude']
+    );
+
+    return round($this->estimateRoadDistanceKm($straightLineKm), 1);
 }
 
 protected function formatDrivingTime(int $minutes): string
@@ -1852,8 +2072,14 @@ public function rebuildFromOutputs(Request $request, Trip $trip)
     $trip->load([
         'legs' => fn ($query) => $query->orderBy('legnumber')->orderBy('id'),
         'legs.tripLegPoints' => fn ($query) => $query->orderBy('sequence_no')->orderBy('id'),
-        'stays' => fn ($query) => $query->orderBy('checkindate')->orderBy('id'),
-        'tripItems' => fn ($query) => $query->orderByRaw('itemdate IS NULL, itemdate ASC')->orderBy('sortorder')->orderBy('id'),
+        'stays' => fn ($query) => $query
+            ->with(['destinationItem.destination'])
+            ->orderBy('checkindate')
+            ->orderBy('id'),
+        'tripItems' => fn ($query) => $query
+            ->orderByRaw('itemdate IS NULL, itemdate ASC')
+            ->orderBy('sortorder')
+            ->orderBy('id'),
     ]);
 
     if (
@@ -1897,7 +2123,9 @@ public function rebuildFromOutputs(Request $request, Trip $trip)
             ->mapWithKeys(function ($stay) {
                 $key = $this->makePlannerLocationDateKey(
                     placeId: $stay->placeid,
-                    destinationId: null,
+                    destinationId: $stay->destinationid
+                        ?? $stay->destinationItem?->destinationid
+                        ?? null,
                     destinationItemId: $stay->destinationitemid,
                     plannedDate: $stay->checkindate
                 );
@@ -1926,7 +2154,11 @@ public function rebuildFromOutputs(Request $request, Trip $trip)
                 'plantype' => $stay->destinationitemid ? 'destination_item' : 'place',
                 'title' => $stay->stayname,
                 'placeid' => $stay->placeid,
-                'destinationid' => null,
+
+                'destinationid' => $stay->destinationid
+                    ?? $stay->destinationItem?->destinationid
+                    ?? null,
+
                 'destinationitemid' => $stay->destinationitemid,
                 'triplegid' => $stay->triplegid,
                 'tripstayid' => $stay->id,

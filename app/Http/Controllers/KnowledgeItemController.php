@@ -729,6 +729,12 @@ class KnowledgeItemController extends Controller
             }
         }
 
+        foreach (['startdate', 'enddate', 'nextreviewdate'] as $field) {
+            $validated[$field] = filled($validated[$field] ?? null)
+                ? $validated[$field]
+                : null;
+        }
+        
         $tagIds = collect($request->input('tagids', []))
             ->filter()
             ->map(fn ($id) => (int) $id)

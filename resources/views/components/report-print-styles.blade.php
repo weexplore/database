@@ -1,9 +1,24 @@
+
 {{-- resources/views/components/report-print-styles.blade.php --}}
+@props([
+    'orientation' => 'portrait',
+])
 <style>
     @media print {
         @page {
-            size: A4 portrait;
+            size: A4 {{ $orientation === 'landscape' ? 'landscape' : 'portrait' }};
             margin: 10mm;
+        }
+
+        /*
+        * Keep the compact report-selection metadata on one line where possible.
+        * The Cashbook report normally has Scope, Legal Entity, and Date Range;
+        * a fourth Bank Account field is accommodated automatically.
+        */
+        .report-selection-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            column-gap: 16px !important;
+            row-gap: 5px !important;
         }
 
         html,
@@ -307,6 +322,96 @@
         */
         .inline-flex.items-center {
             padding: 1px 4px !important;
+        }
+        /*
+        * Budget Lines report: compact 14-column financial table for A4 landscape.
+        *
+        * Screen layout intentionally uses a 1456px-wide scrollable table.
+        * Print layout must instead fit Category, Total and Jul–Jun within
+        * the printable landscape A4 width.
+        */
+        .budget-lines-print-wrapper {
+            overflow: visible !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+        }
+
+        .budget-lines-table {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            table-layout: fixed !important;
+            border-collapse: collapse !important;
+        }
+
+        /*
+        * Hide interactive Actions column in the PDF/printout.
+        *
+        * This removes the matching colgroup column as well as table header,
+        * body and footer cells. The selectors ensure it is removed even where
+        * an empty placeholder action cell is used.
+        */
+        .budget-lines-table .budget-lines-actions-column {
+            display: none !important;
+        }
+
+        /*
+        * Category plus Total plus twelve months = fourteen printed columns.
+        *
+        * Category receives 33% of the available width for readable names.
+        * The remaining 67% is shared by Total and Jul–Jun.
+        */
+        .budget-lines-table col:nth-child(1) {
+            width: 33% !important;
+        }
+
+        .budget-lines-table col:nth-child(2),
+        .budget-lines-table col:nth-child(n + 3):not(.budget-lines-actions-column) {
+            width: 5.1538% !important;
+        }
+
+        /*
+        * Tighten every table cell for print. The global report stylesheet
+        * remains in control of all other report layout.
+        */
+        .budget-lines-table th,
+        .budget-lines-table td {
+            padding: 2px 2px !important;
+            font-size: 7.2px !important;
+            line-height: 1.1 !important;
+            vertical-align: top !important;
+        }
+
+        /*
+        * Long category labels may wrap; financial values should remain compact,
+        * right aligned, and on one line.
+        */
+        .budget-lines-table th:first-child,
+        .budget-lines-table td:first-child {
+            white-space: normal !important;
+            overflow-wrap: anywhere !important;
+            text-align: left !important;
+        }
+
+        .budget-lines-table th:not(:first-child),
+        .budget-lines-table td:not(:first-child) {
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: clip !important;
+            text-align: right !important;
+        }
+
+        /*
+        * The Category-heading rows use colspan and should retain enough
+        * prominence without wasting vertical paper space.
+        */
+        .budget-lines-table tr.bg-slate-700 td,
+        .budget-lines-table tr.bg-gray-200 td,
+        .budget-lines-table tr.bg-gray-50 td {
+            padding-top: 3px !important;
+            padding-bottom: 3px !important;
+            font-size: 8px !important;
+            line-height: 1.1 !important;
         }
     }
 </style>

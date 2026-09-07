@@ -1005,96 +1005,54 @@
     </div>
 
     <style>
-        .trip-leg-card {
-            break-inside: avoid;
-            page-break-inside: avoid;
-        }
+    .trip-leg-map-wrap {
+        width: 100%;
+        max-width: 35rem;
+        margin: 0 auto;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
 
-        .trip-leg-map-wrap {
-            width: 100%;
-            max-width: 35rem;
-            margin: 0 auto;
-        }
+    .trip-leg-map {
+        width: 100%;
+        height: 18rem;
+        position: relative;
+    }
 
-        .trip-leg-map {
-            width: 100%;
-            height: 18rem;
-            position: relative;
-        }
+    .location-detail-stack,
+    .location-detail-stack > div {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
 
-        .location-detail-stack,
-        .location-detail-stack > div {
-            break-inside: avoid;
-            page-break-inside: avoid;
-        }
+    @media print {
+    .trip-leg-card {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+    }
 
-        .markdown-content > *:first-child {
-            margin-top: 0;
-        }
+    .trip-leg-map-wrap {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 auto !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        overflow: visible !important;
+    }
 
-        .markdown-content > *:last-child {
-            margin-bottom: 0;
-        }
+    .trip-leg-map {
+        width: 100% !important;
+        height: 120mm !important;
+        min-height: 120mm !important;
+        position: relative !important;
+        overflow: hidden !important;
+    }
 
-        .markdown-content p,
-        .markdown-content ul,
-        .markdown-content ol,
-        .markdown-content blockquote {
-            margin-bottom: 0.75rem;
-        }
-
-        .markdown-content ul,
-        .markdown-content ol {
-            padding-left: 1.25rem;
-        }
-
-        .markdown-content li + li {
-            margin-top: 0.25rem;
-        }
-
-        .markdown-content h1,
-        .markdown-content h2,
-        .markdown-content h3,
-        .markdown-content h4 {
-            font-weight: 600;
-            color: #111827;
-            margin-top: 1rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .markdown-content a {
-            color: #1d4ed8;
-            text-decoration: underline;
-        }
-
-        @media print {
-            .trip-leg-card,
-            .location-detail-stack,
-            .location-detail-stack > div {
-                break-inside: avoid;
-                page-break-inside: avoid;
-            }
-
-            .trip-leg-map-wrap {
-                max-width: 36rem !important;
-                margin: 0 auto !important;
-            }
-
-            .trip-leg-map {
-                width: 100% !important;
-                height: 18rem !important;
-            }
-
-            .trip-leg-map .leaflet-control-container {
-                display: none !important;
-            }
-
-            .markdown-content a {
-                color: #000 !important;
-                text-decoration: none !important;
-            }
-        }
-    </style>
+    .trip-leg-map .leaflet-control-container {
+        display: none !important;
+    }
+}
+</style>
 
     <link
         rel="stylesheet"
@@ -1180,15 +1138,17 @@
             let activeRouteLayer = null;
 
             function fitMapToLayer(layer) {
-                map.invalidateSize();
-
-                if (waypoints.length === 1) {
-                    map.setView([waypoints[0].lat, waypoints[0].lng], 11);
+                if (!layer || !layer.getBounds().isValid()) {
                     return;
                 }
 
+                map.invalidateSize({
+                    pan: false,
+                    debounceMoveend: true,
+                });
+
                 map.fitBounds(layer.getBounds(), {
-                    padding: [24, 24],
+                    padding: [42, 42],
                     maxZoom: 10,
                     animate: false,
                 });
@@ -1251,22 +1211,66 @@
         });
 
         function refreshTripBookMapsForPrint() {
+            tripBookMaps.forEach(function (entry) {
+                const layer = entry.getLayer();
+
+                if (!layer || !layer.getBounds().isValid()) {
+                    return;
+                }
+
+                entry.map.invalidateSize({
+                    pan: false,
+                    debounceMoveend: true,
+                });
+            });
+
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    tripBookMaps.forEach(function (entry) {
+                        const layer = entry.getLayer();
+
+                        if (!layer || !layer.getBounds().isValid()) {
+                            return;
+                        }
+
+                        entry.map.invalidateSize({
+                            pan: false,
+                            debounceMoveend: true,
+                        });
+
+                        entry.map.fitBounds(layer.getBounds(), {
+                            padding: [42, 42],
+                            maxZoom: 10,
+                            animate: false,
+                        });
+                    });
+                });
+            });
+
+            /*
+            * Chrome/Edge can complete a further pagination/layout pass after
+            * beforeprint/matchMedia has fired. Run one final refit afterward.
+            */
             setTimeout(function () {
                 tripBookMaps.forEach(function (entry) {
                     const layer = entry.getLayer();
 
-                    if (!layer) {
+                    if (!layer || !layer.getBounds().isValid()) {
                         return;
                     }
 
-                    entry.map.invalidateSize();
+                    entry.map.invalidateSize({
+                        pan: false,
+                        debounceMoveend: true,
+                    });
+
                     entry.map.fitBounds(layer.getBounds(), {
-                        padding: [24, 24],
+                        padding: [42, 42],
                         maxZoom: 10,
                         animate: false,
                     });
                 });
-            }, 300);
+            }, 150);
         }
 
         window.addEventListener('beforeprint', refreshTripBookMapsForPrint);

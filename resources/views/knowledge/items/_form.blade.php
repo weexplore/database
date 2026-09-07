@@ -174,36 +174,90 @@
 
         <div class="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
             <div>
-                <label for="startdate" class="block text-sm font-medium text-gray-700 mb-1">
-                    Start Date
-                </label>
-                <input type="date"
-                       name="startdate"
-                       id="startdate"
-                       value="{{ old('startdate', isset($knowledgeItem) && $knowledgeItem->startdate ? $knowledgeItem->startdate->format('Y-m-d') : '') }}"
-                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                    <label for="startdate" class="block text-sm font-medium text-gray-700">
+                        Start Date
+                    </label>
+
+                    <button
+                        type="button"
+                        class="js-clear-date text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                        data-date-input="startdate"
+                    >
+                        Clear
+                    </button>
+                </div>
+
+                <input
+                    type="date"
+                    name="startdate"
+                    id="startdate"
+                    value="{{ old(
+                        'startdate',
+                        isset($knowledgeItem) && $knowledgeItem->startdate
+                            ? $knowledgeItem->startdate->format('Y-m-d')
+                            : ''
+                    ) }}"
+                    class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                >
             </div>
 
             <div>
-                <label for="enddate" class="block text-sm font-medium text-gray-700 mb-1">
-                    End Date
-                </label>
-                <input type="date"
-                       name="enddate"
-                       id="enddate"
-                       value="{{ old('enddate', isset($knowledgeItem) && $knowledgeItem->enddate ? $knowledgeItem->enddate->format('Y-m-d') : '') }}"
-                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                    <label for="enddate" class="block text-sm font-medium text-gray-700">
+                        End Date
+                    </label>
+
+                    <button
+                        type="button"
+                        class="js-clear-date text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                        data-date-input="enddate"
+                    >
+                        Clear
+                    </button>
+                </div>
+
+                <input
+                    type="date"
+                    name="enddate"
+                    id="enddate"
+                    value="{{ old(
+                        'enddate',
+                        isset($knowledgeItem) && $knowledgeItem->enddate
+                            ? $knowledgeItem->enddate->format('Y-m-d')
+                            : ''
+                    ) }}"
+                    class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                >
             </div>
 
             <div>
-                <label for="nextreviewdate" class="block text-sm font-medium text-gray-700 mb-1">
-                    Next Review Date
-                </label>
-                <input type="date"
-                       name="nextreviewdate"
-                       id="nextreviewdate"
-                       value="{{ old('nextreviewdate', isset($knowledgeItem) && $knowledgeItem->nextreviewdate ? $knowledgeItem->nextreviewdate->format('Y-m-d') : '') }}"
-                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                    <label for="nextreviewdate" class="block text-sm font-medium text-gray-700">
+                        Next Review Date
+                    </label>
+
+                    <button
+                        type="button"
+                        class="js-clear-date text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                        data-date-input="nextreviewdate"
+                    >
+                        Clear
+                    </button>
+                </div>
+
+                <input
+                    type="date"
+                    name="nextreviewdate"
+                    id="nextreviewdate"
+                    value="{{ old(
+                        'nextreviewdate',
+                        isset($knowledgeItem) && $knowledgeItem->nextreviewdate
+                            ? $knowledgeItem->nextreviewdate->format('Y-m-d')
+                            : ''
+                    ) }}"
+                    class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                >
             </div>
 
             <div>
@@ -291,3 +345,22 @@
         'dirtyMessage' => 'You have unsaved changes on this Knowledge Item. Continue and lose those changes?',
     ])
 @endif
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.js-clear-date').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const inputId = button.dataset.dateInput;
+                const input = document.getElementById(inputId);
+
+                if (!input) {
+                    return;
+                }
+
+                input.value = '';
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        });
+    });
+</script>

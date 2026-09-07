@@ -1,18 +1,34 @@
 <x-app-layout>
+    <x-report-print-styles />
+
     <x-slot name="header">
         <div class="flex items-center justify-between gap-4">
             <div>
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                     Cashbook Reports
                 </h2>
+
                 <p class="mt-1 text-sm text-gray-500">
                     Category-based cashbook reporting by legal entity or bank account.
                 </p>
             </div>
-            <a href="{{ route('cashbook-transactions.index') }}"
-               class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">
-                Back to transactions
-            </a>
+
+            <div class="print-hide flex items-center gap-3">
+                <button
+                    type="button"
+                    onclick="window.print()"
+                    class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+                >
+                    Print / Save PDF
+                </button>
+
+                <a
+                    href="{{ route('cashbook-transactions.index') }}"
+                    class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                >
+                    Back to transactions
+                </a>
+            </div>
         </div>
     </x-slot>
 
@@ -36,7 +52,7 @@
                 </div>
             @endif
 
-            <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div class="print-hide rounded-lg border border-gray-200 bg-white shadow-sm">
                 <form method="GET" action="{{ route('cashbook-reports.index') }}" class="p-4 space-y-4">
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
                         <div>
@@ -130,6 +146,104 @@
                         </a>
                     </div>
                 </form>
+            </div>
+
+            @php
+                $selectedLegalEntity = $legalEntities->firstWhere('id', $legalEntityId);
+                $selectedAccount = $accounts->firstWhere('id', $accountId);
+
+                $dateRangeLabel = match (true) {
+                    filled($dateFrom) && filled($dateTo) => \Carbon\Carbon::parse($dateFrom)->format('d M Y')
+                        . ' to '
+                        . \Carbon\Carbon::parse($dateTo)->format('d M Y'),
+
+                    filled($dateFrom) => 'From ' . \Carbon\Carbon::parse($dateFrom)->format('d M Y'),
+
+                    filled($dateTo) => 'To / as at ' . \Carbon\Carbon::parse($dateTo)->format('d M Y'),
+
+                    default => 'All dates',
+                };
+
+                $reportTypeLabel = $reportType === 'transactions-balances'
+                    ? 'Category Transaction Totals'
+                    : 'Category Balances';
+            @endphp
+
+            <div class="rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-900">
+                            Report selection
+                        </h3>
+
+                        <div class="report-selection-grid mt-3 grid grid-cols-1 gap-x-8 gap-y-3 text-sm text-gray-700 sm:grid-cols-2 xl:grid-cols-4">
+                            <div class="min-w-0">
+                                <div class="text-xs font-medium uppercase tracking-wide text-gray-500">
+                                    Scope
+                                </div>
+                                <div class="mt-0.5 font-semibold text-gray-900">
+                                    {{ $scope === 'bank-account' ? 'Bank Account' : 'Legal Entity' }}
+                                </div>
+                            </div>
+
+                            <div class="min-w-0">
+                                <div class="text-xs font-medium uppercase tracking-wide text-gray-500">
+                                    Legal Entity
+                                </div>
+                                <div class="mt-0.5 font-semibold text-gray-900">
+                                    {{ $selectedLegalEntity?->entityname ?? 'All legal entities' }}
+                                </div>
+                            </div>
+
+                            @if($selectedAccount)
+                                <div class="min-w-0">
+                                    <div class="text-xs font-medium uppercase tracking-wide text-gray-500">
+                                        Bank Account
+                                    </div>
+                                    <div class="mt-0.5 font-semibold text-gray-900">
+                                        {{ $selectedAccount->accountname }}
+                                    </div>
+                                </div>
+                            @elseif($scope === 'bank-account')
+                                <div class="min-w-0">
+                                    <div class="text-xs font-medium uppercase tracking-wide text-gray-500">
+                                        Bank Account
+                                    </div>
+                                    <div class="mt-0.5 font-semibold text-gray-900">
+                                        All bank accounts
+                                    </div>
+                                </div>
+                            @endif
+
+                            <div class="min-w-0">
+                                <div class="text-xs font-medium uppercase tracking-wide text-gray-500">
+                                    Date Range
+                                </div>
+                                <div class="mt-0.5 font-semibold text-gray-900">
+                                    {{ $dateRangeLabel }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap justify-end gap-2">
+                        <span class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                            {{ $reportTypeLabel }}
+                        </span>
+
+                        @if($reconciledOnly)
+                            <span class="inline-flex items-center rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
+                                Reconciled only
+                            </span>
+                        @endif
+
+                        @if($includeZeroBalances)
+                            <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
+                                Zero balances included
+                            </span>
+                        @endif
+                    </div>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 gap-4 md:grid-cols-6">

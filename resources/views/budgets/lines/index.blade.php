@@ -1,26 +1,47 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Budget Lines — {{ $budget->year_label }}
-                @php
-                    $statusColour = match($budget->status) {
-                        'draft' => 'bg-gray-100 text-gray-700',
-                        'adopted' => 'bg-blue-100 text-blue-700',
-                        'revised' => 'bg-yellow-100 text-yellow-700',
-                        'closed' => 'bg-green-100 text-green-700',
-                        default => 'bg-gray-100 text-gray-700',
-                    };
-                @endphp
-                <span class="ml-2 px-2 py-0.5 rounded text-xs font-semibold {{ $statusColour }}">
-                    {{ ucfirst($budget->status) }}
-                </span>
-            </h2>
+    <x-report-print-styles orientation="landscape" />
 
-            <a href="{{ route('cashbook.budgets.index') }}"
-               class="text-sm text-blue-600 hover:underline">← Back to Budgets</a>
+    <x-slot name="header">
+        <div class="flex items-center justify-between gap-4">
+            <div>
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                    Budget Lines — {{ $budget->year_label }}
+
+                    @php
+                        $statusColour = match($budget->status) {
+                            'draft' => 'bg-gray-100 text-gray-700',
+                            'adopted' => 'bg-blue-100 text-blue-700',
+                            'revised' => 'bg-yellow-100 text-yellow-700',
+                            'closed' => 'bg-green-100 text-green-700',
+                            default => 'bg-gray-100 text-gray-700',
+                        };
+                    @endphp
+
+                    <span class="ml-2 px-2 py-0.5 rounded text-xs font-semibold {{ $statusColour }}">
+                        {{ ucfirst($budget->status) }}
+                    </span>
+                </h2>
+            </div>
+
+            <div class="print-hide flex shrink-0 items-center gap-3">
+                <button
+                    type="button"
+                    onclick="window.print()"
+                    class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+                >
+                    Print / Save PDF
+                </button>
+
+                <a
+                    href="{{ route('cashbook.budgets.index') }}"
+                    class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                >
+                    Back to Budgets
+                </a>
+            </div>
         </div>
     </x-slot>
+
 
     <div class="py-6"
          x-data="{
@@ -151,8 +172,8 @@
                 </div>
             </div>
 
-            <div class="bg-white shadow rounded-lg overflow-x-auto">
-                <table class="min-w-[1456px] table-fixed text-xs border-collapse">
+            <div class="budget-lines-print-wrapper bg-white shadow rounded-lg overflow-x-auto">
+                <table class="budget-lines-table min-w-[1456px] table-fixed text-xs border-collapse">
                     <colgroup>
                         <col class="w-72">
                         <col class="w-24">
@@ -160,7 +181,7 @@
                             <col class="w-20">
                         @endforeach
                         @if (!$budget->isClosed())
-                            <col class="w-28">
+                            <col class="budget-lines-actions-column w-28">
                         @endif
                     </colgroup>
 
@@ -172,7 +193,9 @@
                                 <th class="px-2 py-2 text-right font-semibold text-gray-700 tabular-nums">{{ $label }}</th>
                             @endforeach
                             @if (!$budget->isClosed())
-                                <th class="px-3 py-2 text-center font-semibold text-gray-700">Actions</th>
+                                <th class="budget-lines-actions-column px-3 py-2 text-center font-semibold text-gray-700">
+                                    Actions
+                                </th>
                             @endif
                         </tr>
                     </thead>
@@ -280,7 +303,7 @@
                                     </td>
                                 @endforeach
                                 @if (!$budget->isClosed())
-                                    <td class="px-3 py-1.5 text-center whitespace-nowrap">
+                                    <td class="budget-lines-actions-column px-3 py-1.5 text-center whitespace-nowrap">
                                         @if (!$budget->isAdoptedLocked())
                                             <a href="{{ route('cashbook.budgets.lines.index', [
                                                 'budget' => $budget,
@@ -323,7 +346,7 @@
                                     </td>
                                 @endforeach
                                 @if (!$budget->isClosed())
-                                    <td class="px-3 py-1.5 text-center whitespace-nowrap">
+                                    <td class="budget-lines-actions-column px-3 py-1.5 text-center whitespace-nowrap">
                                         @if ($budget->isRevised())
                                             <a href="{{ route('cashbook.budgets.lines.index', [
                                                 'budget' => $budget,
@@ -362,7 +385,7 @@
                                     </td>
                                 @endforeach
                                 @if (!$budget->isClosed())
-                                    <td class="px-3 py-1.5"></td>
+                                    <td class="budget-lines-actions-column px-3 py-1.5"></td>
                                 @endif
                             </tr>
 
@@ -392,7 +415,7 @@
                                         </td>
                                     @endforeach
                                     @if (!$budget->isClosed())
-                                        <td class="px-3 py-1.5"></td>
+                                        <td class="budget-lines-actions-column px-3 py-1.5"></td>
                                     @endif
                                 </tr>
                             @endif
@@ -421,7 +444,7 @@
                                         </td>
                                     @endforeach
                                     @if (!$budget->isClosed())
-                                        <td></td>
+                                        <td class="budget-lines-actions-column"></td>
                                     @endif
                                 </tr>
 
@@ -438,7 +461,7 @@
                                         </td>
                                     @endforeach
                                     @if (!$budget->isClosed())
-                                        <td></td>
+                                        <td class="budget-lines-actions-column"></td>
                                     @endif
                                 </tr>
 
@@ -455,7 +478,7 @@
                                         </td>
                                     @endforeach
                                     @if (!$budget->isClosed())
-                                        <td></td>
+                                        <td class="budget-lines-actions-column"></td>
                                     @endif
                                 </tr>
                             @endif
@@ -486,7 +509,10 @@
                                 </th>
                             @endforeach
                             @if (!$budget->isClosed())
-                                <th style="background-color: #1e293b; color: #ffffff;"></th>
+                                <th
+                                    class="budget-lines-actions-column"
+                                    style="background-color: #1e293b; color: #ffffff;"
+                                ></th>
                             @endif
                         </tr>
 
@@ -503,7 +529,7 @@
                                 </th>
                             @endforeach
                             @if (!$budget->isClosed())
-                                <th class="bg-slate-700"></th>
+                                <th class="budget-lines-actions-column bg-slate-700"></th>
                             @endif
                         </tr>
 
@@ -520,7 +546,7 @@
                                 </th>
                             @endforeach
                             @if (!$budget->isClosed())
-                                <th class="bg-slate-900"></th>
+                                <th class="budget-lines-actions-column bg-slate-900"></th>
                             @endif
                         </tr>
                     </tfoot>

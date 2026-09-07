@@ -60,13 +60,16 @@
 
             <div class="xl:col-span-3">
                 <label for="title" class="block text-sm font-medium text-gray-700">Title</label>
-                <input type="text"
-                       name="title"
-                       id="title"
-                       value="{{ old('title', $tripPlanItem->title) }}"
-                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                       maxlength="200"
-                       placeholder="e.g. Travel to Bendigo">
+                <input
+                    type="text"
+                    name="title"
+                    id="title"
+                    value="{{ old('title', $tripPlanItem->title) }}"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                    maxlength="200"
+                    placeholder="e.g. Travel to Bendigo"
+                    data-auto-title
+                >
             </div>
         </div>
 
@@ -732,4 +735,116 @@ document.addEventListener('DOMContentLoaded', function () {
     filterRows();
     setNearbyButtonState();
 });
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const titleInput = document.getElementById('title');
+        const placeSelect = document.getElementById('placeid');
+        const destinationSelect = document.getElementById('destinationid');
+
+        if (!titleInput || !placeSelect || !destinationSelect) {
+            return;
+        }
+
+        let titleWasAutomaticallyGenerated = titleInput.value.trim() === '';
+
+        const selectedOptionText = (select) => {
+            const option = select.options[select.selectedIndex];
+
+            if (!option || !option.value) {
+                return '';
+            }
+
+            return option.text.trim();
+        };
+
+        const selectedDestinationItems = () => {
+            return Array.from(
+                document.querySelectorAll(
+                    '.related-destination-item-checkbox:checked'
+                )
+            ).map((checkbox) => {
+                const row = checkbox.closest('.related-destination-item-row');
+
+                return row
+                    ?.querySelector('.text-sm.font-medium.text-gray-900')
+                    ?.textContent
+                    ?.trim() ?? '';
+            }).filter(Boolean);
+        };
+
+        const buildBaseTitle = () => {
+            const parts = [
+                selectedOptionText(placeSelect),
+                selectedOptionText(destinationSelect),
+            ].filter(Boolean);
+
+            return parts.join(' - ');
+        };
+
+        const buildSuggestedTitle = () => {
+            const parts = [
+                selectedOptionText(placeSelect),
+                selectedOptionText(destinationSelect),
+            ].filter(Boolean);
+
+            const items = selectedDestinationItems();
+
+            /*
+             * Use the selected item name only where exactly one item
+             * is selected. Multiple selected items should receive their
+             * own generated titles when the server creates separate rows.
+             */
+            if (items.length === 1) {
+                parts.push(items[0]);
+            }
+
+            return parts.join(' - ');
+        };
+
+        const updateGeneratedTitle = () => {
+            if (!titleWasAutomaticallyGenerated) {
+                return;
+            }
+
+            titleInput.value = buildSuggestedTitle();
+        };
+
+        /*
+         * If the user manually changes the title, do not overwrite
+         * their wording after later Place/Destination/Item changes.
+         */
+        titleInput.addEventListener('input', () => {
+            titleWasAutomaticallyGenerated = false;
+        });
+
+        /*
+         * If they clear the title, allow the form to generate it again.
+         */
+        titleInput.addEventListener('blur', () => {
+            if (titleInput.value.trim() === '') {
+                titleWasAutomaticallyGenerated = true;
+                updateGeneratedTitle();
+            }
+        });
+
+        placeSelect.addEventListener('change', updateGeneratedTitle);
+        destinationSelect.addEventListener('change', updateGeneratedTitle);
+
+        document.addEventListener('change', (event) => {
+            if (
+                event.target.matches('.related-destination-item-checkbox')
+                || event.target.matches('#related_toggle_all')
+            ) {
+                updateGeneratedTitle();
+            }
+        });
+
+        /*
+         * Populate an initially blank title on page load—for example,
+         * when editing an unsaved form that has old input values.
+         */
+        updateGeneratedTitle();
+    });
 </script>
