@@ -171,5 +171,9 @@ class Trip extends Model
         return $this->belongsTo(\App\Models\TripLegSearchProfile::class, 'selectedtriplegsearchprofileid');
     }
 
+    public function expenses()
+    {
+        return $this->hasMany(TripExpense::class, 'tripid');
+    }
    
 }

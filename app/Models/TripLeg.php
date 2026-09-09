@@ -267,4 +267,9 @@ class TripLeg extends Model
     {
         return $this->estimatedFuelCost();
     }
+
+    public function expenses()
+    {
+        return $this->hasMany(TripExpense::class, 'triplegid');
+    }
 }

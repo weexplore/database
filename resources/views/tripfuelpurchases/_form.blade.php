@@ -15,6 +15,33 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="flex flex-col md:flex-row md:items-end gap-2">
+            <div class="flex-1 min-w-0">
+                <label for="fuelstopid" class="block text-sm font-medium text-gray-700 mb-1">
+                    Fuel Stop
+                </label>
+                <select name="fuelstopid"
+                        id="fuelstopid"
+                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <option value="">Select fuel stop</option>
+                    @foreach($fuelStops as $fuelStop)
+                        <option value="{{ $fuelStop->id }}"
+                                @selected((string) old('fuelstopid', $fuelPurchase?->fuelstopid) === (string) $fuelStop->id)>
+                            {{ $fuelStop->stopname }}
+                            @if($fuelStop->place)
+                                – {{ $fuelStop->place->placename }}
+                            @endif
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <a href="{{ route('fuel-stops.create', ['return_to' => url()->full()]) }}"
+               class="inline-flex shrink-0 items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                Add Fuel Stop
+            </a>
+        </div>
+        
         <div>
             <label for="purchasedate" class="block text-sm font-medium text-gray-700 mb-1">
                 Purchase Date
@@ -59,32 +86,7 @@
             </select>
         </div>
 
-        <div class="flex flex-col md:flex-row md:items-end gap-2">
-            <div class="flex-1 min-w-0">
-                <label for="fuelstopid" class="block text-sm font-medium text-gray-700 mb-1">
-                    Fuel Stop
-                </label>
-                <select name="fuelstopid"
-                        id="fuelstopid"
-                        class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                    <option value="">Select fuel stop</option>
-                    @foreach($fuelStops as $fuelStop)
-                        <option value="{{ $fuelStop->id }}"
-                                @selected((string) old('fuelstopid', $fuelPurchase?->fuelstopid) === (string) $fuelStop->id)>
-                            {{ $fuelStop->stopname }}
-                            @if($fuelStop->place)
-                                – {{ $fuelStop->place->placename }}
-                            @endif
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-
-            <a href="{{ route('fuel-stops.create', ['return_to' => url()->full()]) }}"
-               class="inline-flex shrink-0 items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-semibold text-gray-700 hover:bg-gray-50">
-                Add Fuel Stop
-            </a>
-        </div>
+        
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -285,27 +287,38 @@
         {{ $isCreate ? 'Save Purchase' : 'Save & Return' }}
     </button>
 </div>
-
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const form = document.currentScript.closest('form');
-    if (!form) return;
+    const form = document.getElementById('fuel-purchase-create-form')
+        || document.getElementById('fuel-purchase-edit-form');
+
+    if (!form) {
+        return;
+    }
 
     let isDirty = false;
     let isSubmitting = false;
 
-    form.querySelectorAll('input, select, textarea').forEach((field) => {
-        field.addEventListener('change', () => isDirty = true);
-        field.addEventListener('input', () => isDirty = true);
+    form.querySelectorAll('input, select, textarea').forEach(function (field) {
+        field.addEventListener('change', function () {
+            isDirty = true;
+        });
+
+        field.addEventListener('input', function () {
+            isDirty = true;
+        });
     });
 
-    form.addEventListener('submit', () => {
+    form.addEventListener('submit', function () {
         isSubmitting = true;
         isDirty = false;
     });
 
-    window.addEventListener('beforeunload', (event) => {
-        if (!isDirty || isSubmitting) return;
+    window.addEventListener('beforeunload', function (event) {
+        if (!isDirty || isSubmitting) {
+            return;
+        }
+
         event.preventDefault();
         event.returnValue = '';
     });
@@ -315,32 +328,41 @@ document.addEventListener('DOMContentLoaded', function () {
     const totalInput = form.querySelector('#fueltotal');
     const textareas = form.querySelectorAll('.js-auto-resize-textarea');
 
-    const recalcTotal = () => {
-        const litres = parseFloat(litresInput?.value);
-        const price = parseFloat(priceInput?.value);
+    function recalculateFuelTotal() {
+        const litres = Number.parseFloat(litresInput?.value);
+        const pricePerLitre = Number.parseFloat(priceInput?.value);
 
-        if (!isNaN(litres) && !isNaN(price) && litres >= 0 && price >= 0) {
-            totalInput.value = (litres * price).toFixed(2);
+        if (
+            Number.isFinite(litres)
+            && Number.isFinite(pricePerLitre)
+            && litres >= 0
+            && pricePerLitre >= 0
+        ) {
+            totalInput.value = (litres * pricePerLitre).toFixed(2);
         } else if (totalInput) {
             totalInput.value = '';
         }
-    };
+    }
 
-    const autoResize = (textarea) => {
+    function autoResize(textarea) {
         textarea.style.height = 'auto';
         textarea.style.height = textarea.scrollHeight + 'px';
-    };
+    }
 
-    litresInput?.addEventListener('input', recalcTotal);
-    litresInput?.addEventListener('change', recalcTotal);
-    priceInput?.addEventListener('input', recalcTotal);
-    priceInput?.addEventListener('change', recalcTotal);
+    litresInput?.addEventListener('input', recalculateFuelTotal);
+    litresInput?.addEventListener('change', recalculateFuelTotal);
 
-    textareas.forEach((textarea) => {
+    priceInput?.addEventListener('input', recalculateFuelTotal);
+    priceInput?.addEventListener('change', recalculateFuelTotal);
+
+    textareas.forEach(function (textarea) {
         autoResize(textarea);
-        textarea.addEventListener('input', () => autoResize(textarea));
+
+        textarea.addEventListener('input', function () {
+            autoResize(textarea);
+        });
     });
 
-    recalcTotal();
+    recalculateFuelTotal();
 });
 </script>

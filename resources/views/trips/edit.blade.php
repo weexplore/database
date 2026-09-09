@@ -41,6 +41,7 @@
                     'details' => 'Details',
                     'notes' => 'Notes',
                     'budget' => 'Budget',
+                    'expenses' => 'Expenses',
                     'vehicles' => 'Vehicles',
                     'travellers' => 'Travellers',
                     'workflow' => 'Workflow',
@@ -90,9 +91,29 @@
 
                 <div class="px-4 sm:px-6 py-3 border-b border-gray-200">
                     <nav class="flex flex-wrap gap-2" aria-label="Trip sections">
-                        @foreach($tabs as $tabKey => $tabLabel)
-                            <a href="{{ route('trips.edit', ['trip' => $trip, 'tab' => $tabKey]) }}"
-                               class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium {{ $activeTab === $tabKey ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                        @foreach ($tabs as $tabKey => $tabLabel)
+                            @php
+                                $isExpenseLink = $tabKey === 'expenses';
+
+                                $tabUrl = $isExpenseLink
+                                    ? route('trips.expenses.index', $trip)
+                                    : route('trips.edit', [
+                                        'trip' => $trip,
+                                        'tab' => $tabKey,
+                                    ]);
+
+                                $isActive = $isExpenseLink
+                                    ? request()->routeIs('trips.expenses.*')
+                                    : $activeTab === $tabKey;
+                            @endphp
+
+                            <a
+                                href="{{ $tabUrl }}"
+                                class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium
+                                    {{ $isActive
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
+                            >
                                 {{ $tabLabel }}
                             </a>
                         @endforeach
@@ -577,9 +598,9 @@
                 <div class="{{ $activeTab === 'travellers' ? 'block' : 'hidden' }}">
                     <div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-6">
                         <div>
-                            <h3 class="text-lg font-medium text-gray-900">Travellers</h3>
+                            <h3 class="text-lg font-medium text-gray-900">Travelers</h3>
                             <p class="mt-1 text-sm text-gray-500">
-                                Assign the travellers linked to this trip.
+                                Assign the travelers linked to this trip.
                             </p>
                         </div>
 

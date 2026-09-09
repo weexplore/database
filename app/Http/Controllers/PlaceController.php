@@ -6,6 +6,7 @@ use App\Models\Country;
 use App\Models\Place;
 use App\Models\Region;
 use App\Models\State;
+use App\Models\TripLeg;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -86,6 +87,14 @@ class PlaceController extends Controller
         })
         ->orderBy('regionname')
         ->get();
+    
+    /*
+    * trip_leg_status:
+    * blank = all places
+    * none  = Place is not used as either From or To in a Trip Leg
+    * has   = Place is used as either From or To in one or more Trip Legs
+    */
+    $tripLegStatus = $request->input('trip_leg_status');
 
     $statesByCountry = State::query()
         ->orderBy('statename')
@@ -109,6 +118,9 @@ class PlaceController extends Controller
         ->withCount([
             'destinations',
             'destinationItems as destination_items_count',
+
+            'tripLegsFrom as trip_legs_from_count',
+            'tripLegsTo as trip_legs_to_count',
         ]);
 
     if ($selectedCountryId) {
@@ -164,6 +176,20 @@ class PlaceController extends Controller
     } elseif ($coordinatesStatus === 'has') {
         $query->whereNotNull('latitude')
             ->whereNotNull('longitude');
+    }
+
+    /*
+    * A Place is considered used by a Trip Leg where it appears as either
+    * the origin (fromplaceid) or destination (toplaceid).
+    */
+    if ($tripLegStatus === 'has') {
+        $query->where(function ($tripLegQuery) {
+            $tripLegQuery->whereHas('tripLegsFrom')
+                ->orWhereHas('tripLegsTo');
+        });
+    } elseif ($tripLegStatus === 'none') {
+        $query->whereDoesntHave('tripLegsFrom')
+            ->whereDoesntHave('tripLegsTo');
     }
 
     if ($request->filled('search')) {

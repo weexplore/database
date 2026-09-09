@@ -100,4 +100,9 @@ class TripStay extends Model
     {
         return $this->hasMany(TripLegSuggestion::class, 'converted_to_trip_stay_id');
     }
+
+    public function expenses()
+    {
+        return $this->hasMany(TripExpense::class, 'tripstayid');
+    }
 }

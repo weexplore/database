@@ -1,7 +1,27 @@
 @php
-    $selectedTripLegId = old('triplegid', old('tripleg_id', $tripStay->triplegid ?? $selectedTripLegId ?? ''));
-    $selectedPlaceId = old('placeid', old('place_id', $tripStay->placeid ?? $selectedPlaceId ?? ''));
-    $selectedTravelledFromPlaceId = old('travelledfromplaceid', old('travelledfromplace_id', $tripStay->travelledfromplaceid ?? $selectedTravelledFromPlaceId ?? ''));
+    $selectedTripLegId = old(
+        'triplegid',
+        old('tripleg_id', $tripStay->triplegid ?? $selectedTripLegId ?? '')
+    );
+
+    $selectedPlaceId = old(
+        'placeid',
+        old('place_id', $tripStay->placeid ?? $selectedPlaceId ?? '')
+    );
+
+    $selectedDestinationItemId = old(
+        'destinationitemid',
+        $tripStay->destinationitemid ?? $selectedDestinationItemId ?? ''
+    );
+
+    $selectedTravelledFromPlaceId = old(
+        'travelledfromplaceid',
+        old(
+            'travelledfromplace_id',
+            $tripStay->travelledfromplaceid ?? $selectedTravelledFromPlaceId ?? ''
+        )
+    );
+
     $isCreate = $isCreate ?? false;
     $returnTo = $returnTo ?? route('trips.stays.index', $trip);
 @endphp
@@ -52,11 +72,14 @@
             <select id="triplegid" name="triplegid" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                 <option value="">None</option>
                 @foreach($tripLegs as $tripLeg)
-                    <option value="{{ $tripLeg->id }}"
+                    <option
+                            value="{{ $tripLeg->id }}"
                             data-from-place-id="{{ $tripLeg->fromplaceid ?? '' }}"
                             data-to-place-id="{{ $tripLeg->toplaceid ?? '' }}"
+                            data-to-destination-item-id="{{ $tripLeg->todestinationitemid ?? '' }}"
                             data-distance-km="{{ $tripLeg->distancekm ?? '' }}"
-                            @selected((string) old('triplegid', $tripStay->triplegid ?? '') === (string) $tripLeg->id)>
+                            @selected((string) $selectedTripLegId === (string) $tripLeg->id)
+                        >
                         {{ $tripLeg->fromPlace?->placename ?? 'Unknown start' }}
                         -
                         {{ $tripLeg->toPlace?->placename ?? 'Unknown end' }}
@@ -112,8 +135,17 @@
                         class="w-full rounded-md border-gray-300 shadow-sm text-sm">
                     <option value="">None</option>
                     @foreach ($destinationItems as $destinationItem)
-                        <option value="{{ $destinationItem->id }}"
-                            @selected((string) old('destinationitemid', $tripStay->destinationitemid ?? '') === (string) $destinationItem->id)>
+                        @php
+                            $destinationItemPlaceId = $destinationItem->placeid
+                                ?? $destinationItem->destination?->placeid
+                                ?? '';
+                        @endphp
+
+                        <option
+                            value="{{ $destinationItem->id }}"
+                            data-place-id="{{ $destinationItemPlaceId }}"
+                            @selected((string) $selectedDestinationItemId === (string) $destinationItem->id)
+                        >
                             {{ $destinationItem->itemname }}
                         </option>
                     @endforeach
@@ -387,23 +419,131 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function applyTripLegSelection(overwriteOnlyIfBlank = true) {
-        if (!tripLegSelect) return;
-
-        const selectedOption = tripLegSelect.options[tripLegSelect.selectedIndex];
-        if (!selectedOption || !selectedOption.value) return;
-
-        const fromPlaceId = selectedOption.dataset.fromPlaceId || '';
-        const toPlaceId = selectedOption.dataset.toPlaceId || '';
-        const distanceKm = selectedOption.dataset.distanceKm || '';
-
-        setSelectValue(travelledFromPlaceSelect, fromPlaceId, overwriteOnlyIfBlank);
-        setSelectValue(placeSelect, toPlaceId, overwriteOnlyIfBlank);
-        setValue('distancetravelledkm', distanceKm, overwriteOnlyIfBlank);
+    function filterDestinationItems(selectedDestinationItemId = '') {
+    if (!destinationItemSelect) {
+        return;
     }
+
+    const placeId = placeSelect?.value || '';
+
+    Array.from(destinationItemSelect.options).forEach(function (option) {
+        if (!option.value) {
+            return;
+        }
+
+        const itemPlaceId = option.dataset.placeId || '';
+
+        const matchesPlace = placeId !== ''
+            && itemPlaceId === String(placeId);
+
+        option.hidden = !matchesPlace;
+        option.disabled = !matchesPlace;
+    });
+
+    /*
+     * If a Trip Leg supplied a destination item, select it only when
+     * it is valid for the currently selected arrival Place.
+     */
+    if (selectedDestinationItemId) {
+        const matchingOption = Array.from(destinationItemSelect.options)
+            .find(function (option) {
+                return option.value === String(selectedDestinationItemId)
+                    && !option.disabled;
+            });
+
+        destinationItemSelect.value = matchingOption
+            ? matchingOption.value
+            : '';
+    } else {
+        /*
+         * Clear the current item if it is no longer valid after the
+         * user changed Place manually.
+         */
+        const currentOption = destinationItemSelect.options[
+            destinationItemSelect.selectedIndex
+        ];
+
+        if (
+            currentOption
+            && currentOption.value
+            && currentOption.disabled
+        ) {
+            destinationItemSelect.value = '';
+        }
+    }
+
+    const hasAvailableItems = Array.from(destinationItemSelect.options)
+        .some(function (option) {
+            return option.value && !option.disabled;
+        });
+
+    destinationItemSelect.disabled = !placeId || !hasAvailableItems;
+
+    const blankOption = destinationItemSelect.options[0];
+
+    if (blankOption) {
+        blankOption.textContent = !placeId
+            ? 'Select place first'
+            : (hasAvailableItems
+                ? 'None'
+                : 'No destination items for this place');
+    }
+
+    destinationItemSelect.dispatchEvent(
+        new Event('change', { bubbles: true })
+    );
+}
+
+    function applyTripLegSelection(overwriteOnlyIfBlank = true) {
+    if (!tripLegSelect) {
+        return;
+    }
+
+    const selectedOption = tripLegSelect.options[
+        tripLegSelect.selectedIndex
+    ];
+
+    if (!selectedOption || !selectedOption.value) {
+        return;
+    }
+
+    const fromPlaceId = selectedOption.dataset.fromPlaceId || '';
+    const toPlaceId = selectedOption.dataset.toPlaceId || '';
+    const toDestinationItemId = selectedOption.dataset.toDestinationItemId || '';
+    const distanceKm = selectedOption.dataset.distanceKm || '';
+
+    setSelectValue(
+        travelledFromPlaceSelect,
+        fromPlaceId,
+        overwriteOnlyIfBlank
+    );
+
+    setSelectValue(
+        placeSelect,
+        toPlaceId,
+        overwriteOnlyIfBlank
+    );
+
+    setValue(
+        'distancetravelledkm',
+        distanceKm,
+        overwriteOnlyIfBlank
+    );
+
+    /*
+     * Place may have just changed. Rebuild the visible Destination Item
+     * list, then select the Trip Leg's arrival Destination Item where it
+     * is valid for that Place.
+     */
+    filterDestinationItems(toDestinationItemId);
+}
 
     tripLegSelect?.addEventListener('change', function () {
         applyTripLegSelection(false);
+    });
+
+    placeSelect?.addEventListener('change', function () {
+        filterDestinationItems('');
     });
 
     checkinInput?.addEventListener('change', function () {
@@ -421,7 +561,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
     calculateNights();
     calculateEstimatedTotal();
-    applyTripLegSelection(true);
+
+    /*
+    * First filter Destination Items for an already selected Place.
+    * This handles Edit, old-input after validation, and a manually
+    * supplied Place in a Create request.
+    */
+    filterDestinationItems(destinationItemSelect?.value || '');
+
+    /*
+    * Then, if the form opened with a selected Trip Leg, fill the arrival
+    * Place, origin Place, distance, and To Destination Item from that leg.
+    */
+    if (form.id === 'trip-stay-create-form') {
+        applyTripLegSelection(true);
+    }
 
     if (usePlaceButton) {
         usePlaceButton.addEventListener('click', function () {

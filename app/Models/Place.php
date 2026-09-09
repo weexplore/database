@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\KnowledgeItem;
+use App\Models\TripLeg;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -168,4 +169,10 @@ SQL;
     {
         return $this->hasMany(TripLegSuggestion::class);
     }
+
+    public function tripExpenses()
+    {
+        return $this->hasMany(TripExpense::class, 'placeid');
+    }
+    
 }

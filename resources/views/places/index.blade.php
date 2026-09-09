@@ -200,6 +200,34 @@
                             </select>
                         </div>
 
+                        <div>
+                            <label for="trip_leg_status" class="block text-sm font-medium text-gray-700 mb-1">
+                                Trip Legs
+                            </label>
+
+                            <select
+                                name="trip_leg_status"
+                                id="trip_leg_status"
+                                class="w-full rounded-md border-gray-300 shadow-sm"
+                            >
+                                <option value="">All</option>
+
+                                <option
+                                    value="none"
+                                    @selected(request('trip_leg_status') === 'none')
+                                >
+                                    None (0)
+                                </option>
+
+                                <option
+                                    value="has"
+                                    @selected(request('trip_leg_status') === 'has')
+                                >
+                                    Used in Trip Leg
+                                </option>
+                            </select>
+                        </div>
+
                         <div class="flex items-end gap-2">
                             <button
                                 type="submit"
@@ -290,16 +318,37 @@
                                         <td class="px-4 py-3 min-w-[150px]">
                                             <div class="space-y-1 text-xs">
                                                 <div class="flex items-center justify-between gap-2">
-                                                    <span class="text-gray-500">Destinations</span>
+                                                    <span class="text-gray-500">
+                                                        Destinations
+                                                    </span>
+
                                                     <span class="inline-flex items-center rounded-full px-2 py-0.5 font-medium {{ ($place->destinations_count ?? 0) > 0 ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800' }}">
                                                         {{ $place->destinations_count ?? 0 }}
                                                     </span>
                                                 </div>
 
                                                 <div class="flex items-center justify-between gap-2">
-                                                    <span class="text-gray-500">Items</span>
+                                                    <span class="text-gray-500">
+                                                        Items
+                                                    </span>
+
                                                     <span class="inline-flex items-center rounded-full px-2 py-0.5 font-medium {{ ($place->destination_items_count ?? 0) > 0 ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800' }}">
                                                         {{ $place->destination_items_count ?? 0 }}
+                                                    </span>
+                                                </div>
+
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <span class="text-gray-500">
+                                                        Trip Legs
+                                                    </span>
+
+                                                    @php
+                                                        $tripLegCount = (int) ($place->trip_legs_from_count ?? 0)
+                                                            + (int) ($place->trip_legs_to_count ?? 0);
+                                                    @endphp
+
+                                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 font-medium {{ $tripLegCount > 0 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600' }}">
+                                                        {{ $tripLegCount }}
                                                     </span>
                                                 </div>
                                             </div>

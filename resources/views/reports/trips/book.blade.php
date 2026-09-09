@@ -161,98 +161,253 @@
                 </div>
             </div>
 
-            {{-- Budget defaults and totals --}}
             <div class="bg-white shadow-sm sm:rounded-lg">
-                <div class="px-6 py-4 border-b border-gray-200">
+                <div class="border-b border-gray-200 px-6 py-4">
                     <h3 class="text-sm font-semibold text-gray-900">
-                        Budget defaults and totals
+                        Trip Totals
                     </h3>
+
                     <p class="mt-1 text-xs text-gray-500">
-                        Daily allowances and rolled-up estimated and actual trip costs.
+                        High-level planned and actual totals for this trip.
                     </p>
                 </div>
 
-                <div class="px-6 py-4 space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div>
-                            <div class="text-xs uppercase tracking-wide text-gray-500">Trip days</div>
-                            <div class="mt-1">{{ $tripDays ?? 'Not available' }}</div>
+                <div class="grid grid-cols-2 gap-4 px-6 py-4 text-sm md:grid-cols-4 xl:grid-cols-7">
+                    <div class="rounded-md border border-gray-200 bg-white px-3 py-2">
+                        <div class="text-xs uppercase tracking-wide text-gray-500">Trip Days</div>
+                        <div class="mt-1 text-lg font-bold tabular-nums text-gray-900">
+                            {{ $bookTotals['trip_days'] ?? '—' }}
                         </div>
+                    </div>
+
+                    <div class="rounded-md border border-gray-200 bg-white px-3 py-2">
+                        <div class="text-xs uppercase tracking-wide text-gray-500">Stay Nights</div>
+                        <div class="mt-1 text-lg font-bold tabular-nums text-gray-900">
+                            {{ $bookTotals['stay_nights'] ?? 0 }}
+                        </div>
+                    </div>
+
+                    <div class="rounded-md border border-gray-200 bg-white px-3 py-2">
+                        <div class="text-xs uppercase tracking-wide text-gray-500">Planned KM</div>
+                        <div class="mt-1 text-lg font-bold tabular-nums text-gray-900">
+                            {{ $bookTotals['planned_distance_km'] !== null
+                                ? number_format((float) $bookTotals['planned_distance_km'], 1)
+                                : '—' }}
+                        </div>
+                    </div>
+
+                    <div class="rounded-md border border-gray-200 bg-white px-3 py-2">
+                        <div class="text-xs uppercase tracking-wide text-gray-500">Actual KM</div>
+                        <div class="mt-1 text-lg font-bold tabular-nums text-gray-900">
+                            {{ $bookTotals['actual_distance_km'] !== null
+                                ? number_format((float) $bookTotals['actual_distance_km'], 1)
+                                : '—' }}
+                        </div>
+                    </div>
+
+                    <div class="rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
+                        <div class="text-xs uppercase tracking-wide text-blue-700">Planned Costs</div>
+                        <div class="mt-1 text-lg font-bold tabular-nums text-blue-950">
+                            ${{ number_format((float) ($bookTotals['overall_planned'] ?? 0), 2) }}
+                        </div>
+                    </div>
+
+                    <div class="rounded-md border border-green-200 bg-green-50 px-3 py-2">
+                        <div class="text-xs uppercase tracking-wide text-green-700">Actual Costs</div>
+                        <div class="mt-1 text-lg font-bold tabular-nums text-green-900">
+                            ${{ number_format((float) ($bookTotals['overall_actual'] ?? 0), 2) }}
+                        </div>
+                    </div>
+
+                    <div class="rounded-md border border-gray-200 bg-white px-3 py-2">
+                        <div class="text-xs uppercase tracking-wide text-gray-500">Difference</div>
+                        @php
+                            $costDifference = (float) ($bookTotals['overall_actual'] ?? 0)
+                                - (float) ($bookTotals['overall_planned'] ?? 0);
+                        @endphp
+                        <div class="mt-1 text-lg font-bold tabular-nums {{ $costDifference > 0 ? 'text-red-700' : 'text-green-800' }}">
+                            {{ $costDifference > 0 ? '+' : '' }}${{ number_format($costDifference, 2) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Budget defaults and totals --}}
+            <div class="bg-white shadow-sm sm:rounded-lg">
+                <div class="border-b border-gray-200 px-6 py-4">
+                    <h3 class="text-sm font-semibold text-gray-900">
+                        Budget and Actual Totals
+                    </h3>
+
+                    <p class="mt-1 text-xs text-gray-500">
+                        Planned budgets and actual trip costs. Trip Days include the return-home day; Stay Nights are based on recorded stays.
+                    </p>
+                </div>
+
+                <div class="space-y-6 px-6 py-4">
+                    <div class="grid grid-cols-2 gap-4 text-sm md:grid-cols-4 xl:grid-cols-6">
                         <div>
-                            <div class="text-xs uppercase tracking-wide text-gray-500">Daily food budget</div>
-                            <div class="mt-1">
-                                {{ $dailyFoodBudget !== null ? number_format($dailyFoodBudget, 2) : 'Not set' }}
+                            <div class="text-xs uppercase tracking-wide text-gray-500">
+                                Trip Days
+                            </div>
+
+                            <div class="mt-1 font-semibold text-gray-900">
+                                {{ $bookTotals['trip_days'] ?? 'Not available' }}
                             </div>
                         </div>
+
                         <div>
-                            <div class="text-xs uppercase tracking-wide text-gray-500">Daily misc budget</div>
-                            <div class="mt-1">
-                                {{ $dailyMiscBudget !== null ? number_format($dailyMiscBudget, 2) : 'Not set' }}
+                            <div class="text-xs uppercase tracking-wide text-gray-500">
+                                Stay Nights
+                            </div>
+
+                            <div class="mt-1 font-semibold text-gray-900">
+                                {{ $bookTotals['stay_nights'] ?? 0 }}
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="text-xs uppercase tracking-wide text-gray-500">
+                                Planned KM
+                            </div>
+
+                            <div class="mt-1 font-semibold text-gray-900">
+                                {{ $bookTotals['planned_distance_km'] !== null
+                                    ? number_format((float) $bookTotals['planned_distance_km'], 1)
+                                    : 'Not set' }}
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="text-xs uppercase tracking-wide text-gray-500">
+                                Actual KM
+                            </div>
+
+                            <div class="mt-1 font-semibold text-gray-900">
+                                {{ $bookTotals['actual_distance_km'] !== null
+                                    ? number_format((float) $bookTotals['actual_distance_km'], 1)
+                                    : 'Not set' }}
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="text-xs uppercase tracking-wide text-gray-500">
+                                Daily Food
+                            </div>
+
+                            <div class="mt-1 font-semibold text-gray-900">
+                                {{ $dailyFoodBudget !== null
+                                    ? '$' . number_format((float) $dailyFoodBudget, 2)
+                                    : 'Not set' }}
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="text-xs uppercase tracking-wide text-gray-500">
+                                Daily Misc
+                            </div>
+
+                            <div class="mt-1 font-semibold text-gray-900">
+                                {{ $dailyMiscBudget !== null
+                                    ? '$' . number_format((float) $dailyMiscBudget, 2)
+                                    : 'Not set' }}
                             </div>
                         </div>
                     </div>
 
-                    <table class="w-full text-xs border-t border-b border-gray-200">
-                        <thead class="bg-gray-50 text-gray-600 uppercase tracking-wide">
-                            <tr>
-                                <th class="px-2 py-2 text-left">Cost type</th>
-                                <th class="px-2 py-2 text-right">Estimated</th>
-                                <th class="px-2 py-2 text-right">Actual</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100">
-                            <tr>
-                                <td class="px-2 py-2">Food allowance</td>
-                                <td class="px-2 py-2 text-right">
-                                    {{ $foodBudgetTotal !== null ? number_format($foodBudgetTotal, 2) : '—' }}
-                                </td>
-                                <td class="px-2 py-2 text-right">—</td>
-                            </tr>
-                            <tr>
-                                <td class="px-2 py-2">Misc allowance</td>
-                                <td class="px-2 py-2 text-right">
-                                    {{ $miscBudgetTotal !== null ? number_format($miscBudgetTotal, 2) : '—' }}
-                                </td>
-                                <td class="px-2 py-2 text-right">—</td>
-                            </tr>
-                            <tr>
-                                <td class="px-2 py-2">Trip stays</td>
-                                <td class="px-2 py-2 text-right">
-                                    {{ $stayEstimatedTotal !== null ? number_format($stayEstimatedTotal, 2) : '—' }}
-                                </td>
-                                <td class="px-2 py-2 text-right">
-                                    {{ $stayActualTotal !== null ? number_format($stayActualTotal, 2) : '—' }}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="px-2 py-2">Trip items</td>
-                                <td class="px-2 py-2 text-right">
-                                    {{ $itemEstimatedTotal !== null ? number_format($itemEstimatedTotal, 2) : '—' }}
-                                </td>
-                                <td class="px-2 py-2 text-right">
-                                    {{ $itemActualTotal !== null ? number_format($itemActualTotal, 2) : '—' }}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="px-2 py-2">Fuel</td>
-                                <td class="px-2 py-2 text-right">
-                                    {{ $fuelEstimateTotal !== null ? number_format($fuelEstimateTotal, 2) : '—' }}
-                                </td>
-                                <td class="px-2 py-2 text-right">
-                                    {{ $fuelActualTotal !== null ? number_format($fuelActualTotal, 2) : '—' }}
-                                </td>
-                            </tr>
-                            <tr class="bg-gray-50 font-semibold">
-                                <td class="px-2 py-2">Overall total</td>
-                                <td class="px-2 py-2 text-right">
-                                    {{ number_format($overallEstimatedTotal, 2) }}
-                                </td>
-                                <td class="px-2 py-2 text-right">
-                                    {{ number_format($overallActualTotal, 2) }}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-y border-gray-200 text-xs">
+                            <thead class="bg-gray-50 text-gray-600">
+                                <tr>
+                                    <th class="px-2 py-2 text-left font-semibold uppercase tracking-wide">
+                                        Cost Type
+                                    </th>
+
+                                    <th class="px-2 py-2 text-right font-semibold uppercase tracking-wide">
+                                        Planned
+                                    </th>
+
+                                    <th class="px-2 py-2 text-right font-semibold uppercase tracking-wide">
+                                        Actual
+                                    </th>
+                                </tr>
+                            </thead>
+
+                            <tbody class="divide-y divide-gray-100">
+                                <tr>
+                                    <td class="px-2 py-2">Food</td>
+                                    <td class="px-2 py-2 text-right tabular-nums">
+                                        {{ $bookTotals['food_planned'] !== null
+                                            ? '$' . number_format((float) $bookTotals['food_planned'], 2)
+                                            : '—' }}
+                                    </td>
+                                    <td class="px-2 py-2 text-right tabular-nums">
+                                        ${{ number_format((float) ($bookTotals['food_actual'] ?? 0), 2) }}
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td class="px-2 py-2">Miscellaneous</td>
+                                    <td class="px-2 py-2 text-right tabular-nums">
+                                        {{ $bookTotals['misc_planned'] !== null
+                                            ? '$' . number_format((float) $bookTotals['misc_planned'], 2)
+                                            : '—' }}
+                                    </td>
+                                    <td class="px-2 py-2 text-right tabular-nums">
+                                        ${{ number_format((float) ($bookTotals['misc_actual'] ?? 0), 2) }}
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td class="px-2 py-2">Stays</td>
+                                    <td class="px-2 py-2 text-right tabular-nums">
+                                        ${{ number_format((float) ($bookTotals['stay_planned'] ?? 0), 2) }}
+                                    </td>
+                                    <td class="px-2 py-2 text-right tabular-nums">
+                                        ${{ number_format((float) ($bookTotals['stay_actual'] ?? 0), 2) }}
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td class="px-2 py-2">Items and Activities</td>
+                                    <td class="px-2 py-2 text-right tabular-nums">
+                                        ${{ number_format((float) ($bookTotals['item_planned'] ?? 0), 2) }}
+                                    </td>
+                                    <td class="px-2 py-2 text-right tabular-nums">
+                                        ${{ number_format((float) ($bookTotals['item_actual'] ?? 0), 2) }}
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td class="px-2 py-2">Fuel</td>
+                                    <td class="px-2 py-2 text-right tabular-nums">
+                                        {{ $bookTotals['fuel_planned'] !== null
+                                            ? '$' . number_format((float) $bookTotals['fuel_planned'], 2)
+                                            : '—' }}
+                                    </td>
+                                    <td class="px-2 py-2 text-right tabular-nums">
+                                        ${{ number_format((float) ($bookTotals['fuel_actual'] ?? 0), 2) }}
+                                    </td>
+                                </tr>
+                            </tbody>
+
+                            <tfoot>
+                                <tr class="border-t-2 border-blue-700 bg-blue-50 text-gray-900">
+                                    <th class="px-2 py-2 text-left font-bold text-blue-950">
+                                        Overall Total
+                                    </th>
+
+                                    <th class="border-l border-blue-200 px-2 py-2 text-right font-bold tabular-nums text-blue-900">
+                                        ${{ number_format((float) ($bookTotals['overall_planned'] ?? 0), 2) }}
+                                    </th>
+
+                                    <th class="px-2 py-2 text-right font-bold tabular-nums text-green-800">
+                                        ${{ number_format((float) ($bookTotals['overall_actual'] ?? 0), 2) }}
+                                    </th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -773,6 +928,147 @@
                     </div>
                 </div>
             @endif
+
+            <div class="bg-white shadow-sm sm:rounded-lg">
+                <div class="border-b border-gray-200 px-6 py-4">
+                    <h3 class="text-sm font-semibold text-gray-900">
+                        Trip Expenses
+                    </h3>
+
+                    <p class="mt-1 text-xs text-gray-500">
+                        Actual food and miscellaneous spending recorded against this trip.
+                    </p>
+                </div>
+
+                <div class="px-6 py-4">
+                    @if ($expenses->isEmpty())
+                        <p class="text-sm text-gray-500">
+                            No trip expenses are recorded for this trip.
+                        </p>
+                    @else
+                        <div class="overflow-x-auto">
+                            <table class="w-full border-y border-gray-200 text-xs">
+                                <thead class="bg-gray-50 text-gray-600">
+                                    <tr>
+                                        <th class="px-2 py-2 text-left font-semibold uppercase tracking-wide">
+                                            Date
+                                        </th>
+
+                                        <th class="px-2 py-2 text-left font-semibold uppercase tracking-wide">
+                                            Category
+                                        </th>
+
+                                        <th class="px-2 py-2 text-left font-semibold uppercase tracking-wide">
+                                            Description
+                                        </th>
+
+                                        <th class="px-2 py-2 text-left font-semibold uppercase tracking-wide">
+                                            Payee
+                                        </th>
+
+                                        <th class="px-2 py-2 text-left font-semibold uppercase tracking-wide">
+                                            Linked To
+                                        </th>
+
+                                        <th class="px-2 py-2 text-right font-semibold uppercase tracking-wide">
+                                            Amount
+                                        </th>
+                                    </tr>
+                                </thead>
+
+                                <tbody class="divide-y divide-gray-100">
+                                    @foreach ($expenses as $expense)
+                                        @php
+                                            $expenseLink = $expense->tripStay
+                                                ? 'Stay: ' . $expense->tripStay->stayname
+                                                : ($expense->tripLeg
+                                                    ? 'Leg ' . $expense->tripLeg->legnumber
+                                                    : ($expense->place
+                                                        ? 'Place: ' . $expense->place->placename
+                                                        : '—'));
+                                        @endphp
+
+                                        <tr>
+                                            <td class="px-2 py-2 align-top">
+                                                {{ $expense->expensedate?->format('d M Y') ?? '—' }}
+                                            </td>
+
+                                            <td class="px-2 py-2 align-top">
+                                                <div>{{ $expense->category_label }}</div>
+
+                                                @if ($expense->subcategory)
+                                                    <div class="mt-0.5 text-[11px] text-gray-500">
+                                                        {{ $expense->subcategory }}
+                                                    </div>
+                                                @endif
+                                            </td>
+
+                                            <td class="px-2 py-2 align-top">
+                                                <div class="font-medium text-gray-900">
+                                                    {{ $expense->description }}
+                                                </div>
+
+                                                @if ($expense->notes)
+                                                    <div class="mt-1 text-[11px] text-gray-600">
+                                                        {{ $expense->notes }}
+                                                    </div>
+                                                @endif
+                                            </td>
+
+                                            <td class="px-2 py-2 align-top">
+                                                {{ $expense->payee ?: '—' }}
+                                            </td>
+
+                                            <td class="px-2 py-2 align-top">
+                                                {{ $expenseLink }}
+                                            </td>
+
+                                            <td class="px-2 py-2 text-right align-top font-semibold tabular-nums">
+                                                {{ $expense->currency ?: 'AUD' }}
+                                                ${{ number_format((float) $expense->amount, 2) }}
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+
+                                <tfoot>
+                                    <tr class="border-t-2 border-blue-700 bg-blue-50 text-gray-900">
+                                        <th colspan="5" class="px-2 py-2 text-left font-bold text-blue-950">
+                                            Expense Total
+                                        </th>
+
+                                        <th class="border-l border-blue-200 px-2 py-2 text-right font-bold tabular-nums text-green-800">
+                                            ${{ number_format((float) ($bookTotals['food_actual'] ?? 0) + (float) ($bookTotals['misc_actual'] ?? 0), 2) }}
+                                        </th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <div class="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                            <div class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                                <span class="text-xs uppercase tracking-wide text-gray-500">
+                                    Food expenses
+                                </span>
+
+                                <div class="mt-1 font-bold tabular-nums text-green-800">
+                                    ${{ number_format((float) ($bookTotals['food_actual'] ?? 0), 2) }}
+                                </div>
+                            </div>
+
+                            <div class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                                <span class="text-xs uppercase tracking-wide text-gray-500">
+                                    Miscellaneous expenses
+                                </span>
+
+                                <div class="mt-1 font-bold tabular-nums text-green-800">
+                                    ${{ number_format((float) ($bookTotals['misc_actual'] ?? 0), 2) }}
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
 
             {{-- Reviews (including private) --}}
             <div class="bg-white shadow-sm sm:rounded-lg">

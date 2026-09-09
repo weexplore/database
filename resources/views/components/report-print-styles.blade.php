@@ -413,5 +413,41 @@
             font-size: 8px !important;
             line-height: 1.1 !important;
         }
+
+        /*
+        * Trip Summary Report: wide planned-versus-actual comparison table.
+        */
+        .trip-summary-table {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            table-layout: fixed !important;
+            border-collapse: collapse !important;
+        }
+
+        .trip-summary-table th,
+        .trip-summary-table td {
+            padding: 2px 2px !important;
+            font-size: 6.8px !important;
+            line-height: 1.1 !important;
+        }
+
+        .trip-summary-table th:nth-child(1),
+        .trip-summary-table td:nth-child(1) {
+            width: 16% !important;
+        }
+
+        .trip-summary-table th:nth-child(2),
+        .trip-summary-table td:nth-child(2) {
+            width: 8% !important;
+        }
+
+        .trip-summary-table th:nth-child(n + 3),
+        .trip-summary-table td:nth-child(n + 3) {
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: clip !important;
+            text-align: right !important;
+        }
     }
 </style>

@@ -127,7 +127,7 @@
         <div>
             <x-forms.markdown-display-editor
                 name="description"
-                id="description"
+                id="trip-item-description"
                 label="Description"
                 :value="$currentDescription"
                 :rows="5"
@@ -239,7 +239,7 @@
     <div class="space-y-2">
         <x-forms.markdown-display-editor
             name="notesinternal"
-            id="notesinternal"
+            id="trip-item-notesinternal"
             label="Internal notes"
             :value="$currentNotesInternal"
             :rows="5"
@@ -424,8 +424,8 @@ document.addEventListener('DOMContentLoaded', function () {
         return option && option.value ? option.text.trim() : '';
     }
 
-    let titleTouched = false;
-    titleInput.dataset.lastAutoTitle = titleInput.value.trim();
+    let titleTouched = titleInput.value.trim() !== '';
+    titleInput.dataset.lastAutoTitle = '';
 
     titleInput.addEventListener('input', function () {
         const currentValue = titleInput.value.trim();
@@ -451,7 +451,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const currentValue = titleInput.value.trim();
         const lastAutoTitle = titleInput.dataset.lastAutoTitle || '';
 
-        if (!titleTouched || currentValue === '' || currentValue === lastAutoTitle) {
+        if (!titleTouched || currentValue === '') {
             titleInput.value = computed;
             titleInput.dataset.lastAutoTitle = computed;
             titleTouched = false;
@@ -493,16 +493,13 @@ document.addEventListener('DOMContentLoaded', function () {
             [perPersonInput, totalInput, actualInput].forEach(function (input) {
                 input.readOnly = hasStay;
 
-                if (hasStay) {
-                    input.value = '0.00';
-                    input.classList.add('bg-gray-100', 'text-gray-500');
-                } else {
-                    input.classList.remove('bg-gray-100', 'text-gray-500');
-                }
+                input.classList.toggle('bg-gray-100', hasStay);
+                input.classList.toggle('text-gray-500', hasStay);
             });
         }
 
         tripStaySelect.addEventListener('change', toggleStayCostFields);
+
         toggleStayCostFields();
     });
 </script>

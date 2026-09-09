@@ -26,6 +26,10 @@
                 class="inline-flex items-center rounded border border-gray-300 bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200">
                     All Tasks
                 </a>
+                <a href="{{ route('projects.index') }}"
+                class="inline-flex items-center rounded border border-gray-300 bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200">
+                    Projects
+                </a>
             </div>
         </div>
     </x-slot>

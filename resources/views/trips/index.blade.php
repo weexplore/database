@@ -1,8 +1,101 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Trips
-        </h2>
+        @php
+            $selectedYearForReport = request('year');
+
+            $defaultReportDateFrom = $selectedYearForReport
+                ? $selectedYearForReport . '-01-01'
+                : '';
+
+            $defaultReportDateTo = $selectedYearForReport
+                ? $selectedYearForReport . '-12-31'
+                : '';
+        @endphp
+
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                    Trips
+                </h2>
+
+                <p class="mt-1 text-sm text-gray-500">
+                    Manage trips, dates, status, travellers, budgets, and planning records.
+                </p>
+            </div>
+
+            <form
+                method="GET"
+                action="{{ route('trips.summary-report') }}"
+                class="flex flex-wrap items-end gap-3"
+            >
+                <div>
+                    <label
+                        for="trip_summary_date_from"
+                        class="block text-xs font-medium text-gray-600"
+                    >
+                        Report from
+                    </label>
+
+                    <input
+                        type="date"
+                        name="date_from"
+                        id="trip_summary_date_from"
+                        value="{{ $defaultReportDateFrom }}"
+                        class="mt-1 w-36 rounded-md border-gray-300 text-sm shadow-sm"
+                    >
+                </div>
+
+                <div>
+                    <label
+                        for="trip_summary_date_to"
+                        class="block text-xs font-medium text-gray-600"
+                    >
+                        Report to
+                    </label>
+
+                    <input
+                        type="date"
+                        name="date_to"
+                        id="trip_summary_date_to"
+                        value="{{ $defaultReportDateTo }}"
+                        class="mt-1 w-36 rounded-md border-gray-300 text-sm shadow-sm"
+                    >
+                </div>
+
+                <div>
+                    <label
+                        for="trip_summary_status"
+                        class="block text-xs font-medium text-gray-600"
+                    >
+                        Status
+                    </label>
+
+                    <select
+                        name="trip_status"
+                        id="trip_summary_status"
+                        class="mt-1 w-32 rounded-md border-gray-300 text-sm shadow-sm"
+                    >
+                        <option value="">All statuses</option>
+
+                        @foreach ($statusOptions as $status)
+                            <option
+                                value="{{ $status }}"
+                                @selected(request('tripstatus') === $status)
+                            >
+                                {{ ucfirst($status) }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <button
+                    type="submit"
+                    class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700"
+                >
+                    Trip Summary
+                </button>
+            </form>
+        </div>
     </x-slot>
 
     <div class="py-6">

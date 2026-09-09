@@ -1476,8 +1476,6 @@
             );
         });
     </script>
-   <script>
-
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 function bindDateRange(startInput, dueInput) {

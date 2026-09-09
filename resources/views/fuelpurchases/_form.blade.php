@@ -408,71 +408,76 @@ document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('fuel-purchase-create-form')
         || document.getElementById('fuel-purchase-edit-form');
 
-    if (!form) {
+    const litresInput = document.getElementById('litres');
+    const priceInput = document.getElementById('priceperlitre');
+    const totalInput = document.getElementById('fueltotal');
+
+    if (!litresInput || !priceInput || !totalInput) {
         return;
     }
 
-    const tripSelect = form.querySelector('#tripid');
-    const legSelect = form.querySelector('#triplegid');
-    const litresInput = form.querySelector('#litres');
-    const priceInput = form.querySelector('#priceperlitre');
-    const totalInput = form.querySelector('#fueltotal');
-    const textareas = form.querySelectorAll('.js-auto-resize-textarea');
+    const scope = form || document;
+
+    const tripSelect = scope.querySelector('#tripid');
+    const legSelect = scope.querySelector('#triplegid');
+    const textareas = scope.querySelectorAll('.js-auto-resize-textarea');
 
     let isDirty = false;
     let isSubmitting = false;
 
-    form.querySelectorAll('input, select, textarea').forEach((field) => {
-        field.addEventListener('change', function () {
-            isDirty = true;
+    if (form) {
+        form.querySelectorAll('input, select, textarea').forEach(function (field) {
+            field.addEventListener('change', function () {
+                isDirty = true;
+            });
+
+            field.addEventListener('input', function () {
+                isDirty = true;
+            });
         });
 
-        field.addEventListener('input', function () {
-            isDirty = true;
+        form.addEventListener('submit', function () {
+            isSubmitting = true;
+            isDirty = false;
         });
-    });
 
-    form.addEventListener('submit', function () {
-        isSubmitting = true;
-        isDirty = false;
-    });
+        window.addEventListener('beforeunload', function (event) {
+            if (!isDirty || isSubmitting) {
+                return;
+            }
 
-    window.addEventListener('beforeunload', function (event) {
-        if (!isDirty || isSubmitting) {
-            return;
-        }
+            event.preventDefault();
+            event.returnValue = '';
+        });
+    }
 
-        event.preventDefault();
-        event.returnValue = '';
-    });
-
-    const recalculateFuelTotal = function () {
-        const litres = parseFloat(litresInput?.value);
-        const pricePerLitre = parseFloat(priceInput?.value);
+    function recalculateFuelTotal() {
+        const litres = Number.parseFloat(litresInput.value);
+        const pricePerLitre = Number.parseFloat(priceInput.value);
 
         if (
-            !Number.isNaN(litres)
-            && !Number.isNaN(pricePerLitre)
+            Number.isFinite(litres)
+            && Number.isFinite(pricePerLitre)
             && litres >= 0
             && pricePerLitre >= 0
         ) {
             totalInput.value = (litres * pricePerLitre).toFixed(2);
-        } else if (totalInput) {
+        } else {
             totalInput.value = '';
         }
-    };
-
-    const resizeTextarea = function (textarea) {
-        textarea.style.height = 'auto';
-        textarea.style.height = textarea.scrollHeight + 'px';
-    };
-
-   const filterTripLegOptions = function () {
-    if (!tripSelect || !legSelect) {
-        return;
     }
 
-    const selectedTripId = String(
+    function resizeTextarea(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+    }
+
+    function filterTripLegOptions() {
+        if (!tripSelect || !legSelect) {
+            return;
+        }
+
+        const selectedTripId = String(
             tripSelect.value
             || legSelect.dataset.selectedTripId
             || ''
@@ -511,10 +516,8 @@ document.addEventListener('DOMContentLoaded', function () {
             placeholder.textContent = placeholder.dataset.noTripLabel;
             placeholder.hidden = false;
             placeholder.disabled = false;
-
             legSelect.value = '';
             legSelect.disabled = true;
-
             return;
         }
 
@@ -522,17 +525,14 @@ document.addEventListener('DOMContentLoaded', function () {
             placeholder.textContent = placeholder.dataset.noLegsLabel;
             placeholder.hidden = false;
             placeholder.disabled = false;
-
             legSelect.value = '';
             legSelect.disabled = true;
-
             return;
         }
 
         placeholder.textContent = placeholder.dataset.optionalLabel;
         placeholder.hidden = false;
         placeholder.disabled = false;
-
         legSelect.disabled = false;
 
         if (selectedLegId !== '') {
@@ -548,13 +548,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 legSelect.value = '';
             }
         }
-    };
+    }
 
-    litresInput?.addEventListener('input', recalculateFuelTotal);
-    litresInput?.addEventListener('change', recalculateFuelTotal);
+    litresInput.addEventListener('input', recalculateFuelTotal);
+    litresInput.addEventListener('change', recalculateFuelTotal);
 
-    priceInput?.addEventListener('input', recalculateFuelTotal);
-    priceInput?.addEventListener('change', recalculateFuelTotal);
+    priceInput.addEventListener('input', recalculateFuelTotal);
+    priceInput.addEventListener('change', recalculateFuelTotal);
 
     tripSelect?.addEventListener('change', function () {
         if (legSelect) {

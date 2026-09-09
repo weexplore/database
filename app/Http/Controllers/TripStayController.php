@@ -57,7 +57,11 @@ class TripStayController extends Controller
         ->orderBy('sortorder')
         ->get();
 
-    $destinationItems = DestinationItem::orderBy('itemname')->get();
+    $destinationItems = DestinationItem::query()
+        ->with(['place', 'destination.place'])
+        ->where('isactive', 1)
+        ->orderBy('itemname')
+        ->get();
 
     $stayTypes = [
         'caravan_park',
@@ -192,7 +196,9 @@ class TripStayController extends Controller
         }
     });
 
-    $destinationItems = $destinationItemsQuery
+    $destinationItems = DestinationItem::query()
+        ->with(['place', 'destination.place'])
+        ->where('isactive', 1)
         ->orderBy('itemname')
         ->get();
 

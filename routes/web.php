@@ -29,6 +29,7 @@ use App\Http\Controllers\TripReviewController;
 use App\Http\Controllers\TripReportController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\TripPlanItemController;
+use App\Http\Controllers\TripExpenseController;
 use App\Http\Controllers\KnowledgeFamilyTreeReportController;
 
 use App\Http\Controllers\BibleBookController;
@@ -350,6 +351,7 @@ Route::prefix('trips')->name('trips.')->group(function () {
     Route::get('/', [TripController::class, 'index'])->name('index');
     Route::post('bulk-save', [TripController::class, 'bulkSave'])->name('bulk-save');
     Route::get('create', [TripController::class, 'create'])->name('create');
+    Route::get('summary-report',[TripReportController::class, 'summary'])->name('summary-report');
     Route::post('/', [TripController::class, 'store'])->name('store');
     Route::get('{trip}/edit', [TripController::class, 'edit'])->name('edit');
     Route::put('{trip}', [TripController::class, 'update'])->name('update');
@@ -387,6 +389,17 @@ Route::prefix('trips')->name('trips.')->group(function () {
             Route::post('rebuild-from-outputs', [TripPlanItemController::class, 'rebuildFromOutputs'])->name('rebuildFromOutputs');
             
         });
+
+        /*
+        |--------------------------------------------------------------------------
+        | Trip Expenses
+        |--------------------------------------------------------------------------
+        | Daily food and miscellaneous spending recorded against this trip.
+        */
+        Route::resource('expenses', TripExpenseController::class)
+            ->only(['index', 'store', 'update', 'destroy'])
+            ->names('expenses')
+            ->parameters(['expenses' => 'expense']);
 
         /*
         |------------------------------------------------------------------
@@ -437,7 +450,11 @@ Route::prefix('trips')->name('trips.')->group(function () {
 
         Route::resource('fuel-purchases', TripFuelPurchaseController::class)
             ->names('fuel-purchases');
+
+
+
     });
+
 });
 
 /*

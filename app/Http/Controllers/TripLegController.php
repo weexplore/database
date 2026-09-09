@@ -290,69 +290,125 @@ class TripLegController extends Controller
     }
 
     public function store(Request $request, Trip $trip)
-    {
-        $validated = $request->validate([
-            'legnumber' => ['required', 'integer', 'min:1'],
-            'startdate' => ['nullable', 'date'],
-            'enddate' => ['nullable', 'date', 'after_or_equal:startdate'],
-            'nightsplanned' => ['nullable', 'integer', 'min:0'],
-            'fromplaceid' => ['nullable', 'integer', 'exists:places,id'],
-            'fromdestinationid' => ['nullable', 'integer', 'exists:destinations,id'],
-            'fromdestinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
-            'toplaceid' => ['nullable', 'integer', 'exists:places,id'],
-            'todestinationid' => ['nullable', 'integer', 'exists:destinations,id'],
-            'todestinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
-            'title' => ['nullable', 'string', 'max:200'],
-            'description' => ['nullable', 'string'],
-            'distancekm' => ['nullable', 'numeric', 'min:0'],
-            'elevationgainm' => ['nullable', 'numeric', 'min:0'],
-            'elevationlossm' => ['nullable', 'numeric', 'min:0'],
-            'drivingnotes' => ['nullable', 'string'],
-            'planningnotes' => ['nullable', 'string'],
-            'actualnotes' => ['nullable', 'string'],
-            'sortorder' => ['nullable', 'integer', 'min:0'],
-            'vehicles' => ['nullable', 'array'],
-            'vehicles.*.vehicleid' => ['nullable', 'integer', 'exists:vehicles,id'],
-            'vehicles.*.vehiclerole' => ['nullable', 'string', 'max:50'],
-            'vehicles.*.sortorder' => ['nullable', 'integer', 'min:0'],
-            'triplegsearchprofileid' => [
-                'nullable',
-                'integer',
-                \Illuminate\Validation\Rule::exists('trip_leg_search_profiles', 'id')
-                    ->where(function ($query) use ($trip) {
-                        $query->where(function ($q) use ($trip) {
-                            $q->whereNull('tripid')
+{
+    $validated = $request->validate([
+        'legnumber' => ['required', 'integer', 'min:1'],
+        'startdate' => ['nullable', 'date'],
+        'enddate' => ['nullable', 'date', 'after_or_equal:startdate'],
+        'nightsplanned' => ['nullable', 'integer', 'min:0'],
+        'fromplaceid' => ['nullable', 'integer', 'exists:places,id'],
+        'fromdestinationid' => ['nullable', 'integer', 'exists:destinations,id'],
+        'fromdestinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
+        'toplaceid' => ['nullable', 'integer', 'exists:places,id'],
+        'todestinationid' => ['nullable', 'integer', 'exists:destinations,id'],
+        'todestinationitemid' => ['nullable', 'integer', 'exists:destinationitems,id'],
+        'title' => ['nullable', 'string', 'max:200'],
+        'description' => ['nullable', 'string'],
+        'distancekm' => ['nullable', 'numeric', 'min:0'],
+        'elevationgainm' => ['nullable', 'numeric', 'min:0'],
+        'elevationlossm' => ['nullable', 'numeric', 'min:0'],
+        'drivingnotes' => ['nullable', 'string'],
+        'planningnotes' => ['nullable', 'string'],
+        'actualnotes' => ['nullable', 'string'],
+        'sortorder' => ['nullable', 'integer', 'min:0'],
+        'vehicles' => ['nullable', 'array'],
+        'vehicles.*.vehicleid' => ['nullable', 'integer', 'exists:vehicles,id'],
+        'vehicles.*.vehiclerole' => ['nullable', 'string', 'max:50'],
+        'vehicles.*.sortorder' => ['nullable', 'integer', 'min:0'],
+        'triplegsearchprofileid' => [
+            'nullable',
+            'integer',
+            \Illuminate\Validation\Rule::exists('trip_leg_search_profiles', 'id')
+                ->where(function ($query) use ($trip) {
+                    $query->where(function ($q) use ($trip) {
+                        $q->whereNull('tripid')
                             ->orWhere('tripid', $trip->id);
-                        });
-                    }),
-            ],
-        ]);
+                    });
+                }),
+        ],
+    ]);
 
-        $validated['tripid'] = $trip->id;
+    $requestedLegNumber = (int) $validated['legnumber'];
 
-        $tripLeg = TripLeg::create(collect($validated)->except('vehicles')->toArray());
+    /*
+     * Build the vehicle relationship payload before removing vehicles
+     * from the direct TripLeg database attributes.
+     */
+    $vehicleSync = [];
 
-        $vehicleSync = [];
+    foreach (($validated['vehicles'] ?? []) as $row) {
+        $vehicleId = $row['vehicleid'] ?? null;
 
-        foreach (($validated['vehicles'] ?? []) as $row) {
-            $vehicleId = $row['vehicleid'] ?? null;
-
-            if (!$vehicleId) {
-                continue;
-            }
-
-            $vehicleSync[$vehicleId] = [
-                'vehiclerole' => $row['vehiclerole'] ?? null,
-                'sortorder' => $row['sortorder'] ?? null,
-            ];
+        if (! $vehicleId) {
+            continue;
         }
 
-        $tripLeg->vehicles()->sync($vehicleSync);
-
-        return redirect()
-            ->route('trips.legs.index', $trip)
-            ->with('success', 'Trip leg created successfully.');
+        $vehicleSync[(int) $vehicleId] = [
+            'vehiclerole' => $row['vehiclerole'] ?? null,
+            'sortorder' => $row['sortorder'] ?? null,
+        ];
     }
+
+    DB::transaction(function () use (
+        $trip,
+        &$validated,
+        $requestedLegNumber,
+        $vehicleSync,
+        &$tripLeg
+    ) {
+        /*
+         * Determine the valid insertion point.
+         *
+         * If the entered number is beyond the current final leg,
+         * append it as the next leg number. Otherwise insert it
+         * at the requested number and shift that and later legs.
+         */
+        $currentMaxLegNumber = (int) TripLeg::query()
+            ->where('tripid', $trip->id)
+            ->max('legnumber');
+
+        $insertLegNumber = min(
+            max($requestedLegNumber, 1),
+            $currentMaxLegNumber + 1
+        );
+
+        /*
+         * Avoid a transient duplicate-key collision while shifting.
+         *
+         * If legs 2, 3, and 4 become 3, 4, and 5, they must be updated
+         * from highest to lowest. This matters when the database has a
+         * unique constraint such as (tripid, legnumber).
+         */
+        TripLeg::query()
+            ->where('tripid', $trip->id)
+            ->where('legnumber', '>=', $insertLegNumber)
+            ->orderBy('legnumber', 'desc')
+            ->get()
+            ->each(function (TripLeg $existingLeg) {
+                $existingLeg->update([
+                    'legnumber' => (int) $existingLeg->legnumber + 1,
+                ]);
+            });
+
+        $validated['tripid'] = $trip->id;
+        $validated['legnumber'] = $insertLegNumber;
+
+        $tripLeg = TripLeg::create(
+            collect($validated)
+                ->except('vehicles')
+                ->toArray()
+        );
+
+        $tripLeg->vehicles()->sync($vehicleSync);
+    });
+
+    return redirect()
+        ->route('trips.legs.index', $trip)
+        ->with(
+            'success',
+            "Trip leg {$tripLeg->legnumber} created successfully."
+        );
+}
 
     public function edit(Request $request, Trip $trip, TripLeg $tripLeg)
     {
