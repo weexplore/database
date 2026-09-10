@@ -66,6 +66,13 @@ class PlaceController extends Controller
     $destinationStatus = $request->input('destination_status');
     $destinationItemStatus = $request->input('destination_item_status');
     $coordinatesStatus = $request->input('coordinates_status');
+    /*
+    * investigation_status:
+    * blank = all places
+    * yes   = flagged for further investigation
+    * no    = not currently flagged
+    */
+    $investigationStatus = $request->input('investigation_status');
 
     $filterStates = State::query()
         ->when(
@@ -141,6 +148,12 @@ class PlaceController extends Controller
 
     if ($request->filled('status')) {
         $query->where('isactive', (int) $request->status);
+    }
+
+    if ($investigationStatus === 'yes') {
+        $query->requiresInvestigation();
+    } elseif ($investigationStatus === 'no') {
+        $query->where('requiresinvestigation', false);
     }
 
     /*
@@ -258,6 +271,7 @@ class PlaceController extends Controller
             $payload['existing'][$id]['state_id'] = $this->normaliseFk($row['state_id'] ?? null);
             $payload['existing'][$id]['region_id'] = $this->normaliseFk($row['region_id'] ?? null);
             $payload['existing'][$id]['isactive'] = !empty($row['isactive']) ? 1 : 0;
+            $payload['existing'][$id]['requiresinvestigation'] = !empty($row['requiresinvestigation']) ? 1 : 0;
         }
     }
 
@@ -266,6 +280,7 @@ class PlaceController extends Controller
         $payload['new']['state_id'] = $this->normaliseFk($payload['new']['state_id'] ?? null);
         $payload['new']['region_id'] = $this->normaliseFk($payload['new']['region_id'] ?? null);
         $payload['new']['isactive'] = !empty($payload['new']['isactive']) ? 1 : 0;
+        $payload['new']['requiresinvestigation'] = !empty($payload['new']['requiresinvestigation']) ? 1 : 0;
     }
 
     $validated = validator($payload, [
@@ -281,6 +296,7 @@ class PlaceController extends Controller
         'existing.*.longitude' => ['nullable', 'numeric', 'between:-180,180'],
         'existing.*.sourcequality' => ['nullable', 'string', 'max:30'],
         'existing.*.isactive' => ['nullable', 'boolean'],
+        'existing.*.requiresinvestigation' => ['nullable', 'boolean'],
 
         'new.placename' => ['nullable', 'string', 'max:200'],
         'new.country_id' => ['nullable', 'integer', 'exists:countries,id'],
@@ -293,6 +309,7 @@ class PlaceController extends Controller
         'new.longitude' => ['nullable', 'numeric', 'between:-180,180'],
         'new.sourcequality' => ['nullable', 'string', 'max:30'],
         'new.isactive' => ['nullable', 'boolean'],
+        'new.requiresinvestigation' => ['nullable', 'boolean'],
     ])->validate();
 
     if (!empty($validated['existing'])) {
@@ -315,6 +332,7 @@ class PlaceController extends Controller
                 'accessnotes' => $row['accessnotes'] ?? null,
                 'generalnotes' => $row['generalnotes'] ?? null,
                 'isactive' => !empty($row['isactive']),
+                'requiresinvestigation' => !empty($row['requiresinvestigation']),
                 'updatedat' => now(),
             ]);
         }
@@ -358,6 +376,7 @@ class PlaceController extends Controller
             'accessnotes' => $new['accessnotes'] ?? null,
             'generalnotes' => $new['generalnotes'] ?? null,
             'isactive' => !empty($new['isactive']),
+            'requiresinvestigation' => !empty($new['requiresinvestigation']),
             'createdat' => now(),
             'updatedat' => now(),
         ]);
@@ -534,6 +553,7 @@ public function update(Request $request, Place $place)
         'accessnotes'   => ['nullable', 'string'],
         'generalnotes'  => ['nullable', 'string'],
         'sourcequality' => ['nullable', 'string', 'max:30'],
+        'requiresinvestigation' => ['nullable', 'boolean'],
         'isactive'      => ['nullable', 'boolean'],
     ]);
 
@@ -567,6 +587,7 @@ public function update(Request $request, Place $place)
         'accessnotes'   => $data['accessnotes'] ?? null,
         'generalnotes'  => $data['generalnotes'] ?? null,
         'sourcequality' => $data['sourcequality'] ?? null,
+        'requiresinvestigation' => !empty($data['requiresinvestigation']),
         'isactive'      => !empty($data['isactive']),
     ]);
 
@@ -594,6 +615,7 @@ public function update(Request $request, Place $place)
             'region_id',
             'placetype',
             'status',
+            'investigation_status',
             'page',
         ]))
         ->with('success', 'Place updated successfully.');
@@ -833,4 +855,6 @@ public function nearbyData(Request $request, Place $place)
         'nearby_places' => $nearbyPlaces,
     ]);
 }
+
+    
 }

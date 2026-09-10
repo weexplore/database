@@ -8,6 +8,7 @@
             'region_id',
             'placetype',
             'status',
+            'investigation_status',
             'page',
         ])));
     @endphp
@@ -234,19 +235,44 @@
                                         >
                                     </div>
 
-                                    <div class="flex items-center gap-2 pt-2">
-                                        <input type="hidden" name="isactive" value="0">
-                                        <input
-                                            type="checkbox"
-                                            id="isactive"
-                                            name="isactive"
-                                            value="1"
-                                            class="rounded border-gray-300 text-blue-600 shadow-sm"
-                                            @checked(old('isactive', $place->isactive))
-                                        >
-                                        <label for="isactive" class="text-sm text-gray-700">
-                                            Active
-                                        </label>
+                                    <div class="flex flex-wrap items-center gap-x-8 gap-y-3 pt-2">
+                                        <div class="flex items-center gap-2">
+                                            <input type="hidden" name="isactive" value="0">
+
+                                            <input
+                                                type="checkbox"
+                                                id="isactive"
+                                                name="isactive"
+                                                value="1"
+                                                class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                                @checked(old('isactive', $place->isactive))
+                                            >
+
+                                            <label for="isactive" class="text-sm text-gray-700">
+                                                Active
+                                            </label>
+                                        </div>
+
+                                        <div class="flex items-center gap-2">
+                                            <input type="hidden" name="requiresinvestigation" value="0">
+
+                                            <input
+                                                type="checkbox"
+                                                id="requiresinvestigation"
+                                                name="requiresinvestigation"
+                                                value="1"
+                                                class="rounded border-amber-300 text-amber-600 shadow-sm focus:ring-amber-500"
+                                                @checked(old('requiresinvestigation', $place->requiresinvestigation))
+                                            >
+
+                                            <label
+                                                for="requiresinvestigation"
+                                                class="cursor-pointer text-sm text-gray-700"
+                                                title="Flag when this place needs more research or is of particular interest for a future visit"
+                                            >
+                                                Requires investigation
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -370,6 +396,7 @@
                                     >
                                 </div>
                             </div>
+                            
 
                             <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
                                 <div>

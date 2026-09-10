@@ -34,6 +34,7 @@ class Place extends Model
         'accessnotes',
         'generalnotes',
         'sourcequality',
+        'requiresinvestigation',
         'isactive',
     ];
 
@@ -45,6 +46,7 @@ class Place extends Model
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
         'isactive' => 'boolean',
+        'requiresinvestigation' => 'boolean',
         'createdat' => 'datetime',
         'updatedat' => 'datetime',
     ];
@@ -173,6 +175,11 @@ SQL;
     public function tripExpenses()
     {
         return $this->hasMany(TripExpense::class, 'placeid');
+    }
+
+    public function scopeRequiresInvestigation(Builder $query): Builder
+    {
+        return $query->where('requiresinvestigation', true);
     }
     
 }

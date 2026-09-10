@@ -1,11 +1,29 @@
 {{-- resources/views/places/index.blade.php --}}
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Places
-        </h2>
-    </x-slot>
+        <div class="flex items-center justify-between gap-4">
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                Places
+            </h2>
 
+            <a
+                href="{{ route('reports.places.reference-book', request()->only([
+                    'search',
+                    'country_id',
+                    'state_id',
+                    'region_id',
+                    'placetype',
+                    'status',
+                    'destination_status',
+                    'destination_item_status',
+                    'coordinates_status',
+                ])) }}"
+                class="inline-flex items-center rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+            >
+                Reference Book Report
+            </a>
+        </div>
+    </x-slot>
     <div class="py-6">
         <div class="w-full max-w-none mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 space-y-6">
 
@@ -144,6 +162,33 @@
                             </select>
                         </div>
                         <div>
+                            <label for="investigation_status" class="block text-sm font-medium text-gray-700 mb-1">
+                                Investigation
+                            </label>
+
+                            <select
+                                name="investigation_status"
+                                id="investigation_status"
+                                class="w-full rounded-md border-gray-300 shadow-sm"
+                            >
+                                <option value="">All</option>
+
+                                <option
+                                    value="yes"
+                                    @selected(request('investigation_status') === 'yes')
+                                >
+                                    Requires investigation
+                                </option>
+
+                                <option
+                                    value="no"
+                                    @selected(request('investigation_status') === 'no')
+                                >
+                                    No investigation required
+                                </option>
+                            </select>
+                        </div>
+                        <div>
                             <label for="destination_status" class="block text-sm font-medium text-gray-700 mb-1">
                                 Destinations
                             </label>
@@ -259,6 +304,7 @@
                         'region_id',
                         'placetype',
                         'status',
+                        'investigation_status',
                         'destination_status',
                         'destination_item_status',
                         'coordinates_status',
@@ -279,6 +325,7 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Postcode</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Active</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Investigate</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Coordinates</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Destination</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -451,6 +498,25 @@
                                                 @checked(old("existing.{$place->id}.isactive", $place->isactive))
                                             >
                                         </td>
+                                        <td class="px-4 py-3 text-center">
+                                            <input
+                                                type="hidden"
+                                                name="existing[{{ $place->id }}][requiresinvestigation]"
+                                                value="0"
+                                            >
+
+                                            <input
+                                                type="checkbox"
+                                                name="existing[{{ $place->id }}][requiresinvestigation]"
+                                                value="1"
+                                                class="rounded border-gray-300 text-amber-600 shadow-sm"
+                                                title="Requires further investigation or is of particular interest to visit"
+                                                @checked(old(
+                                                    "existing.{$place->id}.requiresinvestigation",
+                                                    $place->requiresinvestigation
+                                                ))
+                                            >
+                                        </td>
                                         <td class="px-4 py-3">
                                             @if(!is_null($place->latitude) && !is_null($place->longitude))
                                                 <span class="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
@@ -485,7 +551,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="11" class="px-4 py-6 text-center text-gray-500">
+                                        <td colspan="12" class="px-4 py-6 text-center text-gray-500">
                                             No places found.
                                         </td>
                                     </tr>
@@ -503,7 +569,7 @@
                                 @endphp
 
                                 <tr class="bg-gray-50">
-                                    <td colspan="9" class="px-4 py-2 text-sm font-medium text-gray-600">
+                                    <td colspan="13" class="px-4 py-2 text-sm font-medium text-gray-600">
                                         Add new place
                                     </td>
                                 </tr>
@@ -623,6 +689,22 @@
                                             @checked(old('new.isactive', 1))
                                         >
                                     </td>
+                                    <td class="px-4 py-3 text-center">
+                                        <input
+                                            type="hidden"
+                                            name="new[requiresinvestigation]"
+                                            value="0"
+                                        >
+
+                                        <input
+                                            type="checkbox"
+                                            name="new[requiresinvestigation]"
+                                            value="1"
+                                            class="rounded border-gray-300 text-amber-600 shadow-sm"
+                                            title="Requires further investigation or is of particular interest to visit"
+                                            @checked(old('new.requiresinvestigation', false))
+                                        >
+                                    </td>
 
                                     <td class="px-4 py-3 text-center whitespace-nowrap">
                                         <span class="text-sm text-gray-500">
@@ -646,20 +728,6 @@
                         <p class="text-sm text-gray-500">
                             Edit existing rows or enter a new place in the final row, then save once.
                         </p>
-                            <a href="{{ route('reports.places.reference-book', request()->only([
-                                    'search',
-                                    'country_id',
-                                    'state_id',
-                                    'region_id',
-                                    'placetype',
-                                    'status',
-                                    'destination_status',
-                                    'destination_item_status',
-                                    'coordinates_status',
-                                ])) }}"
-                            class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-                                Reference Book Report
-                            </a>
                         <button
                             type="submit"
                             class="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700"
@@ -684,6 +752,7 @@
                         'region_id',
                         'placetype',
                         'status',
+                        'investigation_status',
                         'destination_status',
                         'destination_item_status',
                         'coordinates_status',
