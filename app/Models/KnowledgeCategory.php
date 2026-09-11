@@ -69,4 +69,26 @@ class KnowledgeCategory extends Model
     {
         return $this->hasMany(KnowledgeItem::class, 'primarycategoryid');
     }
+    
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parentcategoryid');
+    }
+
+    public function getFullPathAttribute(): string
+    {
+        $categories = [];
+        $category = $this;
+
+        while ($category) {
+            array_unshift($categories, $category->categoryname);
+            $category = $category->parent;
+        }
+
+        if ($this->domain?->domainname) {
+            array_unshift($categories, $this->domain->domainname);
+        }
+
+        return implode(' → ', $categories);
+    }
 }

@@ -1,4 +1,31 @@
 {{-- resources/views/partials/forms/markdown-field-scripts.blade.php --}}
+<style>
+    .js-markdown-rendered-block {
+        position: relative;
+    }
+
+    .js-markdown-rendered-block.is-collapsed {
+        max-height: 18rem;
+        overflow: hidden;
+    }
+
+    .js-markdown-rendered-block.is-collapsed::after {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        height: 4rem;
+        pointer-events: none;
+        content: "";
+        background: linear-gradient(
+            to top,
+            rgb(249 250 251),
+            rgb(249 250 251 / 0.9),
+            transparent
+        );
+    }
+</style>
+
 <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 
@@ -85,12 +112,14 @@
                 return;
             }
 
-            const shouldCollapse = target.scrollHeight > 260;
+            const shouldCollapse = target.scrollHeight > 288;
+
             container.classList.toggle('is-collapsed', shouldCollapse);
 
             if (moreButton) {
                 moreButton.hidden = !shouldCollapse;
-                moreButton.textContent = shouldCollapse ? 'Show more' : 'Show less';
+                moreButton.textContent = 'Show more';
+                moreButton.setAttribute('aria-expanded', 'false');
             }
         });
     }

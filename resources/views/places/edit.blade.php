@@ -755,7 +755,7 @@
                                                 </div>
 
                                                 <div class="mt-1 text-xs text-gray-500">
-                                                    Category: {{ $knowledgeItem->primaryCategory?->categoryname ?? '—' }}
+                                                    Category: {{ $knowledgeItem->primaryCategory?->full_path ?? '—' }}
                                                 </div>
 
                                                 <div class="mt-1 text-xs text-gray-500">

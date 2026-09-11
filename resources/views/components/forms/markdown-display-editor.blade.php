@@ -7,6 +7,8 @@
     'placeholder' => '',
     'help' => null,
     'startOpen' => false,
+    'collapsible' => true,
+    'collapsedHeight' => '18rem',
 ])
 
 @php
@@ -15,11 +17,44 @@
     $hasContent = filled($fieldValue);
 @endphp
 
-<div class="rounded-lg border border-gray-200 bg-white"
-     x-data="{
-         editing: @js($startOpen || !$hasContent),
-         content: @js($fieldValue),
-     }">
+
+    <div
+        class="rounded-lg border border-gray-200 bg-white"
+        x-data="{
+            editing: @js($startOpen || !$hasContent),
+            content: @js($fieldValue),
+            expanded: false,
+            collapsible: @js($collapsible),
+            collapsedHeight: @js($collapsedHeight),
+            isOverflowing: false,
+
+            checkOverflow() {
+                this.$nextTick(() => {
+                    const content = this.$refs.renderedContent;
+
+                    if (!content || !this.collapsible) {
+                        this.isOverflowing = false;
+                        return;
+                    }
+
+                    if (this.expanded) {
+                        return;
+                    }
+
+                    this.isOverflowing = content.scrollHeight > content.clientHeight;
+                });
+            },
+
+            toggleExpanded() {
+                this.expanded = !this.expanded;
+
+                this.$nextTick(() => {
+                    window.renderMarkdownMath?.(this.$refs.renderedContent);
+                });
+            },
+        }"
+        x-init="$nextTick(() => checkOverflow())"
+    >
 
     <div class="flex items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3">
         <div class="min-w-0">
@@ -42,20 +77,90 @@
     </div>
 
     {{-- Display mode --}}
-    <div x-show="!editing" class="p-4">
-        <div
-            class="markdown-content prose prose-sm max-w-none text-gray-700"
-            x-show="content.trim() !== ''"
-            x-init="$nextTick(() => window.renderMarkdownMath($el))"
-        >
-            @include('partials.markdown.rendered-block', [
-                'content' => $fieldValue,
-                'collapsible' => false,
-            ])
-        </div>
+    <div
+        x-show="!editing"
+        x-cloak
+        class="p-4"
+        x-init="$nextTick(() => checkOverflow())"
+    >
+        <template x-if="content.trim() !== ''">
+            <div>
+                <div
+                    class="relative"
+                    :style="
+                        collapsible && !expanded
+                            ? { maxHeight: collapsedHeight, overflow: 'hidden' }
+                            : {}
+                    "
+                >
+                    <div
+                        x-ref="renderedContent"
+                        class="relative"
+                        :style="
+                            collapsible && !expanded
+                                ? { maxHeight: collapsedHeight, overflow: 'hidden' }
+                                : {}
+                        "
+                    >
+                        <div
+                            class="markdown-content prose prose-sm max-w-none text-gray-700"
+                            x-init="$nextTick(() => {
+                                window.renderMarkdownMath?.($el);
+                                checkOverflow();
+                            })"
+                        >
+                            @include('partials.markdown.rendered-block', [
+                                'content' => $fieldValue,
+                                'collapsible' => false,
+                            ])
+                        </div>
 
-        <p x-show="content.trim() === ''"
-        class="text-sm italic text-gray-500">
+                        <div
+                            x-show="collapsible && isOverflowing && !expanded"
+                            x-cloak
+                            class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent"
+                        ></div>
+                    </div>
+
+                    <div
+                        x-show="collapsible && isOverflowing && !expanded"
+                        x-cloak
+                        class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent"
+                    ></div>
+                </div>
+
+                <button
+                    type="button"
+                    x-show="collapsible && isOverflowing"
+                    x-cloak
+                    @click="toggleExpanded()"
+                    class="mt-3 inline-flex items-center rounded text-xs font-medium text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    :aria-expanded="expanded ? 'true' : 'false'"
+                >
+                    <span x-text="expanded ? 'Show less' : 'Show more'"></span>
+
+                    <svg
+                        class="ml-1 h-4 w-4 transition-transform"
+                        :class="{ 'rotate-180': expanded }"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        aria-hidden="true"
+                    >
+                        <path
+                            fill-rule="evenodd"
+                            d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z"
+                            clip-rule="evenodd"
+                        />
+                    </svg>
+                </button>
+            </div>
+        </template>
+
+        <p
+            x-show="content.trim() === ''"
+            x-cloak
+            class="text-sm italic text-gray-500"
+        >
             No {{ strtolower($label) }} entered yet.
         </p>
     </div>

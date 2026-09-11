@@ -12,8 +12,8 @@
                 'direction' => $direction,
                 'relateditemid' => $relatedItem?->id,
                 'relateditemname' => $relatedItem?->itemname ?? 'Missing related item',
-                'relateditemcategory' => $relatedItem?->primaryCategory?->categoryname
-                    ?? 'Uncategorised',
+                'relateditemcategory' => $relatedItem?->primaryCategory?->full_path
+                    ?? 'Uncategorised', 
                 'relationshiptype' => $relationship->relationshiptype,
                 'relationshiptype_label' => $entry['displayTypeLabel']
                     ?? $relationship->relationshipTypeLabel(),
@@ -172,13 +172,56 @@
                                 </div>
 
                                 <template x-if="relationship.notes_html">
-                                <div
-                                    class="mt-3 markdown-content prose prose-sm max-w-none text-gray-700"
-                                    x-html="relationship.notes_html"
-                                    x-init="$nextTick(() => window.renderMarkdownMath($el))"
-                                    x-effect="$nextTick(() => window.renderMarkdownMath($el))"
-                                ></div>
-                            </template>
+                                    <div class="mt-3">
+                                        <div
+                                            class="relative"
+                                            :class="{
+                                                'knowledge-relationship-markdown-collapsed':
+                                                    !relationship.expanded
+                                            }"
+                                        >
+                                            <div
+                                                class="markdown-content prose prose-sm max-w-none text-gray-700"
+                                                x-html="relationship.notes_html"
+                                                x-init="$nextTick(() => window.renderMarkdownMath($el))"
+                                                x-effect="$nextTick(() => window.renderMarkdownMath($el))"
+                                            ></div>
+
+                                            <div
+                                                x-show="relationship.isLong && !relationship.expanded"
+                                                x-cloak
+                                                class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent"
+                                            ></div>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            x-show="relationship.isLong"
+                                            x-cloak
+                                            @click="relationship.expanded = !relationship.expanded"
+                                            class="mt-3 inline-flex items-center rounded text-xs font-medium text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                            :aria-expanded="relationship.expanded ? 'true' : 'false'"
+                                        >
+                                            <span
+                                                x-text="relationship.expanded ? 'Show less' : 'Show more'"
+                                            ></span>
+
+                                            <svg
+                                                class="ml-1 h-4 w-4 transition-transform"
+                                                :class="{ 'rotate-180': relationship.expanded }"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                                aria-hidden="true"
+                                            >
+                                                <path
+                                                    fill-rule="evenodd"
+                                                    d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z"
+                                                    clip-rule="evenodd"
+                                                />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </template>
                             </div>
                         </div>
 
@@ -243,6 +286,17 @@
 
 @include('partials.markdown.markdown-styles')
 
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
+
+    .knowledge-relationship-markdown-collapsed {
+        max-height: 18rem;
+        overflow: hidden;
+    }
+</style>
+
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 
 <script>
@@ -297,7 +351,13 @@
                     ...relationship,
                     editing: false,
                     draft: null,
+                    expanded: false,
+                    isLong: this.isLongMarkdown(relationship.notes),
                 };
+            },
+
+            isLongMarkdown(content) {
+                return (content || '').trim().length > 1_200;
             },
 
             emptyDraft() {

@@ -478,7 +478,10 @@ public function edit(Request $request, Place $place)
             ->orderByDesc('startdate')
             ->orderByDesc('id'),
         'knowledgeItems' => fn ($query) => $query
-            ->with(['itemType', 'primaryCategory'])
+            ->with([
+                'itemType',
+                'primaryCategory.parent.parent.parent.parent',
+            ])
             ->orderBy('itemname'),
     ]);
 

@@ -171,12 +171,50 @@
                                 </div>
 
                                 <template x-if="note.notecontent_html">
-                                    <div
-                                        class="mt-3 markdown-content prose prose-sm max-w-none text-gray-700"
-                                        x-html="note.notecontent_html"
-                                        x-init="$nextTick(() => window.renderMarkdownMath($el))"
-                                        x-effect="$nextTick(() => window.renderMarkdownMath($el))"
-                                    ></div>
+                                    <div class="mt-3">
+                                        <div
+                                            class="relative"
+                                            :class="{ 'knowledge-note-content-collapsed': !note.expanded }"
+                                        >
+                                            <div
+                                                class="markdown-content prose prose-sm max-w-none text-gray-700"
+                                                x-html="note.notecontent_html"
+                                                x-init="$nextTick(() => window.renderMarkdownMath($el))"
+                                                x-effect="$nextTick(() => window.renderMarkdownMath($el))"
+                                            ></div>
+
+                                            <div
+                                                x-show="!note.expanded && note.isLong"
+                                                x-cloak
+                                                class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent"
+                                            ></div>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            x-show="note.isLong"
+                                            x-cloak
+                                            @click="note.expanded = !note.expanded"
+                                            class="mt-3 inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
+                                            :aria-expanded="note.expanded ? 'true' : 'false'"
+                                        >
+                                            <span x-text="note.expanded ? 'Show less' : 'Show more'"></span>
+
+                                            <svg
+                                                class="ml-1 h-4 w-4 transition-transform"
+                                                :class="{ 'rotate-180': note.expanded }"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                                aria-hidden="true"
+                                            >
+                                                <path
+                                                    fill-rule="evenodd"
+                                                    d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z"
+                                                    clip-rule="evenodd"
+                                                />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </template>
                             </div>
                         </div>
@@ -236,6 +274,17 @@
 
 @include('partials.markdown.markdown-styles')
 
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
+
+    .knowledge-note-content-collapsed {
+        max-height: 24rem;
+        overflow: hidden;
+    }
+</style>
+
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 
 <script>
@@ -277,7 +326,15 @@
                     ...note,
                     editing: false,
                     draft: null,
+                    expanded: false,
+                    isLong: this.isLongNote(note),
                 };
+            },
+
+            isLongNote(note) {
+                const content = (note.notecontent || '').trim();
+
+                return content.length > 1_200;
             },
 
             emptyDraft() {

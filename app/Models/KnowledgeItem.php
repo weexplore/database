@@ -61,6 +61,7 @@ protected $casts = [
         return $this->belongsTo(KnowledgeCategory::class, 'primarycategoryid');
     }
 
+
     public function parentItem(): BelongsTo
     {
         return $this->belongsTo(KnowledgeItem::class, 'parentitemid');

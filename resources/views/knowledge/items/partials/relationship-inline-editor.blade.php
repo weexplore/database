@@ -79,18 +79,24 @@
     </div>
 
     <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
+        <label class="mb-1 block text-sm font-medium text-gray-700">
             Notes
         </label>
 
-        <textarea x-model="{{ $draftReference }}.notes"
-                  rows="6"
-                  placeholder="Relationship notes, context, evidence, and rationale. Markdown supported."
-                  class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-        </textarea>
+        <textarea
+            x-model="{{ $draftReference }}.notes"
+            rows="6"
+            data-min-rows="6"
+            data-max-rows="14"
+            placeholder="Relationship notes, context, evidence, and rationale."
+            class="js-alpine-markdown-textarea w-full rounded-md border-gray-300 text-sm shadow-sm"
+            x-init="$nextTick(() => window.autoResizeMarkdownTextarea?.($el))"
+            @input="window.autoResizeMarkdownTextarea?.($el)"
+        ></textarea>
 
         <p class="mt-1 text-xs text-gray-500">
-            Markdown is rendered after saving.
+            Markdown is supported, including headings, lists, emphasis, links, tables, and mathematics.
+            It is rendered after saving.
         </p>
     </div>
 <div class="flex items-center justify-end gap-2 border-t border-gray-200 pt-4">

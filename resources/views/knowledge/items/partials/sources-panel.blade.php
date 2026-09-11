@@ -257,11 +257,48 @@
                                     </p>
 
                                     <div
-                                        class="markdown-content prose prose-sm max-w-none text-gray-700"
-                                        x-html="source.importedsummary_html"
-                                        x-init="$nextTick(() => window.renderMarkdownMath($el))"
-                                        x-effect="$nextTick(() => window.renderMarkdownMath($el))"
-                                    ></div>
+                                        class="relative"
+                                        :class="{
+                                            'knowledge-source-markdown-collapsed':
+                                                !source.expandedSections.importedsummary
+                                        }"
+                                    >
+                                        <div
+                                            class="markdown-content prose prose-sm max-w-none text-gray-700"
+                                            x-html="source.importedsummary_html"
+                                            x-init="$nextTick(() => window.renderMarkdownMath($el))"
+                                            x-effect="$nextTick(() => window.renderMarkdownMath($el))"
+                                        ></div>
+
+                                        <div
+                                            x-show="
+                                                source.longSections.importedsummary &&
+                                                !source.expandedSections.importedsummary
+                                            "
+                                            x-cloak
+                                            class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent"
+                                        ></div>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        x-show="source.longSections.importedsummary"
+                                        x-cloak
+                                        @click="
+                                            source.expandedSections.importedsummary =
+                                                !source.expandedSections.importedsummary
+                                        "
+                                        class="mt-3 inline-flex items-center rounded text-xs font-medium text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                        :aria-expanded="
+                                            source.expandedSections.importedsummary ? 'true' : 'false'
+                                        "
+                                    >
+                                        <span x-text="
+                                            source.expandedSections.importedsummary
+                                                ? 'Show less'
+                                                : 'Show more'
+                                        "></span>
+                                    </button>
                                 </div>
                             </template>
 
@@ -272,11 +309,48 @@
                                     </p>
 
                                     <div
-                                        class="markdown-content prose prose-sm max-w-none text-gray-700"
-                                        x-html="source.importednotes_html"
-                                        x-init="$nextTick(() => window.renderMarkdownMath($el))"
-                                        x-effect="$nextTick(() => window.renderMarkdownMath($el))"
-                                    ></div>
+                                        class="relative"
+                                        :class="{
+                                            'knowledge-source-markdown-collapsed':
+                                                !source.expandedSections.importednotes
+                                        }"
+                                    >
+                                        <div
+                                            class="markdown-content prose prose-sm max-w-none text-gray-700"
+                                            x-html="source.importednotes_html"
+                                            x-init="$nextTick(() => window.renderMarkdownMath($el))"
+                                            x-effect="$nextTick(() => window.renderMarkdownMath($el))"
+                                        ></div>
+
+                                        <div
+                                            x-show="
+                                                source.longSections.importednotes &&
+                                                !source.expandedSections.importednotes
+                                            "
+                                            x-cloak
+                                            class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent"
+                                        ></div>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        x-show="source.longSections.importednotes"
+                                        x-cloak
+                                        @click="
+                                            source.expandedSections.importednotes =
+                                                !source.expandedSections.importednotes
+                                        "
+                                        class="mt-3 inline-flex items-center rounded text-xs font-medium text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                        :aria-expanded="
+                                            source.expandedSections.importednotes ? 'true' : 'false'
+                                        "
+                                    >
+                                        <span x-text="
+                                            source.expandedSections.importednotes
+                                                ? 'Show less'
+                                                : 'Show more'
+                                        "></span>
+                                    </button>
                                 </div>
                             </template>
 
@@ -287,11 +361,48 @@
                                     </p>
 
                                     <div
-                                        class="markdown-content prose prose-sm max-w-none text-amber-950"
-                                        x-html="source.internalnotes_html"
-                                        x-init="$nextTick(() => window.renderMarkdownMath($el))"
-                                        x-effect="$nextTick(() => window.renderMarkdownMath($el))"
-                                    ></div>
+                                        class="relative"
+                                        :class="{
+                                            'knowledge-source-markdown-collapsed':
+                                                !source.expandedSections.internalnotes
+                                        }"
+                                    >
+                                        <div
+                                            class="markdown-content prose prose-sm max-w-none text-amber-950"
+                                            x-html="source.internalnotes_html"
+                                            x-init="$nextTick(() => window.renderMarkdownMath($el))"
+                                            x-effect="$nextTick(() => window.renderMarkdownMath($el))"
+                                        ></div>
+
+                                        <div
+                                            x-show="
+                                                source.longSections.internalnotes &&
+                                                !source.expandedSections.internalnotes
+                                            "
+                                            x-cloak
+                                            class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-amber-50 via-amber-50/90 to-transparent"
+                                        ></div>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        x-show="source.longSections.internalnotes"
+                                        x-cloak
+                                        @click="
+                                            source.expandedSections.internalnotes =
+                                                !source.expandedSections.internalnotes
+                                        "
+                                        class="mt-3 inline-flex items-center rounded text-xs font-medium text-amber-700 hover:text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+                                        :aria-expanded="
+                                            source.expandedSections.internalnotes ? 'true' : 'false'
+                                        "
+                                    >
+                                        <span x-text="
+                                            source.expandedSections.internalnotes
+                                                ? 'Show less'
+                                                : 'Show more'
+                                        "></span>
+                                    </button>
                                 </div>
                             </template>
                         </div>
@@ -351,6 +462,17 @@
 
 @include('partials.markdown.markdown-styles')
 
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
+
+    .knowledge-source-markdown-collapsed {
+        max-height: 18rem;
+        overflow: hidden;
+    }
+</style>
+
 <script>
     function knowledgeSourcesPanel() {
         return {
@@ -397,7 +519,23 @@
                     ...source,
                     editing: false,
                     draft: null,
+
+                    expandedSections: {
+                        importedsummary: false,
+                        importednotes: false,
+                        internalnotes: false,
+                    },
+
+                    longSections: {
+                        importedsummary: this.isLongMarkdown(source.importedsummary),
+                        importednotes: this.isLongMarkdown(source.importednotes),
+                        internalnotes: this.isLongMarkdown(source.internalnotes),
+                    },
                 };
+            },
+
+            isLongMarkdown(content) {
+                return (content || '').trim().length > 1_200;
             },
 
             emptyDraft() {

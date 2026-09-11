@@ -131,14 +131,20 @@
             </div>
 
             <div class="mt-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label class="mb-1 block text-sm font-medium text-gray-700">
                     Summary
                 </label>
-                <textarea x-model="newLog.summary"
-                          rows="5"
-                          placeholder="Review summary, findings, and reasoning. Markdown is supported."
-                          class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                </textarea>
+
+                <textarea
+                    x-model="newLog.summary"
+                    rows="5"
+                    placeholder="Review summary, findings, and reasoning."
+                    class="w-full rounded-md border-gray-300 text-sm shadow-sm"
+                ></textarea>
+
+                <p class="mt-1 text-xs text-gray-500">
+                    Markdown is supported, including headings, lists, emphasis, links, tables, and mathematics.
+                </p>
             </div>
 
             <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -198,8 +204,52 @@
                                 </template>
 
                                 <template x-if="log.summary_html">
-                                    <div class="mt-3 markdown-content prose prose-sm max-w-none text-gray-700"
-                                         x-html="log.summary_html">
+                                    <div class="mt-3">
+                                        <div
+                                            class="relative"
+                                            :class="{
+                                                'knowledge-review-log-markdown-collapsed':
+                                                    !log.expanded
+                                            }"
+                                        >
+                                            <div
+                                                class="markdown-content prose prose-sm max-w-none text-gray-700"
+                                                x-html="log.summary_html"
+                                                x-init="$nextTick(() => window.renderMarkdownMath($el))"
+                                                x-effect="$nextTick(() => window.renderMarkdownMath($el))"
+                                            ></div>
+
+                                            <div
+                                                x-show="log.isLong && !log.expanded"
+                                                x-cloak
+                                                class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent"
+                                            ></div>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            x-show="log.isLong"
+                                            x-cloak
+                                            @click="log.expanded = !log.expanded"
+                                            class="mt-3 inline-flex items-center rounded text-xs font-medium text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                            :aria-expanded="log.expanded ? 'true' : 'false'"
+                                        >
+                                            <span x-text="log.expanded ? 'Show less' : 'Show more'"></span>
+
+                                            <svg
+                                                class="ml-1 h-4 w-4 transition-transform"
+                                                :class="{ 'rotate-180': log.expanded }"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                                aria-hidden="true"
+                                            >
+                                                <path
+                                                    fill-rule="evenodd"
+                                                    d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z"
+                                                    clip-rule="evenodd"
+                                                />
+                                            </svg>
+                                        </button>
                                     </div>
                                 </template>
                             </div>
@@ -273,13 +323,20 @@
                         </div>
 
                         <div class="mt-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                            <label class="mb-1 block text-sm font-medium text-gray-700">
                                 Summary
                             </label>
-                            <textarea x-model="log.draft.summary"
-                                      rows="5"
-                                      class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                            </textarea>
+
+                            <textarea
+                                x-model="log.draft.summary"
+                                rows="5"
+                                placeholder="Review summary, findings, and reasoning."
+                                class="w-full rounded-md border-gray-300 text-sm shadow-sm"
+                            ></textarea>
+
+                            <p class="mt-1 text-xs text-gray-500">
+                                Markdown is supported, including headings, lists, emphasis, links, tables, and mathematics.
+                            </p>
                         </div>
 
                         <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -323,6 +380,17 @@
 
 @include('partials.markdown.markdown-styles')
 
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
+
+    .knowledge-review-log-markdown-collapsed {
+        max-height: 18rem;
+        overflow: hidden;
+    }
+</style>
+
 <script>
     function reviewLogsPanel() {
         return {
@@ -358,7 +426,13 @@
                     ...log,
                     editing: false,
                     draft: null,
+                    expanded: false,
+                    isLong: this.isLongMarkdown(log.summary),
                 };
+            },
+
+            isLongMarkdown(content) {
+                return (content || '').trim().length > 1_200;
             },
 
             emptyDraft() {
