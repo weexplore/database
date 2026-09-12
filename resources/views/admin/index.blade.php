@@ -1,9 +1,41 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Admin
-            </h2>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                    Admin
+                </h2>
+
+                <p class="mt-1 text-sm text-gray-500">
+                    Travel, research, tasks, investments, and cashbook administration.
+                </p>
+            </div>
+
+            @auth
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-sm text-gray-600">
+                        Signed in as {{ auth()->user()->name }}
+                    </span>
+
+                    <a
+                        href="{{ route('password.edit') }}"
+                        class="inline-flex items-center rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-800 hover:bg-gray-300"
+                    >
+                        Change Password
+                    </a>
+
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+
+                        <button
+                            type="submit"
+                            class="inline-flex items-center rounded bg-gray-700 px-3 py-1.5 text-sm text-white hover:bg-gray-800"
+                        >
+                            Sign out
+                        </button>
+                    </form>
+                </div>
+            @endauth
         </div>
     </x-slot>
 
