@@ -262,6 +262,10 @@
                                             'knowledge-source-markdown-collapsed':
                                                 !source.expandedSections.importedsummary
                                         }"
+                                        x-init="$nextTick(() => {
+                                            window.renderMarkdownMath?.($el);
+                                            measureSourceSectionOverflow(source, 'importedsummary', $el);
+                                        })"
                                     >
                                         <div
                                             class="markdown-content prose prose-sm max-w-none text-gray-700"
@@ -272,7 +276,7 @@
 
                                         <div
                                             x-show="
-                                                source.longSections.importedsummary &&
+                                                source.hasOverflowSections.importedsummary &&
                                                 !source.expandedSections.importedsummary
                                             "
                                             x-cloak
@@ -282,7 +286,7 @@
 
                                     <button
                                         type="button"
-                                        x-show="source.longSections.importedsummary"
+                                        x-show="source.hasOverflowSections.importedsummary"
                                         x-cloak
                                         @click="
                                             source.expandedSections.importedsummary =
@@ -314,6 +318,10 @@
                                             'knowledge-source-markdown-collapsed':
                                                 !source.expandedSections.importednotes
                                         }"
+                                        x-init="$nextTick(() => {
+                                            window.renderMarkdownMath?.($el);
+                                            measureSourceSectionOverflow(source, 'importednotes', $el);
+                                        })"
                                     >
                                         <div
                                             class="markdown-content prose prose-sm max-w-none text-gray-700"
@@ -324,7 +332,7 @@
 
                                         <div
                                             x-show="
-                                                source.longSections.importednotes &&
+                                                source.hasOverflowSections.importednotes &&
                                                 !source.expandedSections.importednotes
                                             "
                                             x-cloak
@@ -334,7 +342,7 @@
 
                                     <button
                                         type="button"
-                                        x-show="source.longSections.importednotes"
+                                        x-show="source.hasOverflowSections.importednotes"
                                         x-cloak
                                         @click="
                                             source.expandedSections.importednotes =
@@ -354,54 +362,60 @@
                                 </div>
                             </template>
 
-                            <template x-if="source.internalnotes_html">
-                                <div class="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
-                                    <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-800">
-                                        Internal notes
+                            <template x-if="source.importednotes_html">
+                                <div class="mt-4">
+                                    <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                        Imported notes
                                     </p>
 
                                     <div
                                         class="relative"
                                         :class="{
                                             'knowledge-source-markdown-collapsed':
-                                                !source.expandedSections.internalnotes
+                                                !source.expandedSections.importednotes
                                         }"
+                                        x-init="$nextTick(() => {
+                                            window.renderMarkdownMath?.($el);
+                                            measureSourceSectionOverflow(source, 'importednotes', $el);
+                                        })"
                                     >
                                         <div
-                                            class="markdown-content prose prose-sm max-w-none text-amber-950"
-                                            x-html="source.internalnotes_html"
+                                            class="markdown-content prose prose-sm max-w-none text-gray-700"
+                                            x-html="source.importednotes_html"
                                             x-init="$nextTick(() => window.renderMarkdownMath($el))"
                                             x-effect="$nextTick(() => window.renderMarkdownMath($el))"
                                         ></div>
 
                                         <div
                                             x-show="
-                                                source.longSections.internalnotes &&
-                                                !source.expandedSections.internalnotes
+                                                source.hasOverflowSections.importednotes &&
+                                                !source.expandedSections.importednotes
                                             "
                                             x-cloak
-                                            class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-amber-50 via-amber-50/90 to-transparent"
+                                            class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent"
                                         ></div>
                                     </div>
 
                                     <button
                                         type="button"
-                                        x-show="source.longSections.internalnotes"
+                                        x-show="source.hasOverflowSections.importednotes"
                                         x-cloak
                                         @click="
-                                            source.expandedSections.internalnotes =
-                                                !source.expandedSections.internalnotes
+                                            source.expandedSections.importednotes =
+                                                !source.expandedSections.importednotes
                                         "
-                                        class="mt-3 inline-flex items-center rounded text-xs font-medium text-amber-700 hover:text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+                                        class="mt-3 inline-flex items-center rounded text-xs font-medium text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                                         :aria-expanded="
-                                            source.expandedSections.internalnotes ? 'true' : 'false'
+                                            source.expandedSections.importednotes ? 'true' : 'false'
                                         "
                                     >
-                                        <span x-text="
-                                            source.expandedSections.internalnotes
-                                                ? 'Show less'
-                                                : 'Show more'
-                                        "></span>
+                                        <span
+                                            x-text="
+                                                source.expandedSections.importednotes
+                                                    ? 'Show less'
+                                                    : 'Show more'
+                                            "
+                                        ></span>
                                     </button>
                                 </div>
                             </template>
@@ -526,16 +540,42 @@
                         internalnotes: false,
                     },
 
-                    longSections: {
-                        importedsummary: this.isLongMarkdown(source.importedsummary),
-                        importednotes: this.isLongMarkdown(source.importednotes),
-                        internalnotes: this.isLongMarkdown(source.internalnotes),
+                    hasOverflowSections: {
+                        importedsummary: false,
+                        importednotes: false,
+                        internalnotes: false,
                     },
                 };
             },
 
-            isLongMarkdown(content) {
-                return (content || '').trim().length > 1_200;
+            measureSourceSectionOverflow(source, section, container) {
+                this.$nextTick(() => {
+                    if (!container) {
+                        return;
+                    }
+
+                    const collapseClass = 'knowledge-source-markdown-collapsed';
+                    const wasCollapsed = !source.expandedSections[section];
+
+                    /*
+                    * Temporarily remove the class to determine the section’s complete,
+                    * natural rendered height. Do not write inline styles, because they
+                    * would remain in effect when Show more is pressed.
+                    */
+                    container.classList.remove(collapseClass);
+
+                    const naturalHeight = container.scrollHeight;
+                    const collapsedHeight = 18 * 16;
+
+                    source.hasOverflowSections[section] =
+                        naturalHeight > collapsedHeight + 2;
+
+                    /*
+                    * Restore the original visual state. The :class binding also remains
+                    * the sole source of truth when Show more / Show less is selected.
+                    */
+                    container.classList.toggle(collapseClass, wasCollapsed);
+                });
             },
 
             emptyDraft() {

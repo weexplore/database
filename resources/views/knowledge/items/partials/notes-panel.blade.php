@@ -173,18 +173,22 @@
                                 <template x-if="note.notecontent_html">
                                     <div class="mt-3">
                                         <div
+                                            x-ref="noteContent"
                                             class="relative"
                                             :class="{ 'knowledge-note-content-collapsed': !note.expanded }"
+                                            x-init="$nextTick(() => {
+                                                window.renderMarkdownMath?.($el);
+                                                measureNoteOverflow(note, $el);
+                                            })"
                                         >
                                             <div
                                                 class="markdown-content prose prose-sm max-w-none text-gray-700"
                                                 x-html="note.notecontent_html"
-                                                x-init="$nextTick(() => window.renderMarkdownMath($el))"
-                                                x-effect="$nextTick(() => window.renderMarkdownMath($el))"
+                                                x-init="$nextTick(() => window.renderMarkdownMath?.($el))"
                                             ></div>
 
                                             <div
-                                                x-show="!note.expanded && note.isLong"
+                                                x-show="!note.expanded && note.hasOverflow"
                                                 x-cloak
                                                 class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent"
                                             ></div>
@@ -192,10 +196,10 @@
 
                                         <button
                                             type="button"
-                                            x-show="note.isLong"
+                                            x-show="note.hasOverflow"
                                             x-cloak
                                             @click="note.expanded = !note.expanded"
-                                            class="mt-3 inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
+                                            class="mt-3 inline-flex items-center rounded text-xs font-medium text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                                             :aria-expanded="note.expanded ? 'true' : 'false'"
                                         >
                                             <span x-text="note.expanded ? 'Show less' : 'Show more'"></span>
@@ -321,20 +325,42 @@
                 }
             },
 
-            prepareNote(note) {
+           prepareNote(note) {
                 return {
                     ...note,
                     editing: false,
                     draft: null,
                     expanded: false,
-                    isLong: this.isLongNote(note),
+                    hasOverflow: false,
                 };
             },
 
-            isLongNote(note) {
-                const content = (note.notecontent || '').trim();
+            measureNoteOverflow(note, container) {
+                this.$nextTick(() => {
+                    if (!container) {
+                        return;
+                    }
 
-                return content.length > 1_200;
+                    const collapseClass = 'knowledge-note-content-collapsed';
+                    const wasCollapsed = !note.expanded;
+
+                    /*
+                    * Remove the class temporarily to measure the natural rendered height.
+                    * This avoids leaving inline max-height/overflow styles behind.
+                    */
+                    container.classList.remove(collapseClass);
+
+                    const naturalHeight = container.scrollHeight;
+                    const collapsedHeight = 24 * 16;
+
+                    note.hasOverflow = naturalHeight > collapsedHeight + 2;
+
+                    /*
+                    * Restore the visual state. Alpine will also keep the class in sync
+                    * through the existing :class binding.
+                    */
+                    container.classList.toggle(collapseClass, wasCollapsed);
+                });
             },
 
             emptyDraft() {

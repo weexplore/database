@@ -211,6 +211,10 @@
                                                 'knowledge-review-log-markdown-collapsed':
                                                     !log.expanded
                                             }"
+                                            x-init="$nextTick(() => {
+                                                window.renderMarkdownMath?.($el);
+                                                measureLogOverflow(log, $el);
+                                            })"
                                         >
                                             <div
                                                 class="markdown-content prose prose-sm max-w-none text-gray-700"
@@ -220,7 +224,7 @@
                                             ></div>
 
                                             <div
-                                                x-show="log.isLong && !log.expanded"
+                                                x-show="log.hasOverflow && !log.expanded"
                                                 x-cloak
                                                 class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent"
                                             ></div>
@@ -228,7 +232,7 @@
 
                                         <button
                                             type="button"
-                                            x-show="log.isLong"
+                                            x-show="log.hasOverflow"
                                             x-cloak
                                             @click="log.expanded = !log.expanded"
                                             class="mt-3 inline-flex items-center rounded text-xs font-medium text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -427,12 +431,37 @@
                     editing: false,
                     draft: null,
                     expanded: false,
-                    isLong: this.isLongMarkdown(log.summary),
+                    hasOverflow: false,
                 };
             },
 
-            isLongMarkdown(content) {
-                return (content || '').trim().length > 1_200;
+            measureLogOverflow(log, container) {
+                this.$nextTick(() => {
+                    if (!container) {
+                        return;
+                    }
+
+                    const collapseClass = 'knowledge-review-log-markdown-collapsed';
+                    const wasCollapsed = !log.expanded;
+
+                    /*
+                    * Temporarily remove the CSS class so scrollHeight represents the
+                    * full rendered Markdown height. No inline styles are used, so the
+                    * Show more action can remove the class and expand normally.
+                    */
+                    container.classList.remove(collapseClass);
+
+                    const naturalHeight = container.scrollHeight;
+                    const collapsedHeight = 18 * 16;
+
+                    log.hasOverflow = naturalHeight > collapsedHeight + 2;
+
+                    /*
+                    * Restore the current display state. The existing Alpine :class
+                    * binding remains responsible for adding/removing the class later.
+                    */
+                    container.classList.toggle(collapseClass, wasCollapsed);
+                });
             },
 
             emptyDraft() {

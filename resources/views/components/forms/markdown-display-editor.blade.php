@@ -17,6 +17,12 @@
     $hasContent = filled($fieldValue);
 @endphp
 
+    <style>
+        .markdown-display-editor-collapsed {
+            max-height: var(--markdown-collapsed-height);
+            overflow: hidden;
+        }
+    </style>
 
     <div
         class="rounded-lg border border-gray-200 bg-white"
@@ -26,22 +32,42 @@
             expanded: false,
             collapsible: @js($collapsible),
             collapsedHeight: @js($collapsedHeight),
-            isOverflowing: false,
+            hasOverflow: false,
 
-            checkOverflow() {
+            measureOverflow(container) {
                 this.$nextTick(() => {
-                    const content = this.$refs.renderedContent;
-
-                    if (!content || !this.collapsible) {
-                        this.isOverflowing = false;
+                    if (!container || !this.collapsible) {
+                        this.hasOverflow = false;
                         return;
                     }
 
-                    if (this.expanded) {
-                        return;
-                    }
+                    const collapseClass = 'markdown-display-editor-collapsed';
+                    const wasCollapsed = !this.expanded;
 
-                    this.isOverflowing = content.scrollHeight > content.clientHeight;
+                    /*
+                    * Apply the class before measuring clientHeight. This returns the
+                    * actual computed display height in pixels, regardless of whether
+                    * collapsedHeight was passed as 18rem, 24rem, 320px, etc.
+                    */
+                    container.classList.add(collapseClass);
+
+                    const collapsedHeight = container.clientHeight;
+
+                    /*
+                    * Remove the class to get the full natural height of the rendered
+                    * Markdown content.
+                    */
+                    container.classList.remove(collapseClass);
+
+                    const naturalHeight = container.scrollHeight;
+
+                    this.hasOverflow = naturalHeight > collapsedHeight + 2;
+
+                    /*
+                    * Restore the state visible to the user. The Alpine :class binding
+                    * continues to manage the class after this measurement.
+                    */
+                    container.classList.toggle(collapseClass, wasCollapsed);
                 });
             },
 
@@ -53,7 +79,6 @@
                 });
             },
         }"
-        x-init="$nextTick(() => checkOverflow())"
     >
 
     <div class="flex items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3">
@@ -81,49 +106,33 @@
         x-show="!editing"
         x-cloak
         class="p-4"
-        x-init="$nextTick(() => checkOverflow())"
     >
         <template x-if="content.trim() !== ''">
             <div>
                 <div
+                    x-ref="renderedContent"
                     class="relative"
-                    :style="
-                        collapsible && !expanded
-                            ? { maxHeight: collapsedHeight, overflow: 'hidden' }
-                            : {}
-                    "
-                >
-                    <div
-                        x-ref="renderedContent"
-                        class="relative"
-                        :style="
+                    :class="{
+                        'markdown-display-editor-collapsed':
                             collapsible && !expanded
-                                ? { maxHeight: collapsedHeight, overflow: 'hidden' }
-                                : {}
-                        "
-                    >
-                        <div
-                            class="markdown-content prose prose-sm max-w-none text-gray-700"
-                            x-init="$nextTick(() => {
-                                window.renderMarkdownMath?.($el);
-                                checkOverflow();
-                            })"
-                        >
-                            @include('partials.markdown.rendered-block', [
-                                'content' => $fieldValue,
-                                'collapsible' => false,
-                            ])
-                        </div>
-
-                        <div
-                            x-show="collapsible && isOverflowing && !expanded"
-                            x-cloak
-                            class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent"
-                        ></div>
+                    }"
+                    :style="{
+                        '--markdown-collapsed-height': collapsedHeight
+                    }"
+                    x-init="$nextTick(() => {
+                        window.renderMarkdownMath?.($el);
+                        measureOverflow($el);
+                    })"
+                >
+                    <div class="markdown-content prose prose-sm max-w-none text-gray-700">
+                        @include('partials.markdown.rendered-block', [
+                            'content' => $fieldValue,
+                            'collapsible' => false,
+                        ])
                     </div>
 
                     <div
-                        x-show="collapsible && isOverflowing && !expanded"
+                        x-show="collapsible && hasOverflow && !expanded"
                         x-cloak
                         class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent"
                     ></div>
@@ -131,7 +140,7 @@
 
                 <button
                     type="button"
-                    x-show="collapsible && isOverflowing"
+                    x-show="collapsible && hasOverflow"
                     x-cloak
                     @click="toggleExpanded()"
                     class="mt-3 inline-flex items-center rounded text-xs font-medium text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"

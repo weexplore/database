@@ -179,16 +179,19 @@
                                                 'knowledge-relationship-markdown-collapsed':
                                                     !relationship.expanded
                                             }"
+                                            x-init="$nextTick(() => {
+                                                window.renderMarkdownMath?.($el);
+                                                measureRelationshipOverflow(relationship, $el);
+                                            })"
                                         >
                                             <div
                                                 class="markdown-content prose prose-sm max-w-none text-gray-700"
                                                 x-html="relationship.notes_html"
-                                                x-init="$nextTick(() => window.renderMarkdownMath($el))"
-                                                x-effect="$nextTick(() => window.renderMarkdownMath($el))"
+                                                x-init="$nextTick(() => window.renderMarkdownMath?.($el))"
                                             ></div>
 
                                             <div
-                                                x-show="relationship.isLong && !relationship.expanded"
+                                                x-show="relationship.hasOverflow && !relationship.expanded"
                                                 x-cloak
                                                 class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent"
                                             ></div>
@@ -196,7 +199,7 @@
 
                                         <button
                                             type="button"
-                                            x-show="relationship.isLong"
+                                            x-show="relationship.hasOverflow"
                                             x-cloak
                                             @click="relationship.expanded = !relationship.expanded"
                                             class="mt-3 inline-flex items-center rounded text-xs font-medium text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -352,12 +355,37 @@
                     editing: false,
                     draft: null,
                     expanded: false,
-                    isLong: this.isLongMarkdown(relationship.notes),
+                    hasOverflow: false,
                 };
             },
+            
+            measureRelationshipOverflow(relationship, container) {
+                this.$nextTick(() => {
+                    if (!container) {
+                        return;
+                    }
 
-            isLongMarkdown(content) {
-                return (content || '').trim().length > 1_200;
+                    const collapseClass = 'knowledge-relationship-markdown-collapsed';
+                    const wasCollapsed = !relationship.expanded;
+
+                    /*
+                    * Remove the class temporarily to measure the full, natural height.
+                    * Do not write max-height or overflow inline—inline styles would
+                    * prevent the Show more action from expanding the content.
+                    */
+                    container.classList.remove(collapseClass);
+
+                    const naturalHeight = container.scrollHeight;
+                    const collapsedHeight = 18 * 16;
+
+                    relationship.hasOverflow = naturalHeight > collapsedHeight + 2;
+
+                    /*
+                    * Restore the visual state. The existing :class binding remains the
+                    * source of truth when the user selects Show more or Show less.
+                    */
+                    container.classList.toggle(collapseClass, wasCollapsed);
+                });
             },
 
             emptyDraft() {
