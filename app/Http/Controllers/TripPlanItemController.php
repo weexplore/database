@@ -994,13 +994,19 @@ public function generatePreview(Request $request, Trip $trip)
 
 public function generateApply(Request $request, Trip $trip)
 {
-    if (($trip->tripstatus ?? null) !== 'planned') {
+    if (! in_array($trip->tripstatus, ['planned', 'prepare'], true)) {
         return redirect()
             ->route('trips.planner.generate', [
                 'trip' => $trip->id,
-                'return_to' => $request->input('return_to', route('trips.planner.index', $trip)),
+                'return_to' => $request->input(
+                    'return_to',
+                    route('trips.planner.index', $trip)
+                ),
             ])
-            ->with('error', 'Generation is only available while the trip status is Planned.');
+            ->with(
+                'error',
+                'Generation is only available while the trip status is Planned or Prepare.'
+            );
     }
 
     $trip->load([

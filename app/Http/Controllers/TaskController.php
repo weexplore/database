@@ -1265,11 +1265,12 @@ class TaskController extends Controller
         ->orderBy('id')
         ->get();
 
-                /*
-         * Trips beginning soon, plus currently active trips.
-         */
+        /*
+        * Planned trips starting this week, all prepare-stage trips,
+        * plus currently active trips.
+        */
         $upcomingTrips = Trip::query()
-            ->whereIn('tripstatus', ['planned', 'active'])
+            ->whereIn('tripstatus', ['planned', 'active', 'prepare'])
             ->where(function (Builder $query) use ($today, $weekEnd) {
                 $query
                     ->where(function (Builder $plannedQuery) use ($today, $weekEnd) {
@@ -1298,6 +1299,9 @@ class TaskController extends Controller
                                             ->whereNull('enddate');
                                     });
                             });
+                    })
+                    ->orWhere(function (Builder $prepareQuery) {
+                        $prepareQuery->where('tripstatus', 'prepare');
                     });
             })
             ->orderByRaw('startdate IS NULL')
