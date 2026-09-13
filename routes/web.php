@@ -30,6 +30,7 @@ use App\Http\Controllers\TripReportController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\TripPlanItemController;
 use App\Http\Controllers\TripExpenseController;
+use App\Http\Controllers\TravelInterestController;
 use App\Http\Controllers\KnowledgeFamilyTreeReportController;
 
 use App\Http\Controllers\BibleBookController;
@@ -482,6 +483,9 @@ Route::middleware('auth')->group(function () {
         });
 
     });
+    
+    Route::get('/travel-interests', [TravelInterestController::class, 'index'])
+    ->name('travel-interests.index');
 
     /*
     |--------------------------------------------------------------------------

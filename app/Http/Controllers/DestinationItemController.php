@@ -17,6 +17,10 @@ class DestinationItemController extends Controller
         return DestinationItem::itemTypeOptions();
     }
 
+    private function visitInterestOptions(): array
+    {
+        return DestinationItem::visitInterestOptions();
+    }
     public function index(Request $request)
 {
     $destinations = Destination::orderBy('destinationname')->get();
@@ -24,7 +28,7 @@ class DestinationItemController extends Controller
 
     $itemTypes = DestinationItemType::query()
         ->where('isactive', 1)
-->orderBy('typename')
+        ->orderBy('typename')
         ->orderBy('sortorder')
         ->get();
 
@@ -53,6 +57,12 @@ class DestinationItemController extends Controller
     if ($request->filled('status')) {
         $query->where('isactive', (int) $request->status);
     }
+    if ($request->filled('visitinterestlevel')) {
+        $query->where(
+            'visitinterestlevel',
+            $request->visitinterestlevel
+        );
+    }
 
     if ($request->filled('search')) {
         $search = trim((string) $request->search);
@@ -74,6 +84,7 @@ class DestinationItemController extends Controller
 
     $showCreate = $request->boolean('show_create', false);
     $selectedDestinationId = $request->integer('destination_id');
+    $visitInterestOptions = $this->visitInterestOptions();
 
     return view('destination-items.index', compact(
         'items',
@@ -81,7 +92,8 @@ class DestinationItemController extends Controller
         'places',
         'itemTypes',
         'showCreate',
-        'selectedDestinationId'
+        'selectedDestinationId',
+        'visitInterestOptions'
     ));
 }
 
@@ -111,8 +123,6 @@ public function create(Request $request)
 
     public function store(Request $request)
 {
-    $itemTypeKeys = array_keys($this->itemTypeOptions());
-
     $data = $request->validate([
         'destinationid' => ['required', 'integer', 'exists:destinations,id'],
         'placeid' => ['nullable', 'integer', 'exists:places,id'],
@@ -134,10 +144,26 @@ public function create(Request $request)
         'estimatedtotalcost' => ['nullable', 'numeric', 'min:0'],
         'bookingrequired' => ['nullable', 'boolean'],
         'caravanaccessnotes' => ['nullable', 'string'],
+        'disabilityaccessnotes' => ['nullable', 'string'],
         'recommendedstayminutes' => ['nullable', 'integer', 'min:0'],
         'sortorder' => ['nullable', 'integer', 'min:0'],
+        'visitinterestlevel' => [
+            'nullable',
+            'string',
+            Rule::in(array_keys($this->visitInterestOptions())),
+        ],
+        'visitinterestnotes' => ['nullable', 'string'],
+        'hasvisited' => ['nullable', 'boolean'],
+        'visitedat' => ['nullable', 'date'],
+        'stillwanttovisit' => ['nullable', 'boolean'],
         'isactive' => ['nullable', 'boolean'],
     ]);
+
+    $visitInterestLevel = $data['visitinterestlevel'] ?: null;
+
+    $hasVisited = ! empty($data['hasvisited']);
+
+    $stillWantToVisit = ! empty($data['stillwanttovisit']);
 
     $item = DestinationItem::create([
         'destinationid' => $data['destinationid'],
@@ -158,8 +184,15 @@ public function create(Request $request)
         'estimatedtotalcost' => $data['estimatedtotalcost'] ?? null,
         'bookingrequired' => ! empty($data['bookingrequired']),
         'caravanaccessnotes' => $data['caravanaccessnotes'] ?? null,
+        'disabilityaccessnotes' => $data['disabilityaccessnotes'] ?? null,
         'recommendedstayminutes' => $data['recommendedstayminutes'] ?? null,
         'sortorder' => $data['sortorder'] ?? null,
+        'visitinterestlevel' => $visitInterestLevel,
+        'visitinterestnotes' => $data['visitinterestnotes'] ?? null,
+        'wishlistaddedat' => filled($visitInterestLevel) ? now() : null,
+        'hasvisited' => $hasVisited,
+        'visitedat' => $data['visitedat'] ?? null,
+        'stillwanttovisit' => $stillWantToVisit,
         'isactive' => array_key_exists('isactive', $data) ? ! empty($data['isactive']) : true,
     ]);
 
@@ -218,6 +251,39 @@ public function edit(Request $request, DestinationItem $destinationItem)
             ->orderByDesc('isprimary')
             ->orderByDesc('uploadedat')
             ->orderByDesc('id'),
+        'tripLegs' => fn ($query) => $query
+            ->with([
+                'trip',
+                'fromPlace',
+                'toPlace',
+                'fromDestination',
+                'toDestination',
+            ])
+            ->orderByDesc('startdate')
+            ->orderByDesc('createdat'),
+
+        'legsStartingHere' => fn ($query) => $query
+            ->with([
+                'trip',
+                'fromPlace',
+                'toPlace',
+            ])
+            ->orderByDesc('startdate')
+            ->orderByDesc('createdat'),
+
+        'legsEndingHere' => fn ($query) => $query
+            ->with([
+                'trip',
+                'fromPlace',
+                'toPlace',
+            ])
+            ->orderByDesc('startdate')
+            ->orderByDesc('createdat'),
+        'tripLegPoints' => fn ($query) => $query
+            ->with([
+                'tripLeg.trip',
+            ])
+            ->orderByDesc('createdat'),
     ]);
 
     $destinations = Destination::orderBy('destinationname')->get();
@@ -243,6 +309,34 @@ public function edit(Request $request, DestinationItem $destinationItem)
     $sourceTypeOptions = DestinationSource::sourceTypeOptions();
     $sourceImportStatusOptions = DestinationSource::importStatusOptions();
 
+    $travelLegs = $destinationItem->legsStartingHere
+    ->map(function ($tripLeg) {
+        $tripLeg->historylinktype = 'start_item';
+
+        return $tripLeg;
+    })
+    ->merge(
+        $destinationItem->legsEndingHere->map(function ($tripLeg) {
+            $tripLeg->historylinktype = 'end_item';
+
+            return $tripLeg;
+        })
+    )
+    ->merge(
+        $destinationItem->tripLegs->map(function ($tripLeg) {
+            $tripLeg->historylinktype = 'linked_item';
+
+            return $tripLeg;
+        })
+    )
+    ->unique('id')
+    ->sortByDesc(function ($tripLeg) {
+        return $tripLeg->startdate
+            ? $tripLeg->startdate->timestamp
+            : 0;
+    })
+    ->values();
+
     return view('destination-items.edit', compact(
         'destinationItem',
         'destinations',
@@ -254,13 +348,13 @@ public function edit(Request $request, DestinationItem $destinationItem)
         'averageOverallRating',
         'latestReviews',
         'sourceTypeOptions',
-        'sourceImportStatusOptions'
+        'sourceImportStatusOptions',
+        'travelLegs'
     ));
 }
 
     public function update(Request $request, DestinationItem $destinationItem)
 {
-    $itemTypeKeys = array_keys($this->itemTypeOptions());
 
     $data = $request->validate([
         'destinationid' => ['required', 'integer', 'exists:destinations,id'],
@@ -284,10 +378,34 @@ public function edit(Request $request, DestinationItem $destinationItem)
         'bookingrequired' => ['nullable', 'boolean'],
         'caravanaccessnotes' => ['nullable', 'string'],
         'disabilityaccessnotes' => ['nullable', 'string'],
+        'visitinterestlevel' => [
+            'nullable',
+            'string',
+            Rule::in(array_keys($this->visitInterestOptions())),
+        ],
+        'visitinterestnotes' => ['nullable', 'string'],
+        'hasvisited' => ['nullable', 'boolean'],
+        'visitedat' => ['nullable', 'date'],
+        'stillwanttovisit' => ['nullable', 'boolean'],
         'recommendedstayminutes' => ['nullable', 'integer', 'min:0'],
         'sortorder' => ['nullable', 'integer', 'min:0'],
         'isactive' => ['nullable', 'boolean'],
     ]);
+
+    $visitInterestLevel = $data['visitinterestlevel'] ?: null;
+
+    $wishlistAddedAt = $destinationItem->wishlistaddedat;
+
+    if (
+        filled($visitInterestLevel)
+        && blank($wishlistAddedAt)
+    ) {
+        $wishlistAddedAt = now();
+    }
+
+    $hasVisited = ! empty($data['hasvisited']);
+
+    $stillWantToVisit = ! empty($data['stillwanttovisit']);
 
     $destinationItem->update([
         'destinationid' => $data['destinationid'],
@@ -306,12 +424,18 @@ public function edit(Request $request, DestinationItem $destinationItem)
         'notes' => $data['notes'] ?? null,
         'estimatedcostperperson' => $data['estimatedcostperperson'] ?? null,
         'estimatedtotalcost' => $data['estimatedtotalcost'] ?? null,
-        'bookingrequired' => !empty($data['bookingrequired']),
+        'bookingrequired' => ! empty($data['bookingrequired']),
         'caravanaccessnotes' => $data['caravanaccessnotes'] ?? null,
         'disabilityaccessnotes' => $data['disabilityaccessnotes'] ?? null,
         'recommendedstayminutes' => $data['recommendedstayminutes'] ?? null,
         'sortorder' => $data['sortorder'] ?? null,
-        'isactive' => !empty($data['isactive']),
+        'visitinterestlevel' => $visitInterestLevel,
+        'visitinterestnotes' => $data['visitinterestnotes'] ?? null,
+        'wishlistaddedat' => $wishlistAddedAt,
+        'hasvisited' => $hasVisited,
+        'visitedat' => $data['visitedat'] ?? null,
+        'stillwanttovisit' => $stillWantToVisit,
+        'isactive' => ! empty($data['isactive']),
     ]);
 
     $destinationItem->itemTypes()->sync($data['itemtype_ids'] ?? []);
@@ -376,6 +500,12 @@ public function edit(Request $request, DestinationItem $destinationItem)
         'destinationid' => $destination->id,
         'placeid' => $destination->placeid,
         'itemname' => 'New Destination Item',
+        'visitinterestlevel' => null,
+        'visitinterestnotes' => null,
+        'wishlistaddedat' => null,
+        'hasvisited' => false,
+        'visitedat' => null,
+        'stillwanttovisit' => false,
         'isactive' => true,
     ]);
 
@@ -390,12 +520,20 @@ public function edit(Request $request, DestinationItem $destinationItem)
 public function storeSource(Request $request, DestinationItem $destinationItem)
 {
     $validated = $request->validate([
-        'sourcetype' => ['nullable', 'string', Rule::in(array_keys(DestinationSource::sourceTypeOptions()))],
+        'sourcetype' => [
+            'nullable',
+            'string',
+            Rule::in(array_keys(DestinationSource::sourceTypeOptions())),
+        ],
         'sourcetitle' => ['required', 'string', 'max:255'],
         'sourcepublisher' => ['nullable', 'string', 'max:255'],
         'sourceurl' => ['nullable', 'url', 'max:1000'],
         'retrievedon' => ['nullable', 'date'],
-        'importstatus' => ['nullable', 'string', Rule::in(array_keys(DestinationSource::importStatusOptions()))],
+        'importstatus' => [
+            'nullable',
+            'string',
+            Rule::in(array_keys(DestinationSource::importStatusOptions())),
+        ],
         'importedsummary' => ['nullable', 'string'],
         'importednotes' => ['nullable', 'string'],
         'internalnotes' => ['nullable', 'string'],
@@ -419,7 +557,8 @@ public function storeSource(Request $request, DestinationItem $destinationItem)
     $returnTo = $request->input('return_to');
 
     if ($returnTo) {
-        return redirect($returnTo)->with('success', 'Internet source added successfully.');
+        return redirect($returnTo)
+            ->with('success', 'Internet source added successfully.');
     }
 
     return redirect()

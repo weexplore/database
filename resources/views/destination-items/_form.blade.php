@@ -12,6 +12,34 @@
     $currentDisabilityAccessNotes = old('disabilityaccessnotes', $destinationItem->disabilityaccessnotes ?? '');
     $currentBookingRequired = old('bookingrequired', $destinationItem->bookingrequired ?? false);
     $currentIsActive = old('isactive', $destinationItem->isactive ?? true);
+    $currentVisitInterestLevel = old(
+        'visitinterestlevel',
+        $destinationItem->visitinterestlevel ?? ''
+    );
+
+    $currentVisitInterestNotes = old(
+        'visitinterestnotes',
+        $destinationItem->visitinterestnotes ?? ''
+    );
+
+    $currentHasVisited = old(
+        'hasvisited',
+        $destinationItem->hasvisited ?? false
+    );
+
+    $currentVisitedAt = old(
+        'visitedat',
+        isset($destinationItem) && $destinationItem?->visitedat
+            ? $destinationItem->visitedat->format('Y-m-d')
+            : ''
+    );
+
+    $currentStillWantToVisit = old(
+        'stillwanttovisit',
+        $destinationItem->stillwanttovisit ?? false
+    );
+
+    $visitInterestOptions = \App\Models\DestinationItem::visitInterestOptions();
 
     $relatedTypeIds = [];
 
@@ -164,6 +192,111 @@
             help="Markdown supported. Click Edit to change the content."
             preview-title="Notes Preview"
         />
+    </div>
+
+    <div class="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-4">
+        <div>
+            <h3 class="text-sm font-semibold text-amber-950">
+                Our Travel Interest
+            </h3>
+
+            <p class="mt-1 text-xs text-amber-800">
+                Flag items that Ian and Heather especially want to see or include when planning future trips.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="visitinterestlevel" class="block text-sm font-medium text-gray-700 mb-1">
+                    Travel-interest priority
+                </label>
+
+                <select
+                    name="visitinterestlevel"
+                    id="visitinterestlevel"
+                    class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                >
+                    <option value="">Not specifically on our travel-interest list</option>
+
+                    @foreach ($visitInterestOptions as $value => $label)
+                        <option
+                            value="{{ $value }}"
+                            @selected($currentVisitInterestLevel === $value)
+                        >
+                            {{ $label }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label for="visitedat" class="block text-sm font-medium text-gray-700 mb-1">
+                    Visited date
+                </label>
+
+                <input
+                    type="date"
+                    name="visitedat"
+                    id="visitedat"
+                    value="{{ $currentVisitedAt }}"
+                    class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                >
+
+                <p class="mt-1 text-xs text-gray-500">
+                    Optional. Leave blank when the item has been visited but no date is known.
+                </p>
+            </div>
+        </div>
+
+        <div>
+            <label for="visitinterestnotes" class="block text-sm font-medium text-gray-700 mb-1">
+                Why do we want to visit?
+            </label>
+
+            <textarea
+                name="visitinterestnotes"
+                id="visitinterestnotes"
+                rows="3"
+                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                placeholder="Record why this is important, what needs investigating, or what should be considered in future trip planning..."
+            >{{ $currentVisitInterestNotes }}</textarea>
+
+            <p class="mt-1 text-xs text-gray-500">
+                For example: photography opportunity, particular museum or walk, check opening hours, or useful stop if travelling through the region.
+            </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                <input type="hidden" name="hasvisited" value="0">
+
+                <input
+                    type="checkbox"
+                    name="hasvisited"
+                    id="hasvisited"
+                    value="1"
+                    class="rounded border-gray-300 text-blue-600 shadow-sm"
+                    @checked((bool) $currentHasVisited)
+                >
+
+                We have visited this item
+            </label>
+
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                <input type="hidden" name="stillwanttovisit" value="0">
+
+                <input
+                    type="checkbox"
+                    name="stillwanttovisit"
+                    id="stillwanttovisit"
+                    value="1"
+                    class="rounded border-gray-300 text-blue-600 shadow-sm"
+                    @checked((bool) $currentStillWantToVisit)
+                >
+
+                Keep this on our future-trip list
+            </label>
+        </div>
     </div>
 
     <div>

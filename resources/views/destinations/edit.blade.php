@@ -5,6 +5,7 @@
             'destinationtype',
             'featured',
             'visited',
+            'visitinterestlevel',
             'search',
             'page',
         ])));
@@ -233,6 +234,79 @@
                                         <span class="text-sm text-gray-700">Visited destination</span>
                                     </label>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-amber-50 border border-amber-200 shadow-sm sm:rounded-lg p-6 space-y-5">
+                            <div>
+                                <h3 class="text-lg font-medium text-amber-950">
+                                    Our Travel Interest
+                                </h3>
+
+                                <p class="mt-1 text-sm text-amber-800">
+                                    Record whether this is a destination we particularly want to include in a future trip.
+                                </p>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="visitinterestlevel" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Travel-interest priority
+                                    </label>
+
+                                    <select
+                                        name="visitinterestlevel"
+                                        id="visitinterestlevel"
+                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                    >
+                                        <option value="">Not specifically on our travel-interest list</option>
+
+                                        @foreach ($visitInterestOptions as $value => $label)
+                                            <option
+                                                value="{{ $value }}"
+                                                @selected(old('visitinterestlevel', $destination->visitinterestlevel) === $value)
+                                            >
+                                                {{ $label }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label for="visitedat" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Visited date
+                                    </label>
+
+                                    <input
+                                        type="date"
+                                        name="visitedat"
+                                        id="visitedat"
+                                        value="{{ old('visitedat', optional($destination->visitedat)->format('Y-m-d')) }}"
+                                        class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                    >
+
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        Optional. Leave blank if the destination has been visited but no date is recorded.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="visitinterestnotes" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Why do we want to go?
+                                </label>
+
+                                <textarea
+                                    name="visitinterestnotes"
+                                    id="visitinterestnotes"
+                                    rows="4"
+                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                    placeholder="Record why this destination matters, what to investigate, or what should be included in a future trip..."
+                                >{{ old('visitinterestnotes', $destination->visitinterestnotes) }}</textarea>
+
+                                <p class="mt-1 text-xs text-gray-500">
+                                    Examples: a town to explore, a scenic route, photography opportunities, an event, a family visit, or items to investigate before planning.
+                                </p>
                             </div>
                         </div>
 
@@ -769,6 +843,36 @@
                                 <dt class="text-gray-500">Featured</dt>
                                 <dd class="text-gray-900">{{ $destination->isfeatured ? 'Yes' : 'No' }}</dd>
                             </div>
+                            <div class="flex justify-between gap-4">
+                                <dt class="text-gray-500">Travel interest</dt>
+                                <dd class="text-right text-gray-900">
+                                    {{
+                                        $destination->visitinterestlevel
+                                            ? (\App\Models\Destination::visitInterestOptions()[$destination->visitinterestlevel]
+                                                ?? $destination->visitinterestlevel)
+                                            : '—'
+                                    }}
+                                </dd>
+                            </div>
+
+                            <div class="flex justify-between gap-4">
+                                <dt class="text-gray-500">Visited</dt>
+                                <dd class="text-right text-gray-900">
+                                    {{ $destination->hasvisited ? 'Yes' : 'No' }}
+                                    @if ($destination->visitedat)
+                                        · {{ $destination->visitedat->format('d M Y') }}
+                                    @endif
+                                </dd>
+                            </div>
+
+                            @if ($destination->wishlistaddedat)
+                                <div class="flex justify-between gap-4">
+                                    <dt class="text-gray-500">Added to interest list</dt>
+                                    <dd class="text-right text-gray-900">
+                                        {{ $destination->wishlistaddedat->format('d M Y') }}
+                                    </dd>
+                                </div>
+                            @endif
                         </dl>
                     </div>
                 </div>

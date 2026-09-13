@@ -13,111 +13,171 @@
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 border-b border-gray-200">
-    <form method="GET"
-          action="{{ route('destinations.index') }}"
-          id="destinations-filter-form"
-          class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <form
+                        method="GET"
+                        action="{{ route('destinations.index') }}"
+                        id="destinations-filter-form"
+                        class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4"
+                    >
+                        <div>
+                            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">
+                                Search
+                            </label>
 
-        <div>
-            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">
-                Search
-            </label>
-            <input type="text"
-                   name="search"
-                   id="search"
-                   value="{{ request('search') }}"
-                   class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                   placeholder="Name, best season, overview">
-        </div>
+                            <input
+                                type="text"
+                                name="search"
+                                id="search"
+                                value="{{ request('search') }}"
+                                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                placeholder="Name, best season, overview"
+                            >
+                        </div>
 
-        <div>
-            <label for="placeid" class="block text-sm font-medium text-gray-700 mb-1">
-                Place
-            </label>
-            <select name="placeid"
-                    id="placeid"
-                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                <option value="">All</option>
-                @foreach($places as $place)
-                    <option value="{{ $place->id }}"
-                        @selected((string) request('placeid') === (string) $place->id)>
-                        {{ $place->placename }}
-                    </option>
-                @endforeach
-            </select>
-        </div>
+                        <div>
+                            <label for="placeid" class="block text-sm font-medium text-gray-700 mb-1">
+                                Place
+                            </label>
 
-        <div>
-            <label for="destinationtype" class="block text-sm font-medium text-gray-700 mb-1">
-                Type
-            </label>
-            <select name="destinationtype"
-                    id="destinationtype"
-                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                <option value="">All</option>
-                @foreach($typeOptions as $type)
-                    <option value="{{ $type }}"
-                        @selected(request('destinationtype') === $type)>
-                        {{ ucfirst($type) }}
-                    </option>
-                @endforeach
-            </select>
-        </div>
+                            <select
+                                name="placeid"
+                                id="placeid"
+                                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                            >
+                                <option value="">All</option>
 
-        <div>
-            <label for="visited" class="block text-sm font-medium text-gray-700 mb-1">
-                Visited
-            </label>
-            <select name="visited"
-                    id="visited"
-                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                <option value="">All</option>
-                <option value="1" @selected(request('visited') === '1')>Visited</option>
-                <option value="0" @selected(request('visited') === '0')>Not Visited</option>
-            </select>
-        </div>
+                                @foreach ($places as $place)
+                                    <option
+                                        value="{{ $place->id }}"
+                                        @selected((string) request('placeid') === (string) $place->id)
+                                    >
+                                        {{ $place->placename }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
 
-        <div>
-            <label for="featured" class="block text-sm font-medium text-gray-700 mb-1">
-                Featured
-            </label>
-            <select name="featured"
-                    id="featured"
-                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
-                <option value="">All</option>
-                <option value="1" @selected(request('featured') === '1')>Featured</option>
-                <option value="0" @selected(request('featured') === '0')>Not Featured</option>
-            </select>
-        </div>
+                        <div>
+                            <label for="destinationtype" class="block text-sm font-medium text-gray-700 mb-1">
+                                Type
+                            </label>
 
-        <div class="md:col-span-4 flex items-end gap-2">
-            <button type="submit"
-                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-                Filter
-            </button>
+                            <select
+                                name="destinationtype"
+                                id="destinationtype"
+                                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                            >
+                                <option value="">All</option>
 
-            <a href="{{ route('destinations.index') }}"
-               class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm"
-               id="destinations-reset-link">
-                Reset
-            </a>
+                                @foreach ($typeOptions as $type)
+                                    <option
+                                        value="{{ $type }}"
+                                        @selected(request('destinationtype') === $type)
+                                    >
+                                        {{ ucfirst($type) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
 
-<span class="ml-auto text-xs text-gray-500">
-    {{ number_format($totalDestinations) }} destinations
-</span>
-        </div>
-    </form>
-</div>
+                        <div>
+                            <label for="visited" class="block text-sm font-medium text-gray-700 mb-1">
+                                Visited
+                            </label>
 
-                <form method="POST"
+                            <select
+                                name="visited"
+                                id="visited"
+                                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                            >
+                                <option value="">All</option>
+                                <option value="1" @selected(request('visited') === '1')>
+                                    Visited
+                                </option>
+                                <option value="0" @selected(request('visited') === '0')>
+                                    Not visited
+                                </option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="visitinterestlevel" class="block text-sm font-medium text-gray-700 mb-1">
+                                Travel interest
+                            </label>
+
+                            <select
+                                name="visitinterestlevel"
+                                id="visitinterestlevel"
+                                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                            >
+                                <option value="">All</option>
+
+                                @foreach ($visitInterestOptions as $value => $label)
+                                    <option
+                                        value="{{ $value }}"
+                                        @selected(request('visitinterestlevel') === $value)
+                                    >
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="featured" class="block text-sm font-medium text-gray-700 mb-1">
+                                Featured
+                            </label>
+
+                            <select
+                                name="featured"
+                                id="featured"
+                                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                            >
+                                <option value="">All</option>
+                                <option value="1" @selected(request('featured') === '1')>
+                                    Featured
+                                </option>
+                                <option value="0" @selected(request('featured') === '0')>
+                                    Not featured
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="md:col-span-3 xl:col-span-6 flex items-end gap-2">
+                            <button
+                                type="submit"
+                                class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                            >
+                                Filter
+                            </button>
+
+                            <a
+                                href="{{ route('destinations.index') }}"
+                                class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm"
+                                id="destinations-reset-link"
+                            >
+                                Reset
+                            </a>
+
+                            <span class="ml-auto text-xs text-gray-500">
+                                {{ number_format($totalDestinations) }} destinations
+                            </span>
+                        </div>
+                    </form>
+                </div>
+
+                <form
+                    method="POST"
                     action="{{ route('destinations.bulk-save') }}"
-                    id="destinations-form">
+                    id="destinations-form"
+                >
                     @csrf
 
                     <input type="hidden" name="return_to" value="{{ url()->full() }}">
                     <input type="hidden" name="placeid" value="{{ request('placeid') }}">
                     <input type="hidden" name="destinationtype" value="{{ request('destinationtype') }}">
                     <input type="hidden" name="visited" value="{{ request('visited') }}">
+                    <input type="hidden" name="visitinterestlevel" value="{{ request('visitinterestlevel') }}">
                     <input type="hidden" name="featured" value="{{ request('featured') }}">
                     <input type="hidden" name="search" value="{{ request('search') }}">
                     <input type="hidden" name="page" value="{{ request('page') }}">
@@ -132,7 +192,6 @@
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                                         Place
                                     </th>
-
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                                         Type
                                     </th>
@@ -144,6 +203,9 @@
                                     </th>
                                     <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">
                                         Visited
+                                    </th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Travel Interest
                                     </th>
                                     <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">
                                         Featured
@@ -158,7 +220,7 @@
                             </thead>
 
                             <tbody class="bg-white divide-y divide-gray-200">
-                                @forelse($destinations as $destination)
+                                @forelse ($destinations as $destination)
                                     <tr>
                                         <td class="px-3 py-2">
                                             <a
@@ -178,20 +240,31 @@
                                             >
                                         </td>
 
-<td class="px-3 py-2 text-sm text-gray-700">
-    {{ $destination->place?->placename ?? '—' }}
+                                        <td class="px-3 py-2 text-sm text-gray-700">
+                                            {{ $destination->place?->placename ?? '—' }}
 
-    <input type="hidden"
-           name="existing[{{ $destination->id }}][placeid]"
-           value="{{ old("existing.{$destination->id}.placeid", $destination->placeid) }}">
-</td>
+                                            <input
+                                                type="hidden"
+                                                name="existing[{{ $destination->id }}][placeid]"
+                                                value="{{ old("existing.{$destination->id}.placeid", $destination->placeid) }}"
+                                            >
+                                        </td>
 
                                         <td class="px-3 py-2">
-                                            <select name="existing[{{ $destination->id }}][destinationtype]"
-                                                    class="w-40 rounded-md border-gray-300 shadow-sm text-sm">
-                                                @foreach($typeOptions as $type)
-                                                    <option value="{{ $type }}"
-                                                        @selected(old("existing.{$destination->id}.destinationtype", $destination->destinationtype) === $type)>
+                                            <select
+                                                name="existing[{{ $destination->id }}][destinationtype]"
+                                                class="w-40 rounded-md border-gray-300 shadow-sm text-sm"
+                                            >
+                                                @foreach ($typeOptions as $type)
+                                                    <option
+                                                        value="{{ $type }}"
+                                                        @selected(
+                                                            old(
+                                                                "existing.{$destination->id}.destinationtype",
+                                                                $destination->destinationtype
+                                                            ) === $type
+                                                        )
+                                                    >
                                                         {{ ucfirst($type) }}
                                                     </option>
                                                 @endforeach
@@ -199,28 +272,31 @@
                                         </td>
 
                                         <td class="px-3 py-2">
-                                            <input type="text"
-                                                   name="existing[{{ $destination->id }}][bestseason]"
-                                                   value="{{ old("existing.{$destination->id}.bestseason", $destination->bestseason) }}"
-                                                   class="w-40 rounded-md border-gray-300 shadow-sm text-sm">
+                                            <input
+                                                type="text"
+                                                name="existing[{{ $destination->id }}][bestseason]"
+                                                value="{{ old("existing.{$destination->id}.bestseason", $destination->bestseason) }}"
+                                                class="w-40 rounded-md border-gray-300 shadow-sm text-sm"
+                                            >
                                         </td>
-                                        @php
-                                            $revisitOptions = [
-                                                'very_likely' => 'Very Likely',
-                                                'likely' => 'Likely',
-                                                'neutral' => 'Neutral',
-                                                'unlikely' => 'Unlikely',
-                                                'very_unlikely' => 'Very Unlikely',
-                                            ];
-                                        @endphp
 
                                         <td class="px-3 py-2">
-                                            <select name="existing[{{ $destination->id }}][revisitinterestlevel]"
-                                                    class="w-40 rounded-md border-gray-300 shadow-sm text-sm">
+                                            <select
+                                                name="existing[{{ $destination->id }}][revisitinterestlevel]"
+                                                class="w-40 rounded-md border-gray-300 shadow-sm text-sm"
+                                            >
                                                 <option value="">Select</option>
-                                                @foreach($revisitOptions as $value => $label)
-                                                    <option value="{{ $value }}"
-                                                        @selected(old("existing.{$destination->id}.revisitinterestlevel", $destination->revisitinterestlevel) === $value)>
+
+                                                @foreach ($revisitOptions as $value => $label)
+                                                    <option
+                                                        value="{{ $value }}"
+                                                        @selected(
+                                                            old(
+                                                                "existing.{$destination->id}.revisitinterestlevel",
+                                                                $destination->revisitinterestlevel
+                                                            ) === $value
+                                                        )
+                                                    >
                                                         {{ $label }}
                                                     </option>
                                                 @endforeach
@@ -228,62 +304,112 @@
                                         </td>
 
                                         <td class="px-3 py-2 text-center">
-                                            <input type="hidden" name="existing[{{ $destination->id }}][hasvisited]" value="0">
-                                            <input type="checkbox"
+                                            <input
+                                                type="hidden"
+                                                name="existing[{{ $destination->id }}][hasvisited]"
+                                                value="0"
+                                            >
+
+                                            <input
+                                                type="checkbox"
                                                 name="existing[{{ $destination->id }}][hasvisited]"
                                                 value="1"
                                                 class="rounded border-gray-300 text-blue-600 shadow-sm"
-                                                @checked(old("existing.{$destination->id}.hasvisited", $destination->hasvisited))>
+                                                @checked(old("existing.{$destination->id}.hasvisited", $destination->hasvisited))
+                                            >
+                                        </td>
+
+                                        <td class="px-3 py-2">
+                                            <select
+                                                name="existing[{{ $destination->id }}][visitinterestlevel]"
+                                                class="w-40 rounded-md border-gray-300 shadow-sm text-sm"
+                                            >
+                                                <option value="">—</option>
+
+                                                @foreach ($visitInterestOptions as $value => $label)
+                                                    <option
+                                                        value="{{ $value }}"
+                                                        @selected(
+                                                            old(
+                                                                "existing.{$destination->id}.visitinterestlevel",
+                                                                $destination->visitinterestlevel
+                                                            ) === $value
+                                                        )
+                                                    >
+                                                        {{ $label }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
                                         </td>
 
                                         <td class="px-3 py-2 text-center">
-                                            <input type="hidden" name="existing[{{ $destination->id }}][isfeatured]" value="0">
-                                            <input type="checkbox"
-                                                   name="existing[{{ $destination->id }}][isfeatured]"
-                                                   value="1"
-                                                   class="rounded border-gray-300 text-blue-600 shadow-sm"
-                                                   @checked(old("existing.{$destination->id}.isfeatured", $destination->isfeatured))>
+                                            <input
+                                                type="hidden"
+                                                name="existing[{{ $destination->id }}][isfeatured]"
+                                                value="0"
+                                            >
+
+                                            <input
+                                                type="checkbox"
+                                                name="existing[{{ $destination->id }}][isfeatured]"
+                                                value="1"
+                                                class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                                @checked(old("existing.{$destination->id}.isfeatured", $destination->isfeatured))
+                                            >
                                         </td>
+
                                         <td class="px-3 py-2 text-center text-sm text-gray-700">
                                             {{ $destination->destination_items_count ?? 0 }}
                                         </td>
 
                                         <td class="px-3 py-2 text-center whitespace-nowrap">
-                                            <a href="{{ route('destinations.edit', [
+                                            <a
+                                                href="{{ route('destinations.edit', [
                                                     'destination' => $destination,
                                                     'return_to' => url()->full(),
                                                 ]) }}"
-                                            class="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs">
+                                                class="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs"
+                                            >
                                                 Open
                                             </a>
-
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="9" class="px-3 py-6 text-center text-sm text-gray-500">
+                                        <td colspan="10" class="px-3 py-6 text-center text-sm text-gray-500">
                                             No destinations found.
                                         </td>
                                     </tr>
                                 @endforelse
 
                                 <tr class="bg-blue-50">
-
-
                                     <td class="px-3 py-2">
-                                        <input type="text"
-                                               name="new[destinationname]"
-                                               value="{{ old('new.destinationname') }}"
-                                               class="w-56 rounded-md border-gray-300 shadow-sm text-sm"
-                                               placeholder="New destination name">
+                                        <input
+                                            type="text"
+                                            name="new[destinationname]"
+                                            value="{{ old('new.destinationname') }}"
+                                            class="w-56 rounded-md border-gray-300 shadow-sm text-sm"
+                                            placeholder="New destination name"
+                                        >
                                     </td>
+
                                     <td class="px-3 py-2">
-                                        <select name="new[placeid]"
-                                                class="w-56 rounded-md border-gray-300 shadow-sm text-sm">
+                                        <select
+                                            name="new[placeid]"
+                                            class="w-56 rounded-md border-gray-300 shadow-sm text-sm"
+                                        >
                                             <option value="">None</option>
-                                            @foreach($places as $place)
-                                                <option value="{{ $place->id }}"
-                                                    @selected((string) old('new.placeid', request('placeid')) === (string) $place->id)>
+
+                                            @foreach ($places as $place)
+                                                <option
+                                                    value="{{ $place->id }}"
+                                                    @selected(
+                                                        (string) old(
+                                                            'new.placeid',
+                                                            request('placeid')
+                                                        ) === (string) $place->id
+                                                    )
+                                                >
                                                     {{ $place->placename }}
                                                 </option>
                                             @endforeach
@@ -291,12 +417,17 @@
                                     </td>
 
                                     <td class="px-3 py-2">
-                                        <select name="new[destinationtype]"
-                                                class="w-40 rounded-md border-gray-300 shadow-sm text-sm">
+                                        <select
+                                            name="new[destinationtype]"
+                                            class="w-40 rounded-md border-gray-300 shadow-sm text-sm"
+                                        >
                                             <option value="">Select type</option>
-                                            @foreach($typeOptions as $type)
-                                                <option value="{{ $type }}"
-                                                    @selected(old('new.destinationtype') === $type)>
+
+                                            @foreach ($typeOptions as $type)
+                                                <option
+                                                    value="{{ $type }}"
+                                                    @selected(old('new.destinationtype') === $type)
+                                                >
                                                     {{ ucfirst($type) }}
                                                 </option>
                                             @endforeach
@@ -304,45 +435,81 @@
                                     </td>
 
                                     <td class="px-3 py-2">
-                                        <input type="text"
-                                               name="new[bestseason]"
-                                               value="{{ old('new.bestseason') }}"
-                                               class="w-40 rounded-md border-gray-300 shadow-sm text-sm"
-                                               placeholder="Best season">
+                                        <input
+                                            type="text"
+                                            name="new[bestseason]"
+                                            value="{{ old('new.bestseason') }}"
+                                            class="w-40 rounded-md border-gray-300 shadow-sm text-sm"
+                                            placeholder="Best season"
+                                        >
                                     </td>
 
                                     <td class="px-3 py-2">
-                                        <select name="new[revisitinterestlevel]"
-                                                class="w-40 rounded-md border-gray-300 shadow-sm text-sm">
+                                        <select
+                                            name="new[revisitinterestlevel]"
+                                            class="w-40 rounded-md border-gray-300 shadow-sm text-sm"
+                                        >
                                             <option value="">Select</option>
-                                            @foreach($revisitOptions as $value => $label)
-                                                <option value="{{ $value }}"
-                                                    @selected(old('new.revisitinterestlevel') === $value)>
+
+                                            @foreach ($revisitOptions as $value => $label)
+                                                <option
+                                                    value="{{ $value }}"
+                                                    @selected(old('new.revisitinterestlevel') === $value)
+                                                >
                                                     {{ $label }}
                                                 </option>
                                             @endforeach
                                         </select>
                                     </td>
+
                                     <td class="px-3 py-2 text-center">
                                         <input type="hidden" name="new[hasvisited]" value="0">
-                                        <input type="checkbox"
+
+                                        <input
+                                            type="checkbox"
                                             name="new[hasvisited]"
                                             value="1"
                                             class="rounded border-gray-300 text-blue-600 shadow-sm"
-                                            @checked(old('new.hasvisited', false))>
+                                            @checked(old('new.hasvisited', false))
+                                        >
+                                    </td>
+
+                                    <td class="px-3 py-2">
+                                        <select
+                                            name="new[visitinterestlevel]"
+                                            class="w-40 rounded-md border-gray-300 shadow-sm text-sm"
+                                        >
+                                            <option value="">—</option>
+
+                                            @foreach ($visitInterestOptions as $value => $label)
+                                                <option
+                                                    value="{{ $value }}"
+                                                    @selected(old('new.visitinterestlevel') === $value)
+                                                >
+                                                    {{ $label }}
+                                                </option>
+                                            @endforeach
+                                        </select>
                                     </td>
 
                                     <td class="px-3 py-2 text-center">
                                         <input type="hidden" name="new[isfeatured]" value="0">
-                                        <input type="checkbox"
-                                               name="new[isfeatured]"
-                                               value="1"
-                                               class="rounded border-gray-300 text-blue-600 shadow-sm"
-                                               @checked(old('new.isfeatured', false))>
+
+                                        <input
+                                            type="checkbox"
+                                            name="new[isfeatured]"
+                                            value="1"
+                                            class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                            @checked(old('new.isfeatured', false))
+                                        >
                                     </td>
 
                                     <td class="px-3 py-2 text-center text-xs text-gray-500">
                                         New row
+                                    </td>
+
+                                    <td class="px-3 py-2 text-center text-xs text-gray-500">
+                                        —
                                     </td>
                                 </tr>
                             </tbody>
@@ -351,12 +518,14 @@
 
                     <div class="p-6 border-t border-gray-200 flex items-center justify-between">
                         <p class="text-sm text-gray-500">
-                            Edit summary fields here. Open a destination for overview, travel notes, suitability, access notes, and commentary.
+                            Edit summary fields here. Open a destination for overview, travel notes, suitability, access notes, commentary, travel-interest notes, and visit dates.
                         </p>
 
-                        <button type="submit"
-                                class="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                                id="destinations-save-button">
+                        <button
+                            type="submit"
+                            class="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                            id="destinations-save-button"
+                        >
                             Save Destinations
                         </button>
                     </div>
@@ -364,10 +533,17 @@
 
                 @include('partials.admin.compact-delete-form', [
                     'formId' => 'delete-destination-form',
-                    'query' => request()->only(['placeid', 'destinationtype', 'featured', 'visited', 'search', 'page']),
+                    'query' => request()->only([
+                        'placeid',
+                        'destinationtype',
+                        'visitinterestlevel',
+                        'featured',
+                        'visited',
+                        'search',
+                        'page',
+                    ]),
                 ])
             </div>
-            
 
             <div>
                 {{ $destinations->links() }}

@@ -272,4 +272,5 @@ class TripLeg extends Model
     {
         return $this->hasMany(TripExpense::class, 'triplegid');
     }
+
 }

@@ -221,9 +221,13 @@
 
             <div id="related_destinationitem_list"
                 class="{{ blank($selectedPlaceId) ? 'hidden' : 'grid' }} mt-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-h-80 overflow-y-auto rounded-md border border-gray-200 bg-white p-3">
-                @foreach($destinationItems as $item)
+                @foreach ($destinationItems as $item)
                     @php
-                        $resolvedPlaceId = (string) ($item->placeid ?? $item->destination?->placeid ?? '');
+                        $resolvedPlaceId = (string) (
+                            $item->placeid
+                            ?? ($item->destination ? $item->destination->placeid : '')
+                        );
+
                         $resolvedDestinationId = (string) ($item->destinationid ?? '');
 
                         $matchesPlace = filled($selectedPlaceId)
@@ -233,26 +237,91 @@
                             || $resolvedDestinationId === $selectedDestinationId;
 
                         $isVisibleInitially = $matchesPlace && $matchesDestination;
+
+                        $interestClass = 'border-gray-200 bg-white hover:bg-gray-50';
+                        $interestBadgeClass = '';
+                        $interestLabel = '';
+
+                        if ($item->visitinterestlevel === 'must_visit') {
+                            $interestClass = 'border-rose-300 bg-rose-50 hover:bg-rose-100';
+                            $interestBadgeClass = 'bg-rose-200 text-rose-900';
+                            $interestLabel = 'Must visit';
+                        } elseif ($item->visitinterestlevel === 'very_interested') {
+                            $interestClass = 'border-amber-300 bg-amber-50 hover:bg-amber-100';
+                            $interestBadgeClass = 'bg-amber-200 text-amber-900';
+                            $interestLabel = 'Very interested';
+                        } elseif ($item->visitinterestlevel === 'interested') {
+                            $interestClass = 'border-sky-300 bg-sky-50 hover:bg-sky-100';
+                            $interestBadgeClass = 'bg-sky-200 text-sky-900';
+                            $interestLabel = 'Interested';
+                        } elseif ($item->visitinterestlevel === 'if_nearby') {
+                            $interestClass = 'border-slate-300 bg-slate-50 hover:bg-slate-100';
+                            $interestBadgeClass = 'bg-slate-200 text-slate-800';
+                            $interestLabel = 'If nearby';
+                        }
                     @endphp
 
-                    <label class="related-destination-item-row flex items-start gap-3 rounded-md border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50"
+                    <label
+                        class="related-destination-item-row flex items-start gap-3 rounded-md border px-3 py-2 {{ $interestClass }}"
                         data-place-id="{{ $resolvedPlaceId }}"
                         data-destination-id="{{ $resolvedDestinationId }}"
-                        @if(! $isVisibleInitially) style="display:none;" @endif>
-                        <input type="checkbox"
+                        @if (! $isVisibleInitially) style="display:none;" @endif
+                    >
+                        <input
+                            type="checkbox"
                             name="selected_destinationitemids[]"
                             value="{{ $item->id }}"
                             class="related-destination-item-checkbox mt-1 rounded border-gray-300"
-                            @checked(in_array((int) $item->id, $selectedDestinationItemIdsForForm, true))>
+                            @checked(in_array((int) $item->id, $selectedDestinationItemIdsForForm, true))
+                        >
 
-                        <span class="min-w-0">
-                            <span class="block text-sm font-medium text-gray-900">
-                                {{ $item->itemname }}
+                        <span class="min-w-0 flex-1">
+                            <span class="flex items-start justify-between gap-2">
+                                <span class="block text-sm font-medium text-gray-900">
+                                    {{ $item->itemname }}
+                                </span>
+
+                                @if ($interestLabel !== '')
+                                    <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold {{ $interestBadgeClass }}">
+                                        {{ $interestLabel }}
+                                    </span>
+                                @endif
                             </span>
 
                             <span class="mt-0.5 block text-xs text-gray-500">
-                                {{ $item->destination->destinationname ?? 'No destination' }}
+                                {{ $item->destination ? $item->destination->destinationname : 'No destination' }}
+
+                                @if ($item->recommendedstayminutes)
+                                    · {{ $item->recommendedstayminutes }} min
+                                @endif
+
+                                @if ($item->bookingrequired)
+                                    · Booking required
+                                @endif
                             </span>
+
+                            @if ($item->visitinterestlevel)
+                                <span class="mt-1 block text-xs text-gray-600">
+                                    @if ($item->hasvisited)
+                                        Visited
+                                        @if ($item->visitedat)
+                                            · {{ $item->visitedat->format('d M Y') }}
+                                        @endif
+                                    @else
+                                        Not visited
+                                    @endif
+
+                                    @if ($item->stillwanttovisit)
+                                        · Still interested
+                                    @endif
+                                </span>
+                            @endif
+
+                            @if ($item->visitinterestnotes)
+                                <span class="mt-1 block text-xs text-gray-700">
+                                    {{ \Illuminate\Support\Str::limit($item->visitinterestnotes, 120) }}
+                                </span>
+                            @endif
                         </span>
                     </label>
                 @endforeach
@@ -349,11 +418,16 @@
                 preview-title="Planning Notes Preview"
             />
 
-            <div id="nearby_places_card"
-                 class="hidden bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-4">
+            <div
+                id="nearby_places_card"
+                class="hidden bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-4"
+            >
                 <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                     <div>
-                        <h3 class="text-sm font-semibold text-gray-900">Nearby Places</h3>
+                        <h3 class="text-sm font-semibold text-gray-900">
+                            Nearby Places
+                        </h3>
+
                         <p class="text-xs text-gray-600">
                             Search nearby places for the selected place without leaving this page.
                         </p>
@@ -361,10 +435,17 @@
 
                     <div class="flex items-end gap-3">
                         <div>
-                            <label for="nearby_radius_km" class="block text-xs font-medium text-gray-700 mb-1">
+                            <label
+                                for="nearby_radius_km"
+                                class="block text-xs font-medium text-gray-700 mb-1"
+                            >
                                 Radius
                             </label>
-                            <select id="nearby_radius_km" class="rounded-md border-gray-300 shadow-sm text-sm">
+
+                            <select
+                                id="nearby_radius_km"
+                                class="rounded-md border-gray-300 shadow-sm text-sm"
+                            >
                                 <option value="25">25 km</option>
                                 <option value="50" selected>50 km</option>
                                 <option value="100">100 km</option>
@@ -373,15 +454,19 @@
                             </select>
                         </div>
 
-                        <button type="button"
-                                id="nearby_places_apply"
-                                class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
+                        <button
+                            type="button"
+                            id="nearby_places_apply"
+                            class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+                        >
                             Apply
                         </button>
 
-                        <button type="button"
-                                id="nearby_places_close"
-                                class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 text-sm">
+                        <button
+                            type="button"
+                            id="nearby_places_close"
+                            class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 text-sm"
+                        >
                             Close
                         </button>
                     </div>
@@ -395,15 +480,30 @@
                     <table class="min-w-full divide-y divide-gray-200 text-sm">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Place</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Distance</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Place
+                                </th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Type
+                                </th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Distance
+                                </th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Interest
+                                </th>
+                                <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">
+                                    Items
+                                </th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Actions
+                                </th>
                             </tr>
                         </thead>
+
                         <tbody id="nearby_places_results" class="divide-y divide-gray-100 bg-white">
                             <tr>
-                                <td colspan="4" class="px-3 py-4 text-center text-sm text-gray-500">
+                                <td colspan="6" class="px-3 py-4 text-center text-sm text-gray-500">
                                     No nearby search loaded yet.
                                 </td>
                             </tr>
@@ -412,6 +512,8 @@
                 </div>
 
                 <p class="text-[11px] text-gray-500">
+                    Interest shows the highest outstanding shared travel priority at that Place.
+                    Items counts flagged Destinations and Destination Items.
                     Use <span class="font-medium">Add after</span> to insert a new planning item after the current one.
                 </p>
             </div>
@@ -628,24 +730,86 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!items.length) {
             nearbyResults.innerHTML = `
                 <tr>
-                    <td colspan="4" class="px-3 py-4 text-center text-sm text-gray-500">
+                    <td colspan="6" class="px-3 py-4 text-center text-sm text-gray-500">
                         No places found within the selected radius.
                     </td>
                 </tr>
             `;
+
             return;
+        }
+
+        function interestBadgeClass(priority) {
+            if (Number(priority) === 1) {
+                return 'bg-rose-100 text-rose-800';
+            }
+
+            if (Number(priority) === 2) {
+                return 'bg-amber-100 text-amber-800';
+            }
+
+            if (Number(priority) === 3) {
+                return 'bg-sky-100 text-sky-800';
+            }
+
+            if (Number(priority) === 4) {
+                return 'bg-slate-100 text-slate-700';
+            }
+
+            return '';
+        }
+
+        function interestCell(item) {
+            const count = Number(item.interest_count || 0);
+            const label = item.interest_label || '';
+            const priority = item.interest_priority;
+
+            if (!label || count < 1) {
+                return `
+                    <td class="px-3 py-2 text-sm text-gray-400">
+                        —
+                    </td>
+                    <td class="px-3 py-2 text-center text-sm text-gray-400">
+                        —
+                    </td>
+                `;
+            }
+
+            return `
+                <td class="px-3 py-2">
+                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${interestBadgeClass(priority)}">
+                        ${escapeHtml(label)}
+                    </span>
+                </td>
+                <td class="px-3 py-2 text-center text-sm font-medium text-gray-700">
+                    ${count}
+                </td>
+            `;
         }
 
         nearbyResults.innerHTML = items.map(item => `
             <tr>
-                <td class="px-3 py-2 text-sm text-gray-900">${escapeHtml(item.placename || '')}</td>
-                <td class="px-3 py-2 text-sm text-gray-700">${escapeHtml(item.placetype || '')}</td>
-                <td class="px-3 py-2 text-sm text-gray-700">${Number(item.distance_km).toFixed(1)} km</td>
+                <td class="px-3 py-2 text-sm text-gray-900">
+                    ${escapeHtml(item.placename || '')}
+                </td>
+
+                <td class="px-3 py-2 text-sm text-gray-700">
+                    ${escapeHtml(item.placetype || '')}
+                </td>
+
+                <td class="px-3 py-2 text-sm text-gray-700">
+                    ${Number(item.distance_km).toFixed(1)} km
+                </td>
+
+                ${interestCell(item)}
+
                 <td class="px-3 py-2 text-sm whitespace-nowrap">
-                    <button type="button"
-                            class="nearby-add-after inline-flex items-center px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium"
-                            data-place-id="${escapeHtml(item.id)}"
-                            data-place-name="${escapeHtml(item.placename || '')}">
+                    <button
+                        type="button"
+                        class="nearby-add-after inline-flex items-center px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium"
+                        data-place-id="${escapeHtml(item.id)}"
+                        data-place-name="${escapeHtml(item.placename || '')}"
+                    >
                         Add after
                     </button>
                 </td>
@@ -669,7 +833,7 @@ document.addEventListener('DOMContentLoaded', function () {
         nearbyStatus.textContent = 'Loading nearby places...';
         nearbyResults.innerHTML = `
             <tr>
-                <td colspan="4" class="px-3 py-4 text-center text-sm text-gray-500">
+                <td colspan="6" class="px-3 py-4 text-center text-sm text-gray-500">
                     Loading...
                 </td>
             </tr>
@@ -691,7 +855,7 @@ document.addEventListener('DOMContentLoaded', function () {
             nearbyStatus.textContent = 'Could not load nearby places.';
             nearbyResults.innerHTML = `
                 <tr>
-                    <td colspan="4" class="px-3 py-4 text-center text-sm text-red-600">
+                    <td colspan="6" class="px-3 py-4 text-center text-sm text-red-600">
                         Could not load nearby places.
                     </td>
                 </tr>

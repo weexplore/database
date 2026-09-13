@@ -30,6 +30,10 @@ class Destination extends Model
         'personalcommentary',
         'revisitinterestlevel',
         'hasvisited',
+        'visitinterestlevel',
+        'visitinterestnotes',
+        'wishlistaddedat',
+        'visitedat',
         'isfeatured',
     ];
 
@@ -38,6 +42,9 @@ class Destination extends Model
         'placeid' => 'integer',
         'hasvisited' => 'boolean',
         'isfeatured' => 'boolean',
+        'visitinterestlevel' => 'string',
+        'wishlistaddedat' => 'datetime',
+        'visitedat' => 'date',
         'createdat' => 'datetime',
         'updatedat' => 'datetime',
     ];
@@ -76,6 +83,16 @@ class Destination extends Model
     {
         return $this->hasMany(DestinationSource::class, 'destinationid');
     }
+
+        public static function visitInterestOptions(): array
+    {
+        return [
+            'must_visit' => 'Must visit',
+            'very_interested' => 'Very interested',
+            'interested' => 'Interested',
+            'if_nearby' => 'If nearby',
+        ];
+    }
     public static function typeOptions(): array
     {
         return [
@@ -102,4 +119,6 @@ class Destination extends Model
     {
         return $this->hasMany(TripLegSuggestion::class);
     }
+
+
 }

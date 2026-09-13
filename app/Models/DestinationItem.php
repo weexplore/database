@@ -7,6 +7,7 @@ use App\Models\Review;
 use App\Models\Attachment;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DestinationItem extends Model
@@ -43,6 +44,12 @@ class DestinationItem extends Model
         'recommendedstayminutes',
         'sortorder',
         'isactive',
+        'visitinterestlevel',
+        'visitinterestnotes',
+        'wishlistaddedat',
+        'hasvisited',
+        'visitedat',
+        'stillwanttovisit',
     ];
 
     protected $casts = [
@@ -56,8 +63,22 @@ class DestinationItem extends Model
         'recommendedstayminutes' => 'integer',
         'sortorder' => 'integer',
         'isactive' => 'boolean',
+        'visitinterestlevel' => 'string',
+        'wishlistaddedat' => 'datetime',
+        'hasvisited' => 'boolean',
+        'visitedat' => 'date',
+        'stillwanttovisit' => 'boolean',
     ];
 
+    public static function visitInterestOptions(): array
+    {
+        return [
+            'must_visit' => 'Must visit',
+            'very_interested' => 'Very interested',
+            'interested' => 'Interested',
+            'if_nearby' => 'If nearby',
+        ];
+    }
     public static function itemTypeOptions(): array
     {
         return [
@@ -160,4 +181,48 @@ class DestinationItem extends Model
     {
         return $this->hasMany(TripLegSuggestion::class, 'destination_item_id');
     }
+    public function destinationTripLegs(): HasMany
+    {
+        return $this->hasMany(
+            TripLeg::class,
+            'destinationid',
+            'destinationid'
+        );
+    }
+ 
+    public function tripLegs(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            TripLeg::class,
+            'tripleg_destinationitems',
+            'destinationitemid',
+            'triplegid'
+        )
+            ->withPivot([
+                'id',
+                'sequence_no',
+                'linkrole',
+                'notes',
+                'planneddate',
+                'createdat',
+                'updatedat',
+            ])
+            ->withTimestamps('createdat', 'updatedat');
+    }
+
+    public function legsStartingHere(): HasMany
+    {
+        return $this->hasMany(
+            TripLeg::class,
+            'fromdestinationitemid'
+        );
+    }
+
+    public function legsEndingHere(): HasMany
+    {
+        return $this->hasMany(
+            TripLeg::class,
+            'todestinationitemid'
+        );
+    }   
 }

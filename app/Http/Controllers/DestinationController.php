@@ -31,17 +31,18 @@ private function typeOptions(): array
     ->select(['id', 'placename'])
     ->get();    
 
-    $query = Destination::query()
-    ->select([
-        'id',
-        'placeid',
-        'destinationname',
-        'destinationtype',
-        'bestseason',
-        'revisitinterestlevel',
-        'hasvisited',
-        'isfeatured',
-    ])
+   $query = Destination::query()
+        ->select([
+            'id',
+            'placeid',
+            'destinationname',
+            'destinationtype',
+            'bestseason',
+            'revisitinterestlevel',
+            'hasvisited',
+            'visitinterestlevel',
+            'isfeatured',
+        ])
         ->withCount([
             'items as destination_items_count',
         ]);
@@ -60,6 +61,9 @@ private function typeOptions(): array
 
     if ($request->filled('featured')) {
         $query->where('isfeatured', (int) $request->featured);
+    }
+    if ($request->filled('visitinterestlevel')) {
+        $query->where('visitinterestlevel', $request->visitinterestlevel);
     }
 
     if ($request->filled('search')) {
@@ -84,6 +88,7 @@ private function typeOptions(): array
         'typeOptions' => $this->typeOptions(),
         'totalDestinations' => $totalDestinations,
         'revisitOptions' => self::revisitOptions(),
+        'visitInterestOptions' => $this->visitInterestOptions(),
     ]);
 }
 
@@ -96,8 +101,19 @@ private function typeOptions(): array
             'existing.*.destinationname' => ['required', 'string', 'max:200'],
             'existing.*.destinationtype' => ['required', 'string', Rule::in($this->typeOptions())],
             'existing.*.bestseason' => ['nullable', 'string', 'max:100'],
-            'existing.*.revisitinterestlevel' => ['nullable', 'string', Rule::in(array_keys($this->revisitOptions()))],
+            'existing.*.revisitinterestlevel' => [
+                'nullable',
+                'string',
+                Rule::in(array_keys($this->revisitOptions())),
+            ],
             'existing.*.hasvisited' => ['nullable', 'boolean'],
+            'existing.*.visitinterestlevel' => [
+                'nullable',
+                'string',
+                Rule::in(array_keys($this->visitInterestOptions())),
+            ],
+            'existing.*.visitinterestnotes' => ['nullable', 'string'],
+            'existing.*.visitedat' => ['nullable', 'date'],
             'existing.*.isfeatured' => ['nullable', 'boolean'],
 
 
@@ -106,12 +122,28 @@ private function typeOptions(): array
             'new.destinationname' => ['nullable', 'string', 'max:200'],
             'new.destinationtype' => ['nullable', 'string', Rule::in($this->typeOptions())],
             'new.bestseason' => ['nullable', 'string', 'max:100'],
-            'new.revisitinterestlevel' => ['nullable', 'string', Rule::in(array_keys($this->revisitOptions()))],
+            'new.revisitinterestlevel' => [
+                'nullable',
+                'string',
+                Rule::in(array_keys($this->revisitOptions())),
+            ],
             'new.hasvisited' => ['nullable', 'boolean'],
+            'new.visitinterestlevel' => [
+                'nullable',
+                'string',
+                Rule::in(array_keys($this->visitInterestOptions())),
+            ],
+            'new.visitinterestnotes' => ['nullable', 'string'],
+            'new.visitedat' => ['nullable', 'date'],
             'new.isfeatured' => ['nullable', 'boolean'],
 
             'placeid' => ['nullable', 'integer', 'exists:places,id'],
             'destinationtype' => ['nullable', 'string', Rule::in($this->typeOptions())],
+            'visitinterestlevel' => [
+                'nullable',
+                'string',
+                Rule::in(array_keys($this->visitInterestOptions())),
+            ],
             'featured' => ['nullable', 'in:0,1'],
             'search' => ['nullable', 'string'],
             'visited' => ['nullable', 'in:0,1'],
@@ -129,6 +161,16 @@ private function typeOptions(): array
                 }
 
                 $destination = Destination::findOrFail($destinationId);
+                $visitInterestLevel = $row['visitinterestlevel'] ?: null;
+
+                $wishlistAddedAt = $destination->wishlistaddedat;
+
+                if (
+                    filled($visitInterestLevel)
+                    && blank($wishlistAddedAt)
+                ) {
+                    $wishlistAddedAt = now();
+                }
 
                 $destination->update([
                     'placeid' => array_key_exists('placeid', $row)
@@ -140,6 +182,14 @@ private function typeOptions(): array
                     'revisitinterestlevel' => $row['revisitinterestlevel'] ?? null,
                     'hasvisited' => (bool) ($row['hasvisited'] ?? false),
                     'isfeatured' => (bool) ($row['isfeatured'] ?? false),
+                    'visitinterestlevel' => $visitInterestLevel,
+                    'visitinterestnotes' => array_key_exists('visitinterestnotes', $row)
+                        ? ($row['visitinterestnotes'] ?: null)
+                        : $destination->visitinterestnotes,
+                    'wishlistaddedat' => $wishlistAddedAt,
+                    'visitedat' => array_key_exists('visitedat', $row)
+                        ? ($row['visitedat'] ?: null)
+                        : $destination->visitedat,
                 ]);
             }
 
@@ -147,7 +197,8 @@ private function typeOptions(): array
             $newName = trim((string) ($new['destinationname'] ?? ''));
             $hasNewDestination = $newName !== ''
                 || !empty($new['destinationtype'] ?? null)
-                || !empty($new['bestseason'] ?? null);
+                || !empty($new['bestseason'] ?? null)
+                || !empty($new['visitinterestlevel'] ?? null);
 
             if ($hasNewDestination) {
                 if ($newName === '' || empty($new['destinationtype'])) {
@@ -156,6 +207,7 @@ private function typeOptions(): array
                         'new.destinationtype' => 'Destination type is required for a new destination.',
                     ]);
                 }
+                $newVisitInterestLevel = $new['visitinterestlevel'] ?: null;
 
                 Destination::create([
                     'placeid' => $new['placeid'] ?? null,
@@ -164,12 +216,17 @@ private function typeOptions(): array
                     'bestseason' => $new['bestseason'] ?? null,
                     'revisitinterestlevel' => $new['revisitinterestlevel'] ?? null,
                     'hasvisited' => (bool) ($new['hasvisited'] ?? false),
+                    'visitinterestlevel' => $newVisitInterestLevel,
+                    'visitinterestnotes' => $new['visitinterestnotes'] ?? null,
+                    'wishlistaddedat' => filled($newVisitInterestLevel) ? now() : null,
+                    'visitedat' => $new['visitedat'] ?? null,
                     'isfeatured' => (bool) ($new['isfeatured'] ?? false),
                 ]);
             }
         });
 
         $returnTo = $request->input('return_to');
+        
 
         if ($returnTo) {
             return redirect($returnTo)->with('success', 'Destinations saved successfully.');
@@ -180,11 +237,13 @@ private function typeOptions(): array
                 'placeid' => $request->input('placeid'),
                 'destinationtype' => $request->input('destinationtype'),
                 'featured' => $request->input('featured'),
+                'visitinterestlevel' => $request->input('visitinterestlevel'),
+                'visited' => $request->input('visited'),
                 'search' => $request->input('search'),
                 'page' => $request->input('page'),
             ])
             ->with('success', 'Destinations saved successfully.');
-    }
+        }
 
 public function edit(Request $request, Destination $destination)
 {
@@ -212,20 +271,29 @@ public function edit(Request $request, Destination $destination)
 
     $places = Place::orderBy('placename')->get();
     $typeOptions = $this->typeOptions();
+    $visitInterestOptions = Destination::visitInterestOptions();
+    $revisitOptions = self::revisitOptions();
 
-    $returnTo = $request->input('return_to', route('destinations.index', $request->only([
-        'placeid',
-        'destinationtype',
-        'featured',
-        'search',
-        'page',
-    ])));
+   $returnTo = $request->input('return_to', route(
+        'destinations.index',
+        $request->only([
+            'placeid',
+            'destinationtype',
+            'featured',
+            'visitinterestlevel',
+            'visited',
+            'search',
+            'page',
+        ])
+    ));
 
     return view('destinations.edit', compact(
         'destination',
         'places',
         'typeOptions',
-        'returnTo'
+        'returnTo',
+        'visitInterestOptions',
+        'revisitOptions'
     ));
 }
 
@@ -235,8 +303,19 @@ public function edit(Request $request, Destination $destination)
         'placeid' => ['nullable', 'integer', 'exists:places,id'],
         'destinationname' => ['required', 'string', 'max:200'],
         'destinationtype' => ['required', 'string', Rule::in($this->typeOptions())],
-        'revisitinterestlevel' => ['nullable', 'string', Rule::in(array_keys($this->revisitOptions()))],
+        'revisitinterestlevel' => [
+            'nullable',
+            'string',
+            Rule::in(array_keys($this->revisitOptions())),
+        ],
         'hasvisited' => ['nullable', 'boolean'],
+        'visitinterestlevel' => [
+            'nullable',
+            'string',
+            Rule::in(array_keys($this->visitInterestOptions())),
+        ],
+        'visitinterestnotes' => ['nullable', 'string'],
+        'visitedat' => ['nullable', 'date'],
         'overview' => ['nullable', 'string'],
         'travelnotes' => ['nullable', 'string'],
         'bestseason' => ['nullable', 'string', 'max:100'],
@@ -245,6 +324,16 @@ public function edit(Request $request, Destination $destination)
         'personalcommentary' => ['nullable', 'string'],
         'isfeatured' => ['nullable', 'boolean'],
     ]);
+    $visitInterestLevel = $validated['visitinterestlevel'] ?: null;
+
+    $wishlistAddedAt = $destination->wishlistaddedat;
+
+    if (
+        filled($visitInterestLevel)
+        && blank($wishlistAddedAt)
+    ) {
+        $wishlistAddedAt = now();
+    }
 
     $destination->update([
         'placeid' => $validated['placeid'] ?? null,
@@ -258,6 +347,10 @@ public function edit(Request $request, Destination $destination)
         'personalcommentary' => $validated['personalcommentary'] ?? null,
         'revisitinterestlevel' => $validated['revisitinterestlevel'] ?? null,
         'hasvisited' => (bool) ($validated['hasvisited'] ?? false),
+        'visitinterestlevel' => $visitInterestLevel,
+        'visitinterestnotes' => $validated['visitinterestnotes'] ?? null,
+        'wishlistaddedat' => $wishlistAddedAt,
+        'visitedat' => $validated['visitedat'] ?? null,
         'isfeatured' => (bool) ($validated['isfeatured'] ?? false),
     ]);
 
@@ -278,6 +371,7 @@ public function edit(Request $request, Destination $destination)
             $destination->delete();
 
             $returnTo = $request->input('return_to');
+            
 
             if ($returnTo) {
                 return redirect($returnTo)->with('success', 'Destination deleted successfully.');
@@ -288,6 +382,8 @@ public function edit(Request $request, Destination $destination)
                     'placeid' => $request->input('placeid'),
                     'destinationtype' => $request->input('destinationtype'),
                     'featured' => $request->input('featured'),
+                    'visitinterestlevel' => $request->input('visitinterestlevel'),
+                    'visited' => $request->input('visited'),
                     'search' => $request->input('search'),
                     'page' => $request->input('page'),
                 ])
@@ -298,6 +394,8 @@ public function edit(Request $request, Destination $destination)
                     'placeid' => $request->input('placeid'),
                     'destinationtype' => $request->input('destinationtype'),
                     'featured' => $request->input('featured'),
+                    'visitinterestlevel' => $request->input('visitinterestlevel'),
+                    'visited' => $request->input('visited'),
                     'search' => $request->input('search'),
                 ])
                 ->with('error', 'This destination is in use and cannot be deleted.');
@@ -377,6 +475,10 @@ public function edit(Request $request, Destination $destination)
         'personalcommentary' => null,
         'revisitinterestlevel' => null,
         'hasvisited' => false,
+        'visitinterestlevel' => null,
+        'visitinterestnotes' => null,
+        'wishlistaddedat' => null,
+        'visitedat' => null,
         'isfeatured' => false,
     ]);
 
@@ -395,6 +497,11 @@ public function create(Request $request)
         'destination_id' => $request->input('destination_id'),
         'return_to' => $request->input('return_to'),
     ]));
+}
+
+private function visitInterestOptions(): array
+{
+    return Destination::visitInterestOptions();
 }
 
 public static function revisitOptions(): array

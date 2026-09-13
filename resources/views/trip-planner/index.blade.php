@@ -25,6 +25,12 @@
                    class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
                     Add Planning Item
                 </a>
+                <a
+                    href="{{ route('travel-interests.index') }}"
+                    class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+                >
+                    Travel Interests
+                </a>
 
                 <a href="{{ route('trips.edit', ['trip' => $trip, 'tab' => 'workflow']) }}"
                    class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded text-sm hover:bg-gray-300">

@@ -6,6 +6,8 @@ use App\Models\Country;
 use App\Models\Place;
 use App\Models\Region;
 use App\Models\State;
+use App\Models\Destination;
+use App\Models\DestinationItem;
 use App\Models\TripLeg;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -817,47 +819,165 @@ private function destinationItemTypeOptions(): array
         'other' => 'Other',
     ];
 }
-public function nearbyData(Request $request, Place $place)
-{
-    $radiusOptions = [25, 50, 100, 150, 200];
-    $radiusKm = (int) $request->input('radius_km', 50);
+    public function nearbyData(Request $request, Place $place)
+    {
+        $radiusOptions = [25, 50, 100, 150, 200];
 
-    if (!in_array($radiusKm, $radiusOptions, true)) {
-        $radiusKm = 50;
+        $radiusKm = (int) $request->input('radius_km', 50);
+
+        if (! in_array($radiusKm, $radiusOptions, true)) {
+            $radiusKm = 50;
+        }
+
+        abort_if(
+            is_null($place->latitude) || is_null($place->longitude),
+            404,
+            'This place does not have coordinates.'
+        );
+
+        $nearbyPlaces = Place::query()
+            ->nearbyToPlace($place, $radiusKm)
+            ->limit(100)
+            ->get();
+
+        $nearbyPlaceIds = $nearbyPlaces
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        /*
+        * Convert shared travel-interest values into an orderable numeric
+        * priority. Lower numbers represent stronger interest.
+        */
+        $interestPriority = [
+            'must_visit' => 1,
+            'very_interested' => 2,
+            'interested' => 3,
+            'if_nearby' => 4,
+        ];
+
+        /*
+        * Destination-level interests.
+        *
+        * An outstanding destination is one that has not been visited.
+        */
+        $destinationInterests = Destination::query()
+            ->select([
+                'placeid',
+                'visitinterestlevel',
+            ])
+            ->whereIn('placeid', $nearbyPlaceIds)
+            ->whereNotNull('visitinterestlevel')
+            ->where('hasvisited', 0)
+            ->get()
+            ->map(function ($destination) use ($interestPriority) {
+                return [
+                    'placeid' => (int) $destination->placeid,
+                    'priority' => $interestPriority[$destination->visitinterestlevel] ?? null,
+                ];
+            })
+            ->filter(fn ($row) => $row['priority'] !== null);
+
+        /*
+        * Destination Item-level interests.
+        *
+        * Use the item’s own Place first. If it has none, inherit the
+        * parent Destination’s Place.
+        *
+        * An item remains outstanding where it has not been visited or
+        * where it is explicitly marked as still wanted for a future trip.
+        */
+        $destinationItemInterests = DestinationItem::query()
+            ->select([
+                'destinationitems.id',
+                'destinationitems.placeid',
+                'destinationitems.visitinterestlevel',
+                'destinationitems.hasvisited',
+                'destinationitems.stillwanttovisit',
+                'destinations.placeid as destination_placeid',
+            ])
+            ->leftJoin(
+                'destinations',
+                'destinations.id',
+                '=',
+                'destinationitems.destinationid'
+            )
+            ->whereNotNull('destinationitems.visitinterestlevel')
+            ->where(function ($query) {
+                $query
+                    ->where('destinationitems.hasvisited', 0)
+                    ->orWhere('destinationitems.stillwanttovisit', 1);
+            })
+            ->whereIn(
+                DB::raw('COALESCE(destinationitems.placeid, destinations.placeid)'),
+                $nearbyPlaceIds
+            )
+            ->get()
+            ->map(function ($item) use ($interestPriority) {
+                $effectivePlaceId = $item->placeid
+                    ?? $item->destination_placeid;
+
+                return [
+                    'placeid' => (int) $effectivePlaceId,
+                    'priority' => $interestPriority[$item->visitinterestlevel] ?? null,
+                ];
+            })
+            ->filter(fn ($row) => $row['priority'] !== null);
+
+        /*
+        * Combine destination-level and item-level interest records.
+        *
+        * For each place:
+        * - lowest priority number is the strongest interest level;
+        * - count is the number of outstanding flagged records.
+        */
+        $interestByPlace = $destinationInterests
+            ->concat($destinationItemInterests)
+            ->groupBy('placeid')
+            ->map(function ($records) {
+                return [
+                    'priority' => $records->min('priority'),
+                    'count' => $records->count(),
+                ];
+            });
+
+        $interestLabels = [
+            1 => 'Must visit',
+            2 => 'Very interested',
+            3 => 'Interested',
+            4 => 'If nearby',
+        ];
+
+        $nearbyPlaces = $nearbyPlaces
+            ->map(function ($nearby) use ($interestByPlace, $interestLabels) {
+                $interest = $interestByPlace->get((int) $nearby->id);
+
+                return [
+                    'id' => $nearby->id,
+                    'placename' => $nearby->placename,
+                    'placetype' => $nearby->placetype,
+                    'latitude' => $nearby->latitude,
+                    'longitude' => $nearby->longitude,
+                    'distance_km' => round((float) $nearby->distance_km, 1),
+                    'interest_priority' => $interest['priority'] ?? null,
+                    'interest_label' => $interest
+                        ? ($interestLabels[$interest['priority']] ?? null)
+                        : null,
+                    'interest_count' => $interest['count'] ?? 0,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'place' => [
+                'id' => $place->id,
+                'placename' => $place->placename,
+            ],
+            'radius_km' => $radiusKm,
+            'radius_options' => $radiusOptions,
+            'nearby_places' => $nearbyPlaces,
+        ]);
     }
-
-    abort_if(
-        is_null($place->latitude) || is_null($place->longitude),
-        404,
-        'This place does not have coordinates.'
-    );
-
-    $nearbyPlaces = Place::query()
-        ->nearbyToPlace($place, $radiusKm)
-        ->limit(100)
-        ->get()
-        ->map(function ($nearby) {
-            return [
-                'id' => $nearby->id,
-                'placename' => $nearby->placename,
-                'placetype' => $nearby->placetype,
-                'latitude' => $nearby->latitude,
-                'longitude' => $nearby->longitude,
-                'distance_km' => round((float) $nearby->distance_km, 1),
-            ];
-        })
-        ->values();
-
-    return response()->json([
-        'place' => [
-            'id' => $place->id,
-            'placename' => $place->placename,
-        ],
-        'radius_km' => $radiusKm,
-        'radius_options' => $radiusOptions,
-        'nearby_places' => $nearbyPlaces,
-    ]);
-}
 
     
 }
