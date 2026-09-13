@@ -8,9 +8,10 @@ use Illuminate\Mail\Markdown;
 
 class StickyController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $stickies = Sticky::query()
+            ->forUser($request->user()->id)
             ->orderByDesc('ispinned')
             ->orderByDesc('updatedat')
             ->get();
@@ -28,6 +29,7 @@ class StickyController extends Controller
         ]);
 
         $sticky = Sticky::create([
+            'userid' => $request->user()->id,
             'stickytext' => $data['stickytext'],
             'colourhex' => $data['colourhex'] ?? '#FEF08A',
             'positionx' => $data['positionx'] ?? 24,
@@ -41,6 +43,8 @@ class StickyController extends Controller
 
     public function update(Request $request, Sticky $sticky)
     {
+        $this->ensureOwnedByCurrentUser($request, $sticky);
+
         $data = $request->validate([
             'stickytext' => ['required', 'string'],
             'colourhex' => ['nullable', 'regex:/^#[A-Fa-f0-9]{6}$/'],
@@ -56,8 +60,10 @@ class StickyController extends Controller
         ]);
     }
 
-    public function destroy(Sticky $sticky)
+    public function destroy(Request $request, Sticky $sticky)
     {
+        $this->ensureOwnedByCurrentUser($request, $sticky);
+
         $sticky->delete();
 
         return response()->noContent();
@@ -65,6 +71,8 @@ class StickyController extends Controller
 
     public function updatePosition(Request $request, Sticky $sticky)
     {
+        $this->ensureOwnedByCurrentUser($request, $sticky);
+
         $data = $request->validate([
             'x' => ['required', 'integer', 'min:0'],
             'y' => ['required', 'integer', 'min:0'],
@@ -90,5 +98,13 @@ class StickyController extends Controller
                 ->parse($sticky->stickytext ?? '')
                 ->toHtml(),
         ];
+    }
+
+    private function ensureOwnedByCurrentUser(Request $request, Sticky $sticky): void
+    {
+        abort_unless(
+            (int) $sticky->userid === (int) $request->user()->id,
+            403
+        );
     }
 }
