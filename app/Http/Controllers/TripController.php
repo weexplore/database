@@ -23,6 +23,7 @@ class TripController extends Controller
     protected array $statusOptions = [
         'planned',
         'prepare',
+        'determine dates',
         'active',
         'completed',
         'archived',

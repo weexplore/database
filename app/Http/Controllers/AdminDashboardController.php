@@ -66,6 +66,11 @@ class AdminDashboardController extends Controller
                             'description' => 'Record fuel receipts and allocate unassigned purchases to trips and trip legs.',
                             'route' => route('fuel-purchases.index'),
                         ],
+                                                [
+                            'title' => 'Travel Interests',
+                            'description' => 'Items that have been flagged as places that we are interested in visiting, or that we have already visited.',
+                            'route' => route('travel-interests.index'),
+                        ],
                     ],
                 ],
                 [
