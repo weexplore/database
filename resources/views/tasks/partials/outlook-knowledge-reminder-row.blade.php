@@ -6,14 +6,17 @@
      *
      * $reminder structure:
      * - type: item_review | note_review | review_followup
-     * - dueDate: Carbon date
-     * - knowledgeItem: KnowledgeItem
+     * - dueDate: Carbon\Carbon
+     * - knowledgeItem: App\Models\KnowledgeItem
      * - title: string
      * - detail: string|null
+     * - summaryPreview: string|null
      * - tab: string
      */
+
     $dueDate = $reminder['dueDate'];
     $knowledgeItem = $reminder['knowledgeItem'];
+
     $daysOverdue = $dueDate->isBefore($today)
         ? $dueDate->diffInDays($today)
         : 0;
@@ -51,7 +54,7 @@
                 {{ $knowledgeItem->primaryCategory?->categoryname ?? 'Uncategorised' }}
                 · {{ $knowledgeItem->itemtype ?: 'Knowledge item' }}
 
-                @if(filled($reminder['detail']))
+                @if (filled($reminder['detail'] ?? null))
                     · {{ $reminder['detail'] }}
                 @endif
             </p>
@@ -62,13 +65,13 @@
                 {{ $dueDate->format('d M Y') }}
             </div>
 
-            @if($daysOverdue > 0)
+            @if ($daysOverdue > 0)
                 <div class="mt-1 text-[11px] font-medium text-red-700">
                     {{ $daysOverdue }}
                     day{{ $daysOverdue === 1 ? '' : 's' }}
                     overdue
                 </div>
-            @elseif($dueDate->isSameDay($today))
+            @elseif ($dueDate->isSameDay($today))
                 <div class="mt-1 text-[11px] font-medium text-amber-700">
                     Due today
                 </div>

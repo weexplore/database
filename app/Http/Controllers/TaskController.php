@@ -1258,6 +1258,64 @@ class TaskController extends Controller
         ->orderBy('id')
         ->get();
 
+    $knowledgeRemindersDueToday = collect()
+    ->merge(
+        $knowledgeItemReviewsDueToday->map(
+            fn (KnowledgeItem $knowledgeItem) => [
+                'type' => 'item_review',
+                'dueDate' => $knowledgeItem->nextreviewdate,
+                'knowledgeItem' => $knowledgeItem,
+                'title' => 'Item review',
+                'detail' => null,
+                'summaryPreview' => $knowledgeItem->summary,
+                'tab' => 'details',
+            ]
+        )
+    )
+    ->merge(
+        $knowledgeNoteReviewsDueToday->map(
+            fn (KnowledgeNote $knowledgeNote) => [
+                'type' => 'note_review',
+                'dueDate' => $knowledgeNote->reviewdate,
+                'knowledgeItem' => $knowledgeNote->knowledgeItem,
+                'title' => 'Note review',
+                'detail' => $knowledgeNote->title
+                    ?: ucfirst((string) $knowledgeNote->notetype),
+                'summaryPreview' => null,
+                'tab' => 'notes',
+            ]
+        )
+    )
+    ->merge(
+        $knowledgeReviewFollowUpsDueToday->map(
+            fn (KnowledgeReviewLog $knowledgeReviewLog) => [
+                'type' => 'review_followup',
+                'dueDate' => $knowledgeReviewLog->nextreviewdate,
+                'knowledgeItem' => $knowledgeReviewLog->knowledgeItem,
+                'title' => 'Review follow-up',
+                'detail' => $knowledgeReviewLog->summary
+                    ?: ucfirst((string) $knowledgeReviewLog->reviewtype),
+                'summaryPreview' => null,
+                'tab' => 'review-logs',
+            ]
+        )
+    )
+    ->filter(
+        fn (array $reminder) => $reminder['knowledgeItem'] !== null
+            && $reminder['dueDate'] !== null
+    )
+    ->sortBy([
+        ['dueDate', 'asc'],
+        [
+            fn (array $reminder) => mb_strtolower(
+                $reminder['knowledgeItem']->itemname ?? ''
+            ),
+            'asc',
+        ],
+        ['title', 'asc'],
+    ])
+    ->values();
+
     $upcomingKnowledgeReviewFollowUps = (clone $knowledgeReviewLogBaseQuery)
         ->whereDate('nextreviewdate', '>', $today->toDateString())
         ->whereDate('nextreviewdate', '<=', $weekEnd->toDateString())
@@ -1431,6 +1489,8 @@ class TaskController extends Controller
         'overdueKnowledgeReviewFollowUps',
         'knowledgeReviewFollowUpsDueToday',
         'upcomingKnowledgeReviewFollowUps',
+
+        'knowledgeRemindersDueToday',
 
         'upcomingTrips',
         'upcomingTripItems',

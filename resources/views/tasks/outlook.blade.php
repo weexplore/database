@@ -741,131 +741,160 @@
                 </div>
             </section>
             {{-- Knowledge Reminders --}}
-            @php
-                $knowledgeSummaryPreview = function ($knowledgeItem): ?string {
-                    if (! $knowledgeItem || blank($knowledgeItem->summary)) {
-                        return null;
-                    }
+@php
+    $knowledgeSummaryPreview = function ($knowledgeItem): ?string {
+        if (! $knowledgeItem || blank($knowledgeItem->summary)) {
+            return null;
+        }
 
-                    $summary = trim(preg_replace(
-                        '/\s+/',
-                        ' ',
-                        strip_tags($knowledgeItem->summary)
-                    ));
+        $summary = trim(
+            preg_replace(
+                '/\s+/',
+                ' ',
+                strip_tags($knowledgeItem->summary)
+            )
+        );
 
-                    return filled($summary)
-                        ? \Illuminate\Support\Str::limit($summary, 140)
-                        : null;
-                };
-            @endphp
-            @php
-                $overdueKnowledgeReminders = collect()
-                    ->concat($overdueKnowledgeItemReviews->map(fn ($item) => [
-                        'type' => 'item_review',
-                        'dueDate' => $item->nextreviewdate,
-                        'knowledgeItem' => $item,
-                        'title' => 'Item review',
-                        'detail' => $item->reviewnotes
-                            ? \Illuminate\Support\Str::limit(strip_tags($item->reviewnotes), 120)
-                            : null,
-                        'summaryPreview' => $knowledgeSummaryPreview($item),
-                        'tab' => 'details',
-                    ]))
-                    ->concat($overdueKnowledgeNoteReviews->map(fn ($note) => [
-                        'type' => 'note_review',
-                        'dueDate' => $note->reviewdate,
-                        'knowledgeItem' => $note->knowledgeItem,
-                        'title' => 'Note review',
-                        'detail' => $note->title
-                            ?: ($note->notetype ? ucfirst($note->notetype) . ' note' : 'Knowledge note'),
-                        'summaryPreview' => $knowledgeSummaryPreview($item),
-                        'tab' => 'notes',
-                    ]))
-                    ->concat($overdueKnowledgeReviewFollowUps->map(fn ($reviewLog) => [
-                        'type' => 'review_followup',
-                        'dueDate' => $reviewLog->nextreviewdate,
-                        'knowledgeItem' => $reviewLog->knowledgeItem,
-                        'title' => 'Review follow-up',
-                        'detail' => $reviewLog->reviewtype
-                            ? ucfirst(str_replace('_', ' ', $reviewLog->reviewtype))
-                            : null,
-                        'summaryPreview' => $knowledgeSummaryPreview($item),
-                        'tab' => 'details',
-                    ]))
-                    ->sortBy('dueDate')
-                    ->values();
+        return filled($summary)
+            ? \Illuminate\Support\Str::limit($summary, 140)
+            : null;
+    };
 
-                $knowledgeRemindersDueToday = collect()
-                    ->concat($knowledgeItemReviewsDueToday->map(fn ($item) => [
-                        'type' => 'item_review',
-                        'dueDate' => $item->nextreviewdate,
-                        'knowledgeItem' => $item,
-                        'title' => 'Item review',
-                        'detail' => $item->reviewnotes
-                            ? \Illuminate\Support\Str::limit(strip_tags($item->reviewnotes), 120)
-                            : null,
-                        'summaryPreview' => $knowledgeSummaryPreview($item),
-                        'tab' => 'details',
-                    ]))
-                    ->concat($knowledgeNoteReviewsDueToday->map(fn ($note) => [
-                        'type' => 'note_review',
-                        'dueDate' => $note->reviewdate,
-                        'knowledgeItem' => $note->knowledgeItem,
-                        'title' => 'Note review',
-                        'detail' => $note->title
-                            ?: ($note->notetype ? ucfirst($note->notetype) . ' note' : 'Knowledge note'),
-                        'summaryPreview' => $knowledgeSummaryPreview($item),
-                        'tab' => 'notes',
-                    ]))
-                    ->concat($knowledgeReviewFollowUpsDueToday->map(fn ($reviewLog) => [
-                        'type' => 'review_followup',
-                        'dueDate' => $reviewLog->nextreviewdate,
-                        'knowledgeItem' => $reviewLog->knowledgeItem,
-                        'title' => 'Review follow-up',
-                        'detail' => $reviewLog->reviewtype
-                            ? ucfirst(str_replace('_', ' ', $reviewLog->reviewtype))
-                            : null,
-                        'summaryPreview' => $knowledgeSummaryPreview($item),
-                        'tab' => 'details',
-                    ]))
-                    ->sortBy('dueDate')
-                    ->values();
+    $overdueKnowledgeReminders = collect()
+        ->concat($overdueKnowledgeItemReviews->map(fn ($item) => [
+            'type' => 'item_review',
+            'dueDate' => $item->nextreviewdate,
+            'knowledgeItem' => $item,
+            'title' => 'Item review',
+            'detail' => filled($item->reviewnotes)
+                ? \Illuminate\Support\Str::limit(
+                    strip_tags($item->reviewnotes),
+                    120
+                )
+                : null,
+            'summaryPreview' => $knowledgeSummaryPreview($item),
+            'tab' => 'details',
+        ]))
+        ->concat($overdueKnowledgeNoteReviews->map(fn ($note) => [
+            'type' => 'note_review',
+            'dueDate' => $note->reviewdate,
+            'knowledgeItem' => $note->knowledgeItem,
+            'title' => 'Note review',
+            'detail' => filled($note->title)
+                ? $note->title
+                : (filled($note->notetype)
+                    ? ucfirst($note->notetype) . ' note'
+                    : 'Knowledge note'),
+            'summaryPreview' => $knowledgeSummaryPreview($note->knowledgeItem),
+            'tab' => 'notes',
+        ]))
+        ->concat($overdueKnowledgeReviewFollowUps->map(fn ($reviewLog) => [
+            'type' => 'review_followup',
+            'dueDate' => $reviewLog->nextreviewdate,
+            'knowledgeItem' => $reviewLog->knowledgeItem,
+            'title' => 'Review follow-up',
+            'detail' => filled($reviewLog->reviewtype)
+                ? ucfirst(str_replace('_', ' ', $reviewLog->reviewtype))
+                : null,
+            'summaryPreview' => $knowledgeSummaryPreview(
+                $reviewLog->knowledgeItem
+            ),
+            'tab' => 'review-logs',
+        ]))
+        ->filter(fn (array $reminder) => $reminder['knowledgeItem'] !== null)
+        ->sortBy('dueDate')
+        ->values();
 
-                $upcomingKnowledgeReminders = collect()
-                    ->concat($upcomingKnowledgeItemReviews->map(fn ($item) => [
-                        'type' => 'item_review',
-                        'dueDate' => $item->nextreviewdate,
-                        'knowledgeItem' => $item,
-                        'title' => 'Item review',
-                        'detail' => $item->reviewnotes
-                            ? \Illuminate\Support\Str::limit(strip_tags($item->reviewnotes), 120)
-                            : null,
-                        'summaryPreview' => $knowledgeSummaryPreview($item),
-                        'tab' => 'details',
-                    ]))
-                    ->concat($upcomingKnowledgeNoteReviews->map(fn ($note) => [
-                        'type' => 'note_review',
-                        'dueDate' => $note->reviewdate,
-                        'knowledgeItem' => $note->knowledgeItem,
-                        'title' => 'Note review',
-                        'detail' => $note->title
-                            ?: ($note->notetype ? ucfirst($note->notetype) . ' note' : 'Knowledge note'),
-                        'tab' => 'notes',
-                    ]))
-                    ->concat($upcomingKnowledgeReviewFollowUps->map(fn ($reviewLog) => [
-                        'type' => 'review_followup',
-                        'dueDate' => $reviewLog->nextreviewdate,
-                        'knowledgeItem' => $reviewLog->knowledgeItem,
-                        'title' => 'Review follow-up',
-                        'detail' => $reviewLog->reviewtype
-                            ? ucfirst(str_replace('_', ' ', $reviewLog->reviewtype))
-                            : null,
-                        'summaryPreview' => $knowledgeSummaryPreview($item),
-                        'tab' => 'details',
-                    ]))
-                    ->sortBy('dueDate')
-                    ->values();
-            @endphp
+    $knowledgeRemindersDueToday = collect()
+        ->concat($knowledgeItemReviewsDueToday->map(fn ($item) => [
+            'type' => 'item_review',
+            'dueDate' => $item->nextreviewdate,
+            'knowledgeItem' => $item,
+            'title' => 'Item review',
+            'detail' => filled($item->reviewnotes)
+                ? \Illuminate\Support\Str::limit(
+                    strip_tags($item->reviewnotes),
+                    120
+                )
+                : null,
+            'summaryPreview' => $knowledgeSummaryPreview($item),
+            'tab' => 'details',
+        ]))
+        ->concat($knowledgeNoteReviewsDueToday->map(fn ($note) => [
+            'type' => 'note_review',
+            'dueDate' => $note->reviewdate,
+            'knowledgeItem' => $note->knowledgeItem,
+            'title' => 'Note review',
+            'detail' => filled($note->title)
+                ? $note->title
+                : (filled($note->notetype)
+                    ? ucfirst($note->notetype) . ' note'
+                    : 'Knowledge note'),
+            'summaryPreview' => $knowledgeSummaryPreview($note->knowledgeItem),
+            'tab' => 'notes',
+        ]))
+        ->concat($knowledgeReviewFollowUpsDueToday->map(fn ($reviewLog) => [
+            'type' => 'review_followup',
+            'dueDate' => $reviewLog->nextreviewdate,
+            'knowledgeItem' => $reviewLog->knowledgeItem,
+            'title' => 'Review follow-up',
+            'detail' => filled($reviewLog->reviewtype)
+                ? ucfirst(str_replace('_', ' ', $reviewLog->reviewtype))
+                : null,
+            'summaryPreview' => $knowledgeSummaryPreview(
+                $reviewLog->knowledgeItem
+            ),
+            'tab' => 'review-logs',
+        ]))
+        ->filter(fn (array $reminder) => $reminder['knowledgeItem'] !== null)
+        ->sortBy('dueDate')
+        ->values();
+
+    $upcomingKnowledgeReminders = collect()
+        ->concat($upcomingKnowledgeItemReviews->map(fn ($item) => [
+            'type' => 'item_review',
+            'dueDate' => $item->nextreviewdate,
+            'knowledgeItem' => $item,
+            'title' => 'Item review',
+            'detail' => filled($item->reviewnotes)
+                ? \Illuminate\Support\Str::limit(
+                    strip_tags($item->reviewnotes),
+                    120
+                )
+                : null,
+            'summaryPreview' => $knowledgeSummaryPreview($item),
+            'tab' => 'details',
+        ]))
+        ->concat($upcomingKnowledgeNoteReviews->map(fn ($note) => [
+            'type' => 'note_review',
+            'dueDate' => $note->reviewdate,
+            'knowledgeItem' => $note->knowledgeItem,
+            'title' => 'Note review',
+            'detail' => filled($note->title)
+                ? $note->title
+                : (filled($note->notetype)
+                    ? ucfirst($note->notetype) . ' note'
+                    : 'Knowledge note'),
+            'summaryPreview' => $knowledgeSummaryPreview($note->knowledgeItem),
+            'tab' => 'notes',
+        ]))
+        ->concat($upcomingKnowledgeReviewFollowUps->map(fn ($reviewLog) => [
+            'type' => 'review_followup',
+            'dueDate' => $reviewLog->nextreviewdate,
+            'knowledgeItem' => $reviewLog->knowledgeItem,
+            'title' => 'Review follow-up',
+            'detail' => filled($reviewLog->reviewtype)
+                ? ucfirst(str_replace('_', ' ', $reviewLog->reviewtype))
+                : null,
+            'summaryPreview' => $knowledgeSummaryPreview(
+                $reviewLog->knowledgeItem
+            ),
+            'tab' => 'review-logs',
+        ]))
+        ->filter(fn (array $reminder) => $reminder['knowledgeItem'] !== null)
+        ->sortBy('dueDate')
+        ->values();
+@endphp
 
             {{-- Knowledge reminders --}}
             <section class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-rose-200">
