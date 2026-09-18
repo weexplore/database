@@ -61,7 +61,8 @@
                 :style="`min-height: ${boardHeight}px;`">
 
                 <template x-for="sticky in stickies" :key="sticky.key">
-                    <article class="absolute w-72 max-w-[calc(100%-2rem)] rounded-lg border border-yellow-300 p-3 shadow-md "
+                    <article class="absolute w-72 max-w-[calc(100%-2rem)] rounded-lg border border-yellow-300 p-3 shadow-md"
+                            @click="bringToFront(sticky)"
                             :style="`
                                 left: ${sticky.positionx}px;
                                 top: ${sticky.positiony}px;
@@ -121,6 +122,7 @@
                                 </div>
 
                                 <textarea x-model="sticky.draftText"
+                                        :data-sticky-key="sticky.key"
                                         rows="7"
                                         placeholder="Write your sticky..."
                                         class="w-full rounded-md border-gray-400 bg-white/80 text-sm shadow-sm focus:border-green-500 focus:ring-green-500">
@@ -329,9 +331,20 @@
 
                 editSticky(sticky) {
                     this.errorMessage = '';
+
+                    this.bringToFront(sticky);
+
                     sticky.draftText = sticky.stickytext ?? '';
                     sticky.draftColour = sticky.colourhex ?? '#FEF08A';
                     sticky.editing = true;
+
+                    this.$nextTick(() => {
+                        const textarea = this.$refs.board?.querySelector(
+                            `textarea[data-sticky-key="${sticky.key}"]`
+                        );
+
+                        textarea?.focus();
+                    });
                 },
 
                 cancelEdit(sticky) {

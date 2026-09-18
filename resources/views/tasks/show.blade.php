@@ -24,7 +24,8 @@
             @php
                 $hasRecurrence = $task->recurrence !== null;
                 $hasSubtasks = $task->subtasks->isNotEmpty();
-                $hasDependencies = $task->dependencies->isNotEmpty();
+                $hasDependencies = $task->dependencies->isNotEmpty()
+                    || $task->dependentTasks->isNotEmpty();
             @endphp
 
             
@@ -108,6 +109,15 @@
                                 class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">{{ old('taskexpectation', $task->taskexpectation) }}</textarea>
                     </div>
 
+                    @if ($task->dependentTasks->isNotEmpty())
+                        <div class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                            Changing this task may affect
+                            {{ $task->dependentTasks->count() }}
+                            downstream task{{ $task->dependentTasks->count() === 1 ? '' : 's' }}.
+                            Review the dependency impact below before changing its schedule.
+                        </div>
+                    @endif
+
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-600">Status</label>
@@ -142,6 +152,8 @@
                                 class="mt-1 w-full border-gray-300 rounded-md shadow-sm text-sm"
                             >
                         </div>
+
+                        
 
                         <div>
                             <label class="block text-xs font-medium text-gray-600">
@@ -877,16 +889,24 @@
                 </div>
             </div>
 
+            @php
+                $upstreamDependencyCount = $task->dependencies->count();
+                $downstreamDependencyCount = $task->dependentTasks->count();
+                $totalDependencyCount = $upstreamDependencyCount + $downstreamDependencyCount;
+            @endphp
+
             {{-- Dependencies control --}}
             <div class="flex items-center justify-start mb-2">
                 <button type="button"
                         id="toggle-dependencies-panel"
                         class="text-xs px-3 py-1 rounded border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
-                    {{ $hasDependencies
-                        ? 'Hide dependencies ('.$task->dependencies->count().')'
+                    {{ $totalDependencyCount > 0
+                        ? 'Hide dependencies ('.$upstreamDependencyCount.' upstream, '.$downstreamDependencyCount.' downstream)'
                         : 'Show dependencies' }}
                 </button>
             </div>
+
+
 
             {{-- Dependencies panel --}}
             <div id="dependencies-panel"
@@ -966,6 +986,9 @@
                                             Depends on task
                                         </th>
                                         <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                                            Status
+                                        </th>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
                                             Type
                                         </th>
                                         <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
@@ -989,6 +1012,11 @@
                                                 class="hover:underline">
                                                     {{ $dependency->dependsOnTask->tasktitle }}
                                                 </a>
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                                                    {{ $dependency->dependsOnTask?->status?->statuslabel ?? 'No status' }}
+                                                </span>
                                             </td>
 
                                             <td class="px-3 py-2 text-xs text-gray-700">
@@ -1043,6 +1071,119 @@
                         <p class="text-xs text-gray-500">
                             No dependencies have been added.
                         </p>
+                    @endif
+
+                    {{-- Downstream tasks affected by this task --}}
+                    @if ($task->dependentTasks->isNotEmpty())
+                        <div class="border-t border-indigo-100 pt-4">
+                            <div class="mb-3">
+                                <h4 class="text-sm font-semibold text-indigo-900">
+                                    Downstream task impact
+                                </h4>
+
+                                <p class="mt-1 text-xs text-indigo-700">
+                                    These tasks depend on this task. Review them before changing this task's
+                                    start date, due date, or completion status.
+                                </p>
+                            </div>
+
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full text-sm">
+                                    <thead class="border-y border-gray-200 bg-gray-50">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                                                Dependent task
+                                            </th>
+
+                                            <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                                                Status
+                                            </th>
+
+                                            <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                                                Start date
+                                            </th>
+
+                                            <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                                                Due date
+                                            </th>
+
+                                            <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                                                Type
+                                            </th>
+
+                                            <th class="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                                                Lag
+                                            </th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody class="divide-y divide-gray-100">
+                                        @foreach ($task->dependentTasks as $dependency)
+                                            @php
+                                                $downstreamTask = $dependency->task;
+                                            @endphp
+
+                                            @if ($downstreamTask)
+                                                <tr>
+                                                    <td class="px-3 py-2">
+                                                        <a href="{{ route('tasks.show', [
+                                                                'task' => $downstreamTask,
+                                                                'from' => $from,
+                                                                'return_url' => $currentTaskUrl,
+                                                            ]) }}"
+                                                        class="font-medium text-indigo-700 hover:text-indigo-900 hover:underline">
+                                                            {{ $downstreamTask->tasktitle }}
+                                                        </a>
+                                                    </td>
+
+                                                    <td class="px-3 py-2">
+                                                        <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                                                            {{ $downstreamTask->status?->statuslabel ?? 'No status' }}
+                                                        </span>
+                                                    </td>
+
+                                                    <td class="px-3 py-2 text-xs text-gray-700 whitespace-nowrap">
+                                                        {{ $downstreamTask->startdate?->format('j M Y') ?? 'Not scheduled' }}
+                                                    </td>
+
+                                                    <td class="px-3 py-2 text-xs text-gray-700 whitespace-nowrap">
+                                                        {{ $downstreamTask->duedate?->format('j M Y') ?? 'No due date' }}
+                                                    </td>
+
+                                                    <td class="px-3 py-2 text-xs text-gray-700 whitespace-nowrap">
+                                                        @switch($dependency->dependencytype)
+                                                            @case('FS')
+                                                                Finish to Start
+                                                                @break
+
+                                                            @case('SS')
+                                                                Start to Start
+                                                                @break
+
+                                                            @case('FF')
+                                                                Finish to Finish
+                                                                @break
+
+                                                            @case('SF')
+                                                                Start to Finish
+                                                                @break
+
+                                                            @default
+                                                                {{ $dependency->dependencytype }}
+                                                        @endswitch
+                                                    </td>
+
+                                                    <td class="px-3 py-2 text-xs text-gray-700 whitespace-nowrap">
+                                                        {{ $dependency->lagdays }}
+                                                        day{{ abs($dependency->lagdays) === 1 ? '' : 's' }}
+                                                    </td>
+                                                </tr>
+                                            @endif
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     @endif
 
                     <p class="text-[11px] text-gray-500">

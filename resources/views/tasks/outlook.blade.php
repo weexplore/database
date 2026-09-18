@@ -700,6 +700,7 @@
                         <span class="text-xs font-medium text-red-700">
                             {{ $overdueRecurringTaskGenerations->count() }}
                             occurrence{{ $overdueRecurringTaskGenerations->count() === 1 ? '' : 's' }}
+                            occurrence{{ $overdueRecurringTaskGenerations->count() === 1 ? '' : 's' }}
                         </span>
                     </div>
                 </div>

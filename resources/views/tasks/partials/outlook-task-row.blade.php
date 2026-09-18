@@ -16,9 +16,56 @@
                         'from' => 'outlook',
                         'return' => url()->full(),
                     ]) }}"
-                   class="text-sm font-semibold text-indigo-700 hover:underline">
+                class="text-sm font-semibold text-indigo-700 hover:underline">
                     {{ $task->tasktitle }}
                 </a>
+
+                {{-- Add this block --}}
+                <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                    @if ($task->dependencies_count > 0)
+                        <a href="{{ route('tasks.show', [
+                                'task' => $task,
+                                'from' => 'outlook',
+                                'return' => url()->full(),
+                            ]) }}"
+                        class="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 hover:bg-amber-100"
+                        title="This task depends on {{ $task->dependencies_count }} other task{{ $task->dependencies_count === 1 ? '' : 's' }}. Open task details to review dependencies.">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                class="h-3 w-3"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                aria-hidden="true">
+                                <path fill-rule="evenodd"
+                                    d="M7.5 2.75A4.75 4.75 0 0 0 3 9.025v1.225a4.75 4.75 0 0 0 8.106 3.358.75.75 0 1 1 1.06 1.061A6.25 6.25 0 0 1 1.5 10.25V9.025A6.25 6.25 0 0 1 12.166 4.61a.75.75 0 0 1-1.06 1.061A4.75 4.75 0 0 0 7.5 2.75Zm5-1A6.25 6.25 0 0 1 18.5 7.75v1.225a6.25 6.25 0 0 1-10.666 4.415.75.75 0 1 1 1.06-1.061A4.75 4.75 0 0 0 16.999 9V7.75A4.75 4.75 0 0 0 9.5 4.1a.75.75 0 1 1-1.06-1.06A6.22 6.22 0 0 1 12.5 1.75ZM6 9.25A.75.75 0 0 1 6.75 8.5h6.5a.75.75 0 0 1 0 1.5h-6.5A.75.75 0 0 1 6 9.25Z"
+                                    clip-rule="evenodd" />
+                            </svg>
+
+                            Depends on {{ $task->dependencies_count }}
+                        </a>
+                    @endif
+
+                    @if ($task->dependent_tasks_count > 0)
+                        <a href="{{ route('tasks.show', [
+                                'task' => $task,
+                                'from' => 'outlook',
+                                'return' => url()->full(),
+                            ]) }}"
+                        class="inline-flex items-center gap-1 rounded-full border border-rose-300 bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-800 hover:bg-rose-100"
+                        title="Changing this task may affect {{ $task->dependent_tasks_count }} downstream task{{ $task->dependent_tasks_count === 1 ? '' : 's' }}. Open task details to review the impact.">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                class="h-3 w-3"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                aria-hidden="true">
+                                <path fill-rule="evenodd"
+                                    d="M10 2.5a.75.75 0 0 1 .75.75v10.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-5 5a.75.75 0 0 1-1.06 0l-5-5a.75.75 0 0 1 1.06-1.06l3.72 3.72V3.25A.75.75 0 0 1 10 2.5Z"
+                                    clip-rule="evenodd" />
+                            </svg>
+
+                            Impacts {{ $task->dependent_tasks_count }}
+                        </a>
+                    @endif
+                </div>
 
                 <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-500">
                     <span>{{ $task->project->projectname }}</span>
@@ -90,6 +137,8 @@
                     </div>
                 @endif
             </div>
+
+
 
             {{-- Estimate --}}
             <div class="w-20">
@@ -228,7 +277,22 @@
                 </div>
             </div>
         </div>
-
+        @if ($task->dependent_tasks_count > 0)
+            <div class="w-full rounded border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] text-rose-800">
+                Changing this task’s status or dates may affect
+                {{ $task->dependent_tasks_count }}
+                downstream task{{ $task->dependent_tasks_count === 1 ? '' : 's' }}.
+                <a href="{{ route('tasks.show', [
+                        'task' => $task,
+                        'from' => 'outlook',
+                        'return' => url()->full(),
+                    ]) }}"
+                class="font-semibold underline hover:text-rose-950">
+                    Review dependencies
+                </a>
+                before saving.
+            </div>
+        @endif
         {{-- Status comment and save action --}}
         <div class="flex items-center gap-3">
             <label for="statuscomment-{{ $task->id }}"

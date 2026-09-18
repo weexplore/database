@@ -95,6 +95,9 @@ class TaskController extends Controller
         'dependencies:id,taskid,dependsontaskid,dependencytype,lagdays',
         'dependencies.dependsOnTask:id,tasktitle,statusid',
         'dependencies.dependsOnTask.status:id,statuslabel',
+        'dependentTasks:id,taskid,dependsontaskid,dependencytype,lagdays',
+        'dependentTasks.task:id,tasktitle,statusid,startdate,duedate',
+        'dependentTasks.task.status:id,statuslabel',
     ]);
 
     $projectId = (int) $task->projectid;
@@ -631,8 +634,10 @@ class TaskController extends Controller
                     $q->where('isactive', 1);
                 },
             ])
-            ->withCount('subtasks')
             ->withCount([
+                'dependencies',
+                'dependentTasks',
+                'subtasks',
                 'subtasks as open_subtasks_count' => function (Builder $query) {
                     $query->where(function (Builder $statusQuery) {
                         $statusQuery->whereHas('status', function (Builder $query) {
@@ -845,6 +850,10 @@ class TaskController extends Controller
             'status',
             'labels',
             'parentTask',
+        ])
+        ->withCount([
+            'dependencies',
+            'dependentTasks',
         ])
         ->where(function (Builder $query) {
             $query->whereHas('status', function (Builder $statusQuery) {

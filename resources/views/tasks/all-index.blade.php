@@ -178,6 +178,47 @@
                                                 </span>
                                             @endif
 
+                                            @if ($task->dependencies_count > 0)
+                                                <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold shadow-sm"
+                                                    style="border-color: #fbbf24; background-color: #fffbeb; color: #92400e;"
+                                                    title="This task depends on {{ $task->dependencies_count }} other task{{ $task->dependencies_count === 1 ? '' : 's' }}">
+                                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                                        class="h-3.5 w-3.5"
+                                                        viewBox="0 0 20 20"
+                                                        fill="currentColor"
+                                                        aria-hidden="true">
+                                                        <path fill-rule="evenodd"
+                                                            d="M7.5 2.75A4.75 4.75 0 0 0 3 9.025v1.225a4.75 4.75 0 0 0 8.106 3.358.75.75 0 1 1 1.06 1.061A6.25 6.25 0 0 1 1.5 10.25V9.025A6.25 6.25 0 0 1 12.166 4.61a.75.75 0 0 1-1.06 1.061A4.75 4.75 0 0 0 7.5 2.75Zm5-1A6.25 6.25 0 0 1 18.5 7.75v1.225a6.25 6.25 0 0 1-10.666 4.415.75.75 0 1 1 1.06-1.061A4.75 4.75 0 0 0 16.999 9V7.75A4.75 4.75 0 0 0 9.5 4.1a.75.75 0 1 1-1.06-1.06A6.22 6.22 0 0 1 12.5 1.75ZM6 9.25A.75.75 0 0 1 6.75 8.5h6.5a.75.75 0 0 1 0 1.5h-6.5A.75.75 0 0 1 6 9.25Z"
+                                                            clip-rule="evenodd" />
+                                                    </svg>
+
+                                                    Depends on {{ $task->dependencies_count }}
+                                                </span>
+                                            @endif
+
+                                            @if ($task->dependent_tasks_count > 0)
+                                                <a href="{{ route('tasks.show', [
+                                                        'task' => $task,
+                                                        'from' => 'alltasks',
+                                                        'return_url' => request()->fullUrl(),
+                                                    ]) }}"
+                                                class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold shadow-sm hover:opacity-80"
+                                                style="border-color: #fb7185; background-color: #fff1f2; color: #9f1239;"
+                                                title="This task affects {{ $task->dependent_tasks_count }} downstream task{{ $task->dependent_tasks_count === 1 ? '' : 's' }}. Open task details to review impacts.">
+                                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                                        class="h-3.5 w-3.5"
+                                                        viewBox="0 0 20 20"
+                                                        fill="currentColor"
+                                                        aria-hidden="true">
+                                                        <path fill-rule="evenodd"
+                                                            d="M10 2.5a.75.75 0 0 1 .75.75v10.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-5 5a.75.75 0 0 1-1.06 0l-5-5a.75.75 0 0 1 1.06-1.06l3.72 3.72V3.25A.75.75 0 0 1 10 2.5Z"
+                                                            clip-rule="evenodd" />
+                                                    </svg>
+
+                                                    Impacts {{ $task->dependent_tasks_count }}
+                                                </a>
+                                            @endif
+
                                             @if ($task->parentTask)
                                                 <a href="{{ route('tasks.show', [
                                                     'task' => $task->parentTask,
