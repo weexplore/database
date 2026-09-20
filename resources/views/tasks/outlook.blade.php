@@ -1407,6 +1407,10 @@
                                             'badge' => 'bg-sky-100 text-sky-800',
                                             'icon' => 'Note',
                                         ],
+                                        'bible_reference' => [
+                                            'badge' => 'bg-purple-100 text-purple-800',
+                                            'icon' => 'Bible',
+                                        ],
                                         'source' => [
                                             'badge' => 'bg-emerald-100 text-emerald-800',
                                             'icon' => 'Source',
@@ -1466,6 +1470,18 @@
                     @endif
                 </div>
             </section>
+
+            <div class="py-6">
+                <div class="w-full max-w-none mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 space-y-6">
+
+                    {{-- Existing Outlook sections --}}
+
+                    @include('tasks.partials.today-travel-activity', [
+                        'todayTravelActivity' => $todayTravelActivity,
+                    ])
+
+                </div>
+            </div>
         </div>
     </div>
 @php

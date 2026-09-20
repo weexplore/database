@@ -11,8 +11,12 @@ use App\Models\KnowledgeItem;
 use App\Models\KnowledgeNote;
 use App\Models\KnowledgeReviewLog;
 use App\Models\KnowledgeSource;
+use App\Models\BibleReference;
 use App\Models\Trip;
 use App\Models\TripItem;
+use App\Models\Destination;
+use App\Models\DestinationItem;
+use App\Models\Place;
 use Illuminate\Support\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
@@ -992,6 +996,31 @@ class TaskController extends Controller
         ->whereBetween('updatedat', [$today, $tomorrow])
         ->get();
 
+    $knowledgeBibleReferencesUpdatedToday = BibleReference::query()
+        ->select([
+            'id',
+            'knowledgeitemid',
+            'versionid',
+            'bookid',
+            'chapterfrom',
+            'versefrom',
+            'chapterto',
+            'verseto',
+            'referencelabel',
+            'cachedreferencetext',
+            'createdat',
+            'updatedat',
+        ])
+        ->with([
+            'knowledgeItem:id,primarycategoryid,itemname',
+            'knowledgeItem.primaryCategory:id,categoryname',
+            'book:id,bookname,sortorder',
+            'version:id,versionname',
+        ])
+        ->whereBetween('updatedat', [$today, $tomorrow])
+        ->orderByDesc('updatedat')
+        ->get();
+
     $knowledgeSourcesUpdatedToday = KnowledgeSource::query()
         ->with('knowledgeItem.primaryCategory')
         ->whereBetween('updatedat', [$today, $tomorrow])
@@ -1040,6 +1069,31 @@ class TaskController extends Controller
         ]);
     }
 
+    foreach ($knowledgeBibleReferencesUpdatedToday as $bibleReference) {
+        $wasCreatedToday = $bibleReference->createdat !== null
+            && $bibleReference->createdat->betweenIncluded(
+                $today,
+                $tomorrow
+            );
+
+        $referenceText = $this->formatBibleReferenceForOutlook(
+            $bibleReference
+        );
+
+        $todayKnowledgeActivity->push([
+            'type' => 'bible_reference',
+            'label' => 'Bible reference',
+            'knowledgeItem' => $bibleReference->knowledgeItem,
+            'record' => $bibleReference,
+            'title' => $bibleReference->knowledgeItem?->itemname
+                ?? 'Knowledge Item',
+            'detail' => $referenceText,
+            'tab' => 'bible-references',
+            'createdToday' => $wasCreatedToday,
+            'updatedAt' => $bibleReference->updatedat,
+        ]);
+    }
+
     foreach ($knowledgeSourcesUpdatedToday as $knowledgeSource) {
         $todayKnowledgeActivity->push([
             'type' => 'source',
@@ -1077,6 +1131,173 @@ class TaskController extends Controller
 
     $todayKnowledgeActivity = $todayKnowledgeActivity
         ->filter(fn (array $activity) => $activity['knowledgeItem'] !== null)
+        ->sortByDesc('updatedAt')
+        ->values();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Today's Travel Maintenance
+    |--------------------------------------------------------------------------
+    |
+    | Audit-style activity feed for Places, Destinations and Destination Items
+    | created or updated today. Queries are constrained to a one-day time range
+    | and load only fields required by the Outlook partial.
+    |
+    */
+
+    $placesUpdatedToday = Place::query()
+        ->select([
+            'id',
+            'placename',
+            'placetype',
+            'locality',
+            'requiresinvestigation',
+            'createdat',
+            'updatedat',
+        ])
+        ->whereBetween('updatedat', [$today, $tomorrow])
+        ->orderByDesc('updatedat')
+        ->get();
+
+    $destinationsUpdatedToday = Destination::query()
+        ->select([
+            'id',
+            'placeid',
+            'destinationname',
+            'destinationtype',
+            'hasvisited',
+            'visitinterestlevel',
+            'createdat',
+            'updatedat',
+        ])
+        ->with([
+            'place:id,placename,locality',
+        ])
+        ->whereBetween('updatedat', [$today, $tomorrow])
+        ->orderByDesc('updatedat')
+        ->get();
+
+    $destinationItemsUpdatedToday = DestinationItem::query()
+        ->select([
+            'id',
+            'destinationid',
+            'placeid',
+            'itemname',
+            'itemtype',
+            'hasvisited',
+            'stillwanttovisit',
+            'visitinterestlevel',
+            'createdat',
+            'updatedat',
+        ])
+        ->with([
+            'destination:id,placeid,destinationname',
+            'destination.place:id,placename,locality',
+            'place:id,placename,locality',
+        ])
+        ->whereBetween('updatedat', [$today, $tomorrow])
+        ->orderByDesc('updatedat')
+        ->get();
+
+    $todayTravelActivity = collect();
+
+    foreach ($placesUpdatedToday as $place) {
+        $wasCreatedToday = $place->createdat !== null
+            && $place->createdat->betweenIncluded($today, $tomorrow);
+
+        $todayTravelActivity->push([
+            'type' => 'place',
+            'label' => 'Place',
+            'record' => $place,
+            'title' => $place->placename,
+            'detail' => collect([
+                $place->locality,
+                $place->placetype
+                    ? ucfirst(str_replace('_', ' ', $place->placetype))
+                    : null,
+                $place->requiresinvestigation
+                    ? 'Needs investigation'
+                    : null,
+            ])->filter()->implode(' · '),
+            'createdToday' => $wasCreatedToday,
+            'updatedAt' => $place->updatedat,
+        ]);
+    }
+
+    foreach ($destinationsUpdatedToday as $destination) {
+        $wasCreatedToday = $destination->createdat !== null
+            && $destination->createdat->betweenIncluded($today, $tomorrow);
+
+        $todayTravelActivity->push([
+            'type' => 'destination',
+            'label' => 'Destination',
+            'record' => $destination,
+            'title' => $destination->destinationname,
+            'detail' => collect([
+                $destination->place?->placename,
+                $destination->place?->locality,
+                $destination->destinationtype
+                    ? ucfirst(
+                        str_replace(
+                            '_',
+                            ' ',
+                            $destination->destinationtype
+                        )
+                    )
+                    : null,
+                $destination->visitinterestlevel
+                    ? ucfirst(
+                        str_replace(
+                            '_',
+                            ' ',
+                            $destination->visitinterestlevel
+                        )
+                    )
+                    : null,
+            ])->filter()->implode(' · '),
+            'createdToday' => $wasCreatedToday,
+            'updatedAt' => $destination->updatedat,
+        ]);
+    }
+
+    foreach ($destinationItemsUpdatedToday as $destinationItem) {
+        $wasCreatedToday = $destinationItem->createdat !== null
+            && $destinationItem->createdat->betweenIncluded(
+                $today,
+                $tomorrow
+            );
+
+        /*
+        * A destination item can be attached directly to a Place without a
+        * Destination. Use its own Place as fallback context in that case.
+        */
+        $contextPlace = $destinationItem->destination?->place
+            ?? $destinationItem->place;
+
+        $todayTravelActivity->push([
+            'type' => 'destination_item',
+            'label' => 'Destination item',
+            'record' => $destinationItem,
+            'title' => $destinationItem->itemname,
+            'detail' => collect([
+                $destinationItem->destination?->destinationname,
+                $contextPlace?->placename,
+                $contextPlace?->locality,
+                $destinationItem->itemtype
+                    ? ucfirst(
+                        str_replace('_', ' ', $destinationItem->itemtype)
+                    )
+                    : null,
+                $destinationItem->stillwanttovisit
+                    ? 'Still want to visit'
+                    : null,
+            ])->filter()->implode(' · '),
+            'createdToday' => $wasCreatedToday,
+            'updatedAt' => $destinationItem->updatedat,
+        ]);
+    }
+
+    $todayTravelActivity = $todayTravelActivity
         ->sortByDesc('updatedAt')
         ->values();
 
@@ -1500,6 +1721,8 @@ class TaskController extends Controller
         'upcomingKnowledgeReviewFollowUps',
 
         'knowledgeRemindersDueToday',
+
+        'todayTravelActivity',
 
         'upcomingTrips',
         'upcomingTripItems',
@@ -2031,5 +2254,57 @@ private function redirectAfterTaskAction(
             'yearly' => $baseDate->copy()->addYearsNoOverflow($interval),
             default => null,
         };
+    }
+
+    private function formatBibleReferenceForOutlook(
+        BibleReference $bibleReference
+    ): string {
+        $reference = trim((string) $bibleReference->referencelabel);
+
+        if ($reference === '') {
+            $bookName = $bibleReference->book?->bookname ?? 'Bible';
+
+            $from = (string) $bibleReference->chapterfrom;
+
+            if ($bibleReference->versefrom !== null) {
+                $from .= ':' . $bibleReference->versefrom;
+            }
+
+            $to = null;
+
+            if ($bibleReference->chapterto !== null) {
+                $to = (string) $bibleReference->chapterto;
+
+                if ($bibleReference->verseto !== null) {
+                    $to .= ':' . $bibleReference->verseto;
+                }
+            } elseif ($bibleReference->verseto !== null) {
+                $to = (string) $bibleReference->chapterfrom
+                    . ':'
+                    . $bibleReference->verseto;
+            }
+
+            $reference = trim($bookName . ' ' . $from);
+
+            if ($to !== null && $to !== $from) {
+                $reference .= '–' . $to;
+            }
+        }
+
+        $versionName = trim((string) (
+            $bibleReference->version?->versionname ?? ''
+        ));
+
+        if (
+            $versionName !== ''
+            && !str_contains(
+                mb_strtolower($reference),
+                mb_strtolower($versionName)
+            )
+        ) {
+            $reference .= ' (' . $versionName . ')';
+        }
+
+        return $reference;
     }
 }

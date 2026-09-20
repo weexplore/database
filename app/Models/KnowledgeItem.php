@@ -17,7 +17,7 @@ class KnowledgeItem extends Model
     protected $table = 'knowledgeitems';
     protected $primaryKey = 'id';
     public $incrementing = true;
-    protected $keyType = 'int';
+    protected $keyType = 'string';
 
 protected $fillable = [
     'primarycategoryid',
@@ -41,7 +41,7 @@ protected $fillable = [
 
 protected $casts = [
     'primarycategoryid' => 'integer',
-    'itemtype' => 'string',
+    'itemtype' => 'integer',
     'parentitemid' => 'integer',
     'placeid' => 'integer',
     'startdate' => 'date',
@@ -107,7 +107,7 @@ protected $casts = [
         return $this->hasMany(KnowledgeProperty::class, 'knowledgeitemid');
     }
 
-    public function attachments()
+    public function attachments(): BelongsToMany
     {
         return $this->belongsToMany(
             KnowledgeAttachment::class,
@@ -141,7 +141,11 @@ protected $casts = [
     }
     public function itemType(): BelongsTo
     {
-        return $this->belongsTo(KnowledgeItemType::class, 'itemtype');
+        return $this->belongsTo(
+            KnowledgeItemType::class,
+            'itemtype',
+            'id'
+        );
     }
 
     public function relationships(): HasMany
@@ -175,12 +179,12 @@ protected $casts = [
             ->orderBy('facttype')
             ->orderBy('datefrom');
     }
-    public function tasks()
+    public function tasks(): BelongsToMany
     {
         return $this->belongsToMany(
             Task::class,
             'taskknowledgeitems',
-            'knowledgeitemid',
+            'knowledgeitemid',  
             'taskid'
         )->withTimestamps('createdat', 'updatedat');
     }

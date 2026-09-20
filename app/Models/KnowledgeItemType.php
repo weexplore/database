@@ -24,15 +24,15 @@ class KnowledgeItemType extends Model
         'isactive' => 'boolean',
     ];
 
-    const CREATED_AT = 'createdat';
-    const UPDATED_AT = 'updatedat';
+    public const CREATED_AT = 'createdat';
+    public const UPDATED_AT = 'updatedat';
 
     public function knowledgeItems(): HasMany
     {
-        return $this->hasMany(KnowledgeItem::class, 'itemtype', 'typename');
+        return $this->hasMany(
+            KnowledgeItem::class,
+            'itemtype',
+            'id'
+        );
     }
-    public function itemType(): BelongsTo
-{
-    return $this->belongsTo(KnowledgeItemType::class, 'knowledgeitemtypeid');
-}
 }

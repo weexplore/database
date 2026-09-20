@@ -72,4 +72,12 @@ class BibleReference extends Model
 
         return $to ? "{$bookName} {$from}-{$to}" : "{$bookName} {$from}";
     }
+
+    public function knowledgeItem(): BelongsTo
+    {
+        return $this->belongsTo(
+            KnowledgeItem::class,
+            'knowledgeitemid'
+        );
+    }
 }

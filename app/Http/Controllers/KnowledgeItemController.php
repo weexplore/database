@@ -19,6 +19,8 @@ use App\Models\InstrumentType;
 use App\Models\Place;
 use App\Http\Controllers\InstrumentTransactionController;
 use App\Models\Portfolio;
+use App\Models\BibleBook;
+use App\Models\BibleVersion;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -27,13 +29,13 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 
 
 class KnowledgeItemController extends Controller
 {
     public function index(Request $request): View
     {
-        // dd($request->all());
         $filters = [
             'domainid' => $request->integer('domainid') ?: null,
             'categoryid' => $request->integer('categoryid') ?: null,
@@ -47,50 +49,108 @@ class KnowledgeItemController extends Controller
             ->where('isactive', 1)
             ->orderBy('sortorder')
             ->orderBy('domainname')
-            ->get();
+            ->get(['id', 'domainname', 'sortorder']);
 
         if (!$filters['domainid'] && $domains->isNotEmpty()) {
             $filters['domainid'] = (int) $domains->first()->id;
         }
 
         $categories = collect();
-        $items = collect();
+        $items = KnowledgeItem::query()
+            ->whereRaw('1 = 0')
+            ->paginate(50)
+            ->withQueryString();
 
         if ($filters['domainid']) {
             $categories = KnowledgeCategory::query()
                 ->where('domainid', $filters['domainid'])
                 ->orderBy('sortorder')
                 ->orderBy('categoryname')
-                ->get();
+                ->get([
+                    'id',
+                    'domainid',
+                    'parentcategoryid',
+                    'categoryname',
+                    'sortorder',
+                ]);
 
             $items = KnowledgeItem::query()
-                ->with(['primaryCategory', 'parentItem', 'itemType'])
-                ->whereHas('primaryCategory', function ($q) use ($filters) {
-                    $q->where('domainid', $filters['domainid']);
-                })
-                ->when($filters['categoryid'], fn ($q) => $q->where('primarycategoryid', $filters['categoryid']))
-                ->when($filters['search'] !== '', function ($q) use ($filters) {
-                    $q->where(function ($sub) use ($filters) {
-                        $sub->where('itemname', 'like', '%' . $filters['search'] . '%')
-                            ->orWhere('summary', 'like', '%' . $filters['search'] . '%')
-                            ->orWhere('detailednotes', 'like', '%' . $filters['search'] . '%')
-                            ->orWhere('significance', 'like', '%' . $filters['search'] . '%')
-                            ->orWhere('reviewnotes', 'like', '%' . $filters['search'] . '%');
+                ->select([
+                    'id',
+                    'primarycategoryid',
+                    'parentitemid',
+                    'itemtype',
+                    'itemname',
+                    'itemstatus',
+                    'summary',
+                    'sortorder',
+                    'startdate',
+                    'enddate',
+                    'nextreviewdate',
+                    'isfeatured',
+                    'iswatchlist',
+                    'isactive',
+                ])
+                ->with([
+                    'primaryCategory:id,domainid,categoryname',
+                    'parentItem:id,itemname',
+                    'itemType:id,typename',
+                ])
+                ->whereHas(
+                    'primaryCategory',
+                    fn ($query) => $query->where(
+                        'domainid',
+                        $filters['domainid']
+                    )
+                )
+                ->when(
+                    $filters['categoryid'],
+                    fn ($query) => $query->where(
+                        'primarycategoryid',
+                        $filters['categoryid']
+                    )
+                )
+                ->when($filters['search'] !== '', function ($query) use ($filters) {
+                    $search = $filters['search'];
+
+                    $query->where(function ($subQuery) use ($search) {
+                        $subQuery
+                            ->where('itemname', 'like', '%' . $search . '%')
+                            ->orWhere('summary', 'like', '%' . $search . '%')
+                            ->orWhere('detailednotes', 'like', '%' . $search . '%')
+                            ->orWhere('significance', 'like', '%' . $search . '%')
+                            ->orWhere('reviewnotes', 'like', '%' . $search . '%');
                     });
                 })
-                ->when($filters['itemtype'], fn ($q) => $q->where('itemtype', $filters['itemtype']))
-                ->when($filters['itemstatus'] !== '', fn ($q) => $q->where('itemstatus', $filters['itemstatus']))
-                ->when($filters['active'] !== '', fn ($q) => $q->where('isactive', (int) $filters['active']))
+                ->when(
+                    $filters['itemtype'],
+                    fn ($query) => $query->where('itemtype', $filters['itemtype'])
+                )
+                ->when(
+                    $filters['itemstatus'] !== '',
+                    fn ($query) => $query->where(
+                        'itemstatus',
+                        $filters['itemstatus']
+                    )
+                )
+                ->when(
+                    $filters['active'] !== '',
+                    fn ($query) => $query->where(
+                        'isactive',
+                        (int) $filters['active']
+                    )
+                )
                 ->orderBy('sortorder')
                 ->orderBy('itemname')
-                ->get();
+                ->paginate(50)
+                ->withQueryString();
         }
 
         $itemTypes = KnowledgeItemType::query()
             ->where('isactive', true)
             ->orderBy('sortorder')
             ->orderBy('typename')
-            ->get();
+            ->get(['id', 'typename', 'sortorder']);
 
         $itemStatuses = KnowledgeItem::query()
             ->whereNotNull('itemstatus')
@@ -99,23 +159,15 @@ class KnowledgeItemController extends Controller
             ->orderBy('itemstatus')
             ->pluck('itemstatus');
 
-        $itemStatusOptions = [
-            'active' => 'Active',
-            'draft' => 'Draft',
-            'archived' => 'Archived',
-            'reference' => 'Reference',
-            'review' => 'Review',
-        ];
+        $selectedCategory = $filters['categoryid']
+            ? KnowledgeCategory::query()
+                ->with([
+                    'domain:id,domainname',
+                    'parentCategory:id,categoryname',
+                ])
+                ->find($filters['categoryid'])
+            : null;
 
-        $selectedCategory = null;
-
-        if (!empty($filters['categoryid'])) {
-            $selectedCategory = KnowledgeCategory::query()
-                ->with(['domain', 'parentCategory'])
-                ->find($filters['categoryid']);
-        }
-
-        
         return view('knowledge.items.index', [
             'pageTitle' => 'Knowledge Items',
             'filters' => $filters,
@@ -125,7 +177,13 @@ class KnowledgeItemController extends Controller
             'items' => $items,
             'itemTypes' => $itemTypes,
             'itemStatuses' => $itemStatuses,
-            'itemStatusOptions' => $itemStatusOptions,
+            'itemStatusOptions' => [
+                'active' => 'Active',
+                'draft' => 'Draft',
+                'archived' => 'Archived',
+                'reference' => 'Reference',
+                'review' => 'Review',
+            ],
         ]);
     }
 
@@ -153,6 +211,7 @@ class KnowledgeItemController extends Controller
             'existing.*.enddate' => ['nullable', 'date'],
             'existing.*.nextreviewdate' => ['nullable', 'date'],
             'existing.*.isfeatured' => ['nullable', 'boolean'],
+            'existing.*.iswatchlist' => ['nullable', 'boolean'],
             'existing.*.isactive' => ['nullable', 'boolean'],
 
             'new' => ['nullable', 'array'],
@@ -170,6 +229,7 @@ class KnowledgeItemController extends Controller
             'new.enddate' => ['nullable', 'date'],
             'new.nextreviewdate' => ['nullable', 'date'],
             'new.isfeatured' => ['nullable', 'boolean'],
+            'new.iswatchlist' => ['nullable', 'boolean'],
             'new.isactive' => ['nullable', 'boolean'],
 
             'domainid' => ['nullable', 'integer'],
@@ -189,20 +249,8 @@ class KnowledgeItemController extends Controller
         ]);
 
         DB::transaction(function () use ($validated) {
-            /*
-            * Categories whose items must have their sort orders normalised.
-            * This includes both source and destination categories when an
-            * existing item is moved.
-            */
             $affectedCategoryIds = [];
 
-            /*
-            * Existing rows.
-            *
-            * Item names are not editable from this bulk screen. However, an
-            * item can be moved to a different category, so validate that its
-            * unchanged name does not already exist in the target category.
-            */
             foreach ($validated['existing'] ?? [] as $id => $row) {
                 $item = KnowledgeItem::query()
                     ->lockForUpdate()
@@ -211,28 +259,22 @@ class KnowledgeItemController extends Controller
                 $oldCategoryId = (int) $item->primarycategoryid;
                 $newCategoryId = (int) $row['primarycategoryid'];
 
-                /*
-                * Do not allow a move into a category that already contains an
-                * item with the same item name. Exclude the current item so that
-                * saving without changing categories remains valid.
-                */
-                $duplicateExists = KnowledgeItem::query()
-                    ->where('primarycategoryid', $newCategoryId)
-                    ->where('itemname', $item->itemname)
-                    ->whereKeyNot($item->id)
-                    ->exists();
+                if ($oldCategoryId !== $newCategoryId) {
+                    $duplicateExists = KnowledgeItem::query()
+                        ->where('primarycategoryid', $newCategoryId)
+                        ->where('itemname', $item->itemname)
+                        ->whereKeyNot($item->id)
+                        ->exists();
 
-                if ($duplicateExists) {
-                    throw ValidationException::withMessages([
-                        "existing.{$id}.primarycategoryid" =>
-                            "Cannot move '{$item->itemname}' because an item with that name already exists in the selected category.",
-                    ]);
+                    if ($duplicateExists) {
+                        throw ValidationException::withMessages([
+                            "existing.{$id}.primarycategoryid" =>
+                                "Cannot move '{$item->itemname}' because an item with that name already exists in the selected category.",
+                        ]);
+                    }
                 }
 
-                $affectedCategoryIds[] = $oldCategoryId;
-                $affectedCategoryIds[] = $newCategoryId;
-
-                $item->update([
+                $newValues = [
                     'primarycategoryid' => $newCategoryId,
                     'itemtype' => $row['itemtype'] ?? null,
                     'itemstatus' => $row['itemstatus'] ?? null,
@@ -242,13 +284,27 @@ class KnowledgeItemController extends Controller
                     'enddate' => $row['enddate'] ?? null,
                     'nextreviewdate' => $row['nextreviewdate'] ?? null,
                     'isfeatured' => (bool) ($row['isfeatured'] ?? false),
+                    'iswatchlist' => (bool) ($row['iswatchlist'] ?? false),
                     'isactive' => (bool) ($row['isactive'] ?? false),
-                ]);
+                ];
+
+                $item->fill($newValues);
+
+                if (!$item->isDirty()) {
+                    continue;
+                }
+
+                if (
+                    $oldCategoryId !== $newCategoryId
+                    || (int) $item->getOriginal('sortorder') !== (int) $newValues['sortorder']
+                ) {
+                    $affectedCategoryIds[] = $oldCategoryId;
+                    $affectedCategoryIds[] = $newCategoryId;
+                }
+
+                $item->save();
             }
 
-            /*
-            * Optional single new row from the inline “Add item” controls.
-            */
             $new = $validated['new'] ?? [];
             $hasNewRow = trim((string) ($new['itemname'] ?? '')) !== '';
 
@@ -256,11 +312,6 @@ class KnowledgeItemController extends Controller
                 $newCategoryId = (int) ($new['primarycategoryid'] ?? 0);
                 $newItemName = trim((string) ($new['itemname'] ?? ''));
 
-                /*
-                * The first validation pass allows an empty new row. Once an
-                * item name has been entered, the new row becomes mandatory and
-                * must be unique within its selected category.
-                */
                 $newValidator = Validator::make([
                     ...$new,
                     'itemname' => $newItemName,
@@ -296,6 +347,7 @@ class KnowledgeItemController extends Controller
                     'enddate' => ['nullable', 'date'],
                     'nextreviewdate' => ['nullable', 'date'],
                     'isfeatured' => ['nullable', 'boolean'],
+                    'iswatchlist' => ['nullable', 'boolean'],
                     'isactive' => ['nullable', 'boolean'],
                 ], [
                     'itemname.unique' =>
@@ -313,17 +365,10 @@ class KnowledgeItemController extends Controller
                 }
 
                 $newValidated = $newValidator->validated();
-
-                $newCategoryId = (int) $newValidated['primarycategoryid'];
-                $newItemName = trim((string) $newValidated['itemname']);
                 $newRequestedSortOrder = (int) (
                     $newValidated['sortorder'] ?? 0
                 );
 
-                /*
-                * Blank or zero means append. The later normalisation pass makes
-                * sort order values sequential for all affected categories.
-                */
                 if ($newRequestedSortOrder <= 0) {
                     $currentMaximumSortOrder = KnowledgeItem::query()
                         ->where('primarycategoryid', $newCategoryId)
@@ -338,7 +383,7 @@ class KnowledgeItemController extends Controller
 
                 KnowledgeItem::create([
                     'primarycategoryid' => $newCategoryId,
-                    'itemname' => $newItemName,
+                    'itemname' => trim((string) $newValidated['itemname']),
                     'itemtype' => $newValidated['itemtype'] ?? null,
                     'itemstatus' => $newValidated['itemstatus'] ?? 'active',
                     'summary' => $newValidated['summary'] ?? null,
@@ -349,6 +394,9 @@ class KnowledgeItemController extends Controller
                     'isfeatured' => (bool) (
                         $newValidated['isfeatured'] ?? false
                     ),
+                    'iswatchlist' => (bool) (
+                        $newValidated['iswatchlist'] ?? false
+                    ),
                     'isactive' => array_key_exists('isactive', $newValidated)
                         ? (bool) $newValidated['isactive']
                         : true,
@@ -357,17 +405,8 @@ class KnowledgeItemController extends Controller
                 $affectedCategoryIds[] = $newCategoryId;
             }
 
-            /*
-            * Ensure each affected category has a clean sequential order:
-            * 1, 2, 3, ...
-            *
-            * Explicit positive order values are honoured first. Zero and NULL
-            * values are placed after them in deterministic name/ID order.
-            */
             $affectedCategoryIds = array_values(array_unique(
-                array_filter(
-                    array_map('intval', $affectedCategoryIds)
-                )
+                array_filter(array_map('intval', $affectedCategoryIds))
             ));
 
             foreach ($affectedCategoryIds as $categoryId) {
@@ -380,15 +419,13 @@ class KnowledgeItemController extends Controller
                     ->orderBy('sortorder')
                     ->orderBy('itemname')
                     ->orderBy('id')
-                    ->get();
+                    ->get(['id', 'sortorder']);
 
                 foreach ($items as $index => $item) {
                     $normalisedSortOrder = $index + 1;
 
                     if ((int) $item->sortorder !== $normalisedSortOrder) {
-                        $item->update([
-                            'sortorder' => $normalisedSortOrder,
-                        ]);
+                        $item->update(['sortorder' => $normalisedSortOrder]);
                     }
                 }
             }
@@ -409,287 +446,420 @@ class KnowledgeItemController extends Controller
     }
 
     public function edit(Request $request, KnowledgeItem $knowledgeItem): View
-{
-    $knowledgeItem->load([
-        'primaryCategory',
-        'primaryCategory.domain',
-        'primaryCategory.parentCategory',
-        'parentItem',
-        'childItems',
-        'sources',
-        'notes',
-        'attachments',
-        'reviewLogs',
-        'itemType',
-        'outgoingRelationships.toItem.primaryCategory',
-        'incomingRelationships.fromItem.primaryCategory',
-        'bibleReferences.book',
-        'bibleReferences.version',
-        'instrument.instrumentType',
-        'instrument.exchange',
-        'tags',
-        'instrument.aliases',
-        'instrument.priceObservations',
-        'instrument.corporateActions',
-        'instrument.transactions.portfolio',
-        'personFacts.place',
-        'outgoingRelationships.relationshipFacts.place',
-        'incomingRelationships.relationshipFacts.place',
-    ]);
-
-    $domainId = optional($knowledgeItem->primaryCategory)->domainid;
-    $domain = $knowledgeItem->primaryCategory?->domain;
-
-    $hasBibleTools = (bool) ($domain?->hasbibletools ?? false);
-    $hasInvestmentTools = (bool) ($domain?->hasinvestmenttools ?? false);
-    $hasFamilyHistoryTools = (bool) ($domain?->hasfamilyhistorytools ?? false);
-
-    $categories = KnowledgeCategory::query()
-        ->with([
-            'domain',
-            'parentCategory',
-        ])
-        ->join(
-            'knowledgedomains',
-            'knowledgedomains.id',
-            '=',
-            'knowledgecategories.domainid'
-        )
-        ->where('knowledgecategories.isactive', 1)
-        ->where('knowledgedomains.isactive', 1)
-        ->select('knowledgecategories.*')
-        ->orderByRaw('COALESCE(knowledgedomains.sortorder, 999999)')
-        ->orderBy('knowledgedomains.domainname')
-        ->orderByRaw('COALESCE(knowledgecategories.parentcategoryid, 0)')
-        ->orderByRaw('COALESCE(knowledgecategories.sortorder, 999999)')
-        ->orderBy('knowledgecategories.categoryname')
-        ->get();
-
-    $parentItems = KnowledgeItem::query()
-        ->where('id', '!=', $knowledgeItem->id)
-        ->whereHas('primaryCategory', fn ($q) => $q->where('domainid', $domainId))
-        ->orderBy('itemname')
-        ->get();
-
-    $itemTypes = KnowledgeItemType::query()
-        ->where('isactive', true)
-        ->orderBy('sortorder')
-        ->orderBy('typename')
-        ->get();
-
-    $relationshipItems = KnowledgeItem::query()
-        ->with([
-            'primaryCategory',
-            'primaryCategory.parentCategory',
+    {
+        /*
+        * Always load only the small core graph required to establish the domain,
+        * populate the Details tab, and render the tab controls.
+        */
+        $knowledgeItem->load([
             'primaryCategory.domain',
-        ])
-        ->where('id', '<>', $knowledgeItem->id)
-        ->whereHas('primaryCategory', function ($query) use ($knowledgeItem) {
-            $query->where('domainid', $knowledgeItem->primaryCategory?->domainid);
-        })
-        ->get()
-        ->sortBy(function ($item) {
-            return sprintf(
-                '%s %s',
-                mb_strtolower($item->primaryCategory?->categoryname ?? 'zzzz'),
-                mb_strtolower($item->itemname ?? '')
-            );
-        })
-        ->values();
+            'primaryCategory.parentCategory',
+            'parentItem',
+            'itemType',
+            'tags',
+        ]);
 
-    // Relationships for the Relationships tab
-        // Relationships for the Relationships tab
-    $displayRelationships = collect(
-        $knowledgeItem->outgoingRelationships->map(function ($relationship) use ($knowledgeItem) {
-            return [
-                'relationship' => $relationship,
-                'direction' => 'outgoing',
-                'relatedItem' => $relationship->toItem,
-                'displayTypeLabel' => $relationship->relationshipTypeLabel(),
-                'sortorder' => $relationship->sortOrderFor($knowledgeItem),
-                'relatedSortName' => mb_strtolower($relationship->toItem?->itemname ?? 'zzzz'),
-            ];
-        })->all()
-    )->merge(
-        collect(
-            $knowledgeItem->incomingRelationships->map(function ($relationship) use ($knowledgeItem) {
-                return [
-                    'relationship' => $relationship,
-                    'direction' => 'incoming',
-                    'relatedItem' => $relationship->fromItem,
-                    'displayTypeLabel' => $relationship->inverseRelationshipTypeLabel(),
-                    'sortorder' => $relationship->sortOrderFor($knowledgeItem),
-                    'relatedSortName' => mb_strtolower($relationship->fromItem?->itemname ?? 'zzzz'),
-                ];
-            })->all()
-        )
-    )->sortBy([
-        ['sortorder', 'asc'],
-        ['relatedSortName', 'asc'],
-    ])->values();
+        $domainId = $knowledgeItem->primaryCategory?->domainid;
+        $domain = $knowledgeItem->primaryCategory?->domain;
 
-    // Combined relationships collection for timeline etc.
-    $allRelationships = $knowledgeItem->outgoingRelationships
-        ->merge($knowledgeItem->incomingRelationships)
-        ->map(function ($relationship) use ($knowledgeItem) {
-            $relationship->display_sortorder = $relationship->sortOrderFor($knowledgeItem);
-            return $relationship;
-        })
-        ->sortBy([
-            ['display_sortorder', 'asc'],
-            ['id', 'asc'],
-        ])
-        ->values();
+        $hasBibleTools = (bool) ($domain?->hasbibletools ?? false);
+        $hasInvestmentTools = (bool) ($domain?->hasinvestmenttools ?? false);
+        $hasFamilyHistoryTools = (bool) ($domain?->hasfamilyhistorytools ?? false);
 
+        $allowedTabs = [
+            'details',
+            'info',
+            'notes',
+            'sources',
+            'review-logs',
+            'relationships',
+            'attachments',
+        ];
 
-    // Query-state flags
-    $editingNoteId = $request->integer('editing_note_id');
-    $showAddNote = $request->boolean('show_add_note');
+        if ($hasBibleTools) {
+            $allowedTabs[] = 'bible-references';
+        }
 
-    $editingSourceId = $request->integer('editing_source_id');
-    $showAddSource = $request->boolean('show_add_source');
-    $showFetchSource = $request->boolean('show_fetch_source');
+        if ($hasInvestmentTools) {
+            $allowedTabs[] = 'investments';
+        }
 
-    $editingReviewLogId = $request->integer('editing_review_log_id');
-    $showAddReviewLog = $request->boolean('show_add_review_log');
+        if ($hasFamilyHistoryTools) {
+            $allowedTabs[] = 'family-history';
+        }
 
-    $editingRelationshipId = $request->integer('editing_relationship_id');
-    $showAddRelationship = $request->boolean('show_add_relationship');
+        $activeTab = $request->string('tab')->value() ?: 'details';
 
-    $showAddPersonFact = $request->boolean('show_add_person_fact');
-    $editingPersonFactId = $request->integer('editing_person_fact_id');
-    $showAddRelationshipFactFor = $request->integer('show_add_relationship_fact_for');
-    $editingRelationshipFactId = $request->integer('editing_relationship_fact_id');
+        if (!in_array($activeTab, $allowedTabs, true)) {
+            $activeTab = 'details';
+        }
 
-    // Tabs
-    $allowedTabs = ['details', 'info', 'notes', 'sources', 'review-logs', 'relationships', 'attachments'];
+        $editingNoteId = $request->integer('editing_note_id');
+        $showAddNote = $request->boolean('show_add_note');
+        $editingSourceId = $request->integer('editing_source_id');
+        $showAddSource = $request->boolean('show_add_source');
+        $showFetchSource = $request->boolean('show_fetch_source');
+        $editingReviewLogId = $request->integer('editing_review_log_id');
+        $showAddReviewLog = $request->boolean('show_add_review_log');
+        $editingRelationshipId = $request->integer('editing_relationship_id');
+        $showAddRelationship = $request->boolean('show_add_relationship');
+        $showAddPersonFact = $request->boolean('show_add_person_fact');
+        $editingPersonFactId = $request->integer('editing_person_fact_id');
+        $showAddRelationshipFactFor = $request->integer(
+            'show_add_relationship_fact_for'
+        );
+        $editingRelationshipFactId = $request->integer(
+            'editing_relationship_fact_id'
+        );
 
-    if (!empty($hasBibleTools)) {
-        $allowedTabs[] = 'bible-references';
-    }
+        $categories = collect();
+        $parentItems = collect();
+        $relationshipItems = collect();
+        $displayRelationships = collect();
+        $allRelationships = collect();
+        $places = collect();
+        $knowledgeTags = collect();
+        $instrumentTypes = collect();
+        $exchanges = collect();
+        $portfolios = collect();
+        $books = collect();
+        $versions = collect();
+        $editingPersonFact = null;
+        $editingRelationshipFact = null;
 
-    if (!empty($hasInvestmentTools)) {
-        $allowedTabs[] = 'investments';
-    }
+        /* Details: only data needed by the general edit form. */
+        if ($activeTab === 'details') {
+            $categories = KnowledgeCategory::query()
+                ->with([
+                    'domain:id,domainname,sortorder',
+                    'parentCategory:id,categoryname',
+                ])
+                ->join(
+                    'knowledgedomains',
+                    'knowledgedomains.id',
+                    '=',
+                    'knowledgecategories.domainid'
+                )
+                ->where('knowledgecategories.isactive', 1)
+                ->where('knowledgedomains.isactive', 1)
+                ->select('knowledgecategories.*')
+                ->orderByRaw('COALESCE(knowledgedomains.sortorder, 999999)')
+                ->orderBy('knowledgedomains.domainname')
+                ->orderByRaw('COALESCE(knowledgecategories.parentcategoryid, 0)')
+                ->orderByRaw('COALESCE(knowledgecategories.sortorder, 999999)')
+                ->orderBy('knowledgecategories.categoryname')
+                ->get();
 
-    if (!empty($hasFamilyHistoryTools)) {
-        $allowedTabs[] = 'family-history';
-    }
+            /*
+            * Temporary compatibility collection for an existing parent <select>.
+            * Replace this with server-side autocomplete next. The cap prevents a
+            * 6,000-item domain from being loaded into every Details request.
+            */
+            $parentItems = KnowledgeItem::query()
+                ->select(['id', 'itemname', 'primarycategoryid'])
+                ->where('id', '!=', $knowledgeItem->id)
+                ->where('isactive', 1)
+                ->whereHas(
+                    'primaryCategory',
+                    fn ($query) => $query->where('domainid', $domainId)
+                )
+                ->orderBy('itemname')
+                ->limit(500)
+                ->get();
 
-    $activeTab = $request->string('tab')->value() ?: 'details';
+            $knowledgeTags = KnowledgeTag::query()
+                ->where('isactive', 1)
+                ->orderByRaw('COALESCE(sortorder, 999999), tagname')
+                ->get();
+        }
 
-    if (!in_array($activeTab, $allowedTabs, true)) {
-        $activeTab = 'details';
-    }
+        if ($activeTab === 'notes') {
+            $knowledgeItem->load([
+                'notes' => fn ($query) => $query
+                    ->orderByRaw('COALESCE(sortorder, 999999)')
+                    ->orderBy('id'),
+            ]);
+        }
 
-    $places = Place::query()
-        ->where('isactive', true)
-        ->orderBy('placename')
-        ->orderBy('locality')
-        ->get(['id', 'placename', 'locality', 'placetype']);
+        if ($activeTab === 'sources') {
+            $knowledgeItem->load([
+                'sources' => fn ($query) => $query
+                    ->orderByDesc('retrievedon')
+                    ->orderByDesc('id'),
+            ]);
+        }
 
-    // Option arrays for facts
-    $personFactTypeOptions = KnowledgePersonFact::factTypeOptions();
-    $relationshipFactTypeOptions = KnowledgeRelationshipFact::factTypeOptions();
-    $dateQualifierOptions = KnowledgePersonFact::dateQualifierOptions();
-    $proofStatusOptions = KnowledgePersonFact::proofStatusOptions();
+        if ($activeTab === 'review-logs') {
+            $knowledgeItem->load([
+                'reviewLogs' => fn ($query) => $query
+                    ->orderByDesc('reviewdate')
+                    ->orderByDesc('id'),
+            ]);
+        }
 
-    
-    return view('knowledge.items.edit', [
-        'pageTitle' => 'Edit Knowledge Item',
-        'knowledgeItem' => $knowledgeItem,
-        'editingNoteId' => $editingNoteId,
-        'showAddNote' => $showAddNote,
-        'editingSourceId' => $editingSourceId,
-        'showAddSource' => $showAddSource,
-        'showFetchSource' => $showFetchSource,
-        'editingReviewLogId' => $editingReviewLogId,
-        'showAddReviewLog' => $showAddReviewLog,
-        'editingRelationshipId' => $editingRelationshipId,
-        'showAddRelationship' => $showAddRelationship,
-        'relationshipItems' => $relationshipItems,
-        'displayRelationships' => $displayRelationships,
-        'domainId' => $domainId,
-        'categories' => $categories,
-        'parentItems' => $parentItems,
-        'itemTypes' => $itemTypes,
-        'itemStatusOptions' => [
-            'active' => 'Active',
-            'draft' => 'Draft',
-            'archived' => 'Archived',
-            'reference' => 'Reference',
-            'review' => 'Review',
-        ],
-        'noteTypeOptions' => KnowledgeNote::typeOptions(),
-        'sourceTypeOptions' => KnowledgeSource::typeOptions(),
-        'reviewTypeOptions' => KnowledgeReviewLog::typeOptions(),
-        'relationshipTypeOptions' => KnowledgeRelationship::typeOptions(),
-        'activeTab' => $activeTab,
-        'places' => $places,
-        'knowledgeTags' => KnowledgeTag::query()
-            ->where('isactive', 1)
-            ->orderByRaw('COALESCE(sortorder, 999999), tagname')
-            ->get(),
-        'hasBibleTools' => $hasBibleTools,
-        'hasInvestmentTools' => $hasInvestmentTools,
-        'instrumentTypes' => InstrumentType::query()
-            ->where('isactive', 1)
-            ->orderBy('typename')
-            ->get(),
-        'exchanges' => Exchange::query()
-            ->where('isactive', 1)
-            ->orderBy('exchangename')
-            ->get(),
-        'corporateActionTypeOptions' => InstrumentCorporateActionController::actionTypeOptions(),
-        'transactionTypeOptions' => InstrumentTransactionController::transactionTypeOptions(),
-        'portfolios' => Portfolio::query()
-            ->where('isactive', 1)
-            ->orderBy('portfolioname')
-            ->get(),
-        'hasFamilyHistoryTools' => $hasFamilyHistoryTools,
-        'showAddPersonFact' => $showAddPersonFact,
-        'editingPersonFactId' => $editingPersonFactId,
-        'editingPersonFact' => $editingPersonFactId
-            ? $knowledgeItem->personFacts->firstWhere('id', $editingPersonFactId)
-            : null,
-        'showAddRelationshipFactFor' => $showAddRelationshipFactFor,
-        'editingRelationshipFactId' => $editingRelationshipFactId,
-        'editingRelationshipFact' => $knowledgeItem->outgoingRelationships
-            ->merge($knowledgeItem->incomingRelationships)
-            ->flatMap->relationshipFacts
-            ->firstWhere('id', $editingRelationshipFactId),
-        'personFactTypeOptions' => $personFactTypeOptions,
-        'relationshipFactTypeOptions' => $relationshipFactTypeOptions,
-        'dateQualifierOptions' => $dateQualifierOptions,
-        'proofStatusOptions' => $proofStatusOptions,
-        'books' => \App\Models\BibleBook::query()
+        if ($activeTab === 'attachments') {
+            $knowledgeItem->load([
+                'attachments' => fn ($query) => $query
+                    ->orderByDesc('isprimary')
+                    ->orderBy('sortorder')
+                    ->orderBy('id'),
+            ]);
+        }
+
+        if ($activeTab === 'relationships') {
+            $knowledgeItem->load([
+                'outgoingRelationships.toItem.primaryCategory',
+                'incomingRelationships.fromItem.primaryCategory',
+                'outgoingRelationships.relationshipFacts.place',
+                'incomingRelationships.relationshipFacts.place',
+            ]);
+
+            $displayRelationships = collect(
+                $knowledgeItem->outgoingRelationships->map(
+                    function ($relationship) use ($knowledgeItem) {
+                        return [
+                            'relationship' => $relationship,
+                            'direction' => 'outgoing',
+                            'relatedItem' => $relationship->toItem,
+                            'displayTypeLabel' => $relationship->relationshipTypeLabel(),
+                            'sortorder' => $relationship->sortOrderFor($knowledgeItem),
+                            'relatedSortName' => mb_strtolower(
+                                $relationship->toItem?->itemname ?? 'zzzz'
+                            ),
+                        ];
+                    }
+                )->all()
+            )->merge(
+                collect(
+                    $knowledgeItem->incomingRelationships->map(
+                        function ($relationship) use ($knowledgeItem) {
+                            return [
+                                'relationship' => $relationship,
+                                'direction' => 'incoming',
+                                'relatedItem' => $relationship->fromItem,
+                                'displayTypeLabel' =>
+                                    $relationship->inverseRelationshipTypeLabel(),
+                                'sortorder' => $relationship->sortOrderFor($knowledgeItem),
+                                'relatedSortName' => mb_strtolower(
+                                    $relationship->fromItem?->itemname ?? 'zzzz'
+                                ),
+                            ];
+                        }
+                    )->all()
+                )
+            )->sortBy([
+                ['sortorder', 'asc'],
+                ['relatedSortName', 'asc'],
+            ])->values();
+
+            $allRelationships = $knowledgeItem->outgoingRelationships
+                ->merge($knowledgeItem->incomingRelationships)
+                ->map(function ($relationship) use ($knowledgeItem) {
+                    $relationship->display_sortorder = $relationship->sortOrderFor(
+                        $knowledgeItem
+                    );
+
+                    return $relationship;
+                })
+                ->sortBy([
+                    ['display_sortorder', 'asc'],
+                    ['id', 'asc'],
+                ])
+                ->values();
+
+            /*
+            * Temporary compatibility collection for an existing relationship
+            * target <select>. Replace with autocomplete; do not remove the limit
+            * unless you deliberately accept loading all domain items again.
+            */
+            $relationshipItems = KnowledgeItem::query()
+                ->select([
+                    'knowledgeitems.id',
+                    'knowledgeitems.itemname',
+                    'knowledgeitems.primarycategoryid',
+                ])
+                ->join(
+                    'knowledgecategories',
+                    'knowledgecategories.id',
+                    '=',
+                    'knowledgeitems.primarycategoryid'
+                )
+                ->where('knowledgecategories.domainid', $domainId)
+                ->where('knowledgeitems.id', '<>', $knowledgeItem->id)
+                ->where('knowledgeitems.isactive', 1)
+                ->with('primaryCategory:id,categoryname,parentcategoryid')
+                ->orderBy('knowledgecategories.categoryname')
+                ->orderBy('knowledgeitems.itemname')
+                ->limit(500)
+                ->get();
+        }
+
+        if ($activeTab === 'bible-references' && $hasBibleTools) {
+            $knowledgeItem->load([
+                'bibleReferences.book',
+                'bibleReferences.version',
+            ]);
+
+            $books = BibleBook::query()
+                ->orderBy('sortorder')
+                ->orderBy('bookname')
+                ->get();
+
+            $versions = BibleVersion::query()
+                ->where('isactive', 1)
+                ->orderBy('versionname')
+                ->get();
+        }
+
+        if ($activeTab === 'investments' && $hasInvestmentTools) {
+            $knowledgeItem->load([
+                'instrument.instrumentType',
+                'instrument.exchange',
+                'instrument.aliases',
+                'instrument.corporateActions',
+                /*
+                * Do not load priceObservations or transactions here unless the
+                * Investments Blade needs every row. Those should use their own
+                * paginated query/controller when they become substantial.
+                */
+            ]);
+
+            $instrumentTypes = InstrumentType::query()
+                ->where('isactive', 1)
+                ->orderBy('typename')
+                ->get();
+
+            $exchanges = Exchange::query()
+                ->where('isactive', 1)
+                ->orderBy('exchangename')
+                ->get();
+
+            $portfolios = Portfolio::query()
+                ->where('isactive', 1)
+                ->orderBy('portfolioname')
+                ->get();
+        }
+
+        if ($activeTab === 'family-history' && $hasFamilyHistoryTools) {
+            $knowledgeItem->load([
+                'personFacts.place',
+                'outgoingRelationships.relationshipFacts.place',
+                'incomingRelationships.relationshipFacts.place',
+                'outgoingRelationships.toItem.primaryCategory',
+                'incomingRelationships.fromItem.primaryCategory',
+            ]);
+
+            $places = Place::query()
+                ->where('isactive', true)
+                ->orderBy('placename')
+                ->orderBy('locality')
+                ->get(['id', 'placename', 'locality', 'placetype']);
+
+            $editingPersonFact = $editingPersonFactId
+                ? $knowledgeItem->personFacts->firstWhere(
+                    'id',
+                    $editingPersonFactId
+                )
+                : null;
+
+            $editingRelationshipFact = $editingRelationshipFactId
+                ? $knowledgeItem->outgoingRelationships
+                    ->merge($knowledgeItem->incomingRelationships)
+                    ->flatMap->relationshipFacts
+                    ->firstWhere('id', $editingRelationshipFactId)
+                : null;
+        }
+
+        $itemTypes = KnowledgeItemType::query()
+            ->where('isactive', true)
             ->orderBy('sortorder')
-            ->orderBy('bookname')
-            ->get(),
+            ->orderBy('typename')
+            ->get();
 
-        'versions' => \App\Models\BibleVersion::query()
-            ->where('isactive', 1)
-            ->orderBy('versionname')
-            ->get(),
-    ]);
-}
+        return view('knowledge.items.edit', [
+            'pageTitle' => 'Edit Knowledge Item',
+            'knowledgeItem' => $knowledgeItem,
+            'editingNoteId' => $editingNoteId,
+            'showAddNote' => $showAddNote,
+            'editingSourceId' => $editingSourceId,
+            'showAddSource' => $showAddSource,
+            'showFetchSource' => $showFetchSource,
+            'editingReviewLogId' => $editingReviewLogId,
+            'showAddReviewLog' => $showAddReviewLog,
+            'editingRelationshipId' => $editingRelationshipId,
+            'showAddRelationship' => $showAddRelationship,
+            'relationshipItems' => $relationshipItems,
+            'displayRelationships' => $displayRelationships,
+            'allRelationships' => $allRelationships,
+            'domainId' => $domainId,
+            'categories' => $categories,
+            'parentItems' => $parentItems,
+            'itemTypes' => $itemTypes,
+            'itemStatusOptions' => [
+                'active' => 'Active',
+                'draft' => 'Draft',
+                'archived' => 'Archived',
+                'reference' => 'Reference',
+                'review' => 'Review',
+            ],
+            'noteTypeOptions' => KnowledgeNote::typeOptions(),
+            'sourceTypeOptions' => KnowledgeSource::typeOptions(),
+            'reviewTypeOptions' => KnowledgeReviewLog::typeOptions(),
+            'relationshipTypeOptions' => KnowledgeRelationship::typeOptions(),
+            'activeTab' => $activeTab,
+            'places' => $places,
+            'knowledgeTags' => $knowledgeTags,
+            'hasBibleTools' => $hasBibleTools,
+            'hasInvestmentTools' => $hasInvestmentTools,
+            'instrumentTypes' => $instrumentTypes,
+            'exchanges' => $exchanges,
+            'corporateActionTypeOptions' =>
+                InstrumentCorporateActionController::actionTypeOptions(),
+            'transactionTypeOptions' =>
+                InstrumentTransactionController::transactionTypeOptions(),
+            'portfolios' => $portfolios,
+            'hasFamilyHistoryTools' => $hasFamilyHistoryTools,
+            'showAddPersonFact' => $showAddPersonFact,
+            'editingPersonFactId' => $editingPersonFactId,
+            'editingPersonFact' => $editingPersonFact,
+            'showAddRelationshipFactFor' => $showAddRelationshipFactFor,
+            'editingRelationshipFactId' => $editingRelationshipFactId,
+            'editingRelationshipFact' => $editingRelationshipFact,
+            'personFactTypeOptions' => KnowledgePersonFact::factTypeOptions(),
+            'relationshipFactTypeOptions' =>
+                KnowledgeRelationshipFact::factTypeOptions(),
+            'dateQualifierOptions' => KnowledgePersonFact::dateQualifierOptions(),
+            'proofStatusOptions' => KnowledgePersonFact::proofStatusOptions(),
+            'books' => $books,
+            'versions' => $versions,
+        ]);
+    }
 
     public function update(Request $request, KnowledgeItem $knowledgeItem): RedirectResponse
     {
         $validated = $request->validate([
-            'primarycategoryid' => ['required', 'integer', Rule::exists('knowledgecategories', 'id')],
+            'primarycategoryid' => [
+                'required',
+                'integer',
+                Rule::exists('knowledgecategories', 'id'),
+            ],
             'itemname' => ['required', 'string', 'max:255'],
             'itemtype' => [
                 'nullable',
                 'integer',
-                Rule::exists('knowledgeitemtypes', 'id')->where(fn ($query) => $query->where('isactive', 1)),
+                Rule::exists('knowledgeitemtypes', 'id')
+                    ->where(fn ($query) => $query->where('isactive', 1)),
             ],
             'itemstatus' => ['nullable', 'string', 'max:30'],
             'summary' => ['nullable', 'string'],
             'detailednotes' => ['nullable', 'string'],
             'significance' => ['nullable', 'string'],
             'reviewnotes' => ['nullable', 'string'],
-            'parentitemid' => ['nullable', 'integer', Rule::exists('knowledgeitems', 'id')],
+            'parentitemid' => [
+                'nullable',
+                'integer',
+                Rule::exists('knowledgeitems', 'id'),
+            ],
             'placeid' => ['nullable', 'integer', Rule::exists('places', 'id')],
             'startdate' => ['nullable', 'date'],
             'enddate' => ['nullable', 'date'],
@@ -698,7 +868,6 @@ class KnowledgeItemController extends Controller
             'isfeatured' => ['nullable', 'boolean'],
             'iswatchlist' => ['nullable', 'boolean'],
             'isactive' => ['nullable', 'boolean'],
-            
         ], [], [
             'itemtype' => 'item type',
         ]);
@@ -706,14 +875,18 @@ class KnowledgeItemController extends Controller
         if ((int) ($validated['parentitemid'] ?? 0) === (int) $knowledgeItem->id) {
             return back()
                 ->withInput()
-                ->withErrors(['parentitemid' => 'A knowledge item cannot be its own parent.']);
+                ->withErrors([
+                    'parentitemid' => 'A knowledge item cannot be its own parent.',
+                ]);
         }
+
         $selectedCategory = KnowledgeCategory::query()
             ->select(['id', 'domainid'])
             ->findOrFail($validated['primarycategoryid']);
 
         if (!empty($validated['parentitemid'])) {
             $selectedParentItem = KnowledgeItem::query()
+                ->select(['id', 'primarycategoryid'])
                 ->with('primaryCategory:id,domainid')
                 ->findOrFail($validated['parentitemid']);
 
@@ -724,7 +897,8 @@ class KnowledgeItemController extends Controller
                 return back()
                     ->withInput()
                     ->withErrors([
-                        'parentitemid' => 'The parent item must be in the same domain as the selected primary category.',
+                        'parentitemid' =>
+                            'The parent item must be in the same domain as the selected primary category.',
                     ]);
             }
         }
@@ -734,7 +908,7 @@ class KnowledgeItemController extends Controller
                 ? $validated[$field]
                 : null;
         }
-        
+
         $tagIds = collect($request->input('tagids', []))
             ->filter()
             ->map(fn ($id) => (int) $id)
@@ -745,27 +919,33 @@ class KnowledgeItemController extends Controller
         $categoryChanged = (int) $knowledgeItem->primarycategoryid
             !== (int) $validated['primarycategoryid'];
 
-        $knowledgeItem->tags()->sync($tagIds);
+        DB::transaction(function () use (
+            $knowledgeItem,
+            $validated,
+            $tagIds
+        ) {
+            $knowledgeItem->update([
+                'primarycategoryid' => $validated['primarycategoryid'],
+                'itemname' => trim((string) $validated['itemname']),
+                'itemtype' => $validated['itemtype'] ?? null,
+                'itemstatus' => $validated['itemstatus'] ?? null,
+                'summary' => $validated['summary'] ?? null,
+                'detailednotes' => $validated['detailednotes'] ?? null,
+                'significance' => $validated['significance'] ?? null,
+                'reviewnotes' => $validated['reviewnotes'] ?? null,
+                'parentitemid' => $validated['parentitemid'] ?? null,
+                'placeid' => $validated['placeid'] ?? null,
+                'startdate' => $validated['startdate'] ?? null,
+                'enddate' => $validated['enddate'] ?? null,
+                'nextreviewdate' => $validated['nextreviewdate'] ?? null,
+                'sortorder' => $validated['sortorder'] ?? 0,
+                'isfeatured' => (bool) ($validated['isfeatured'] ?? false),
+                'iswatchlist' => (bool) ($validated['iswatchlist'] ?? false),
+                'isactive' => (bool) ($validated['isactive'] ?? false),
+            ]);
 
-        $knowledgeItem->update([
-            'primarycategoryid' => $validated['primarycategoryid'],
-            'itemname' => trim((string) $validated['itemname']),
-            'itemtype' => $validated['itemtype'] ?? null,
-            'itemstatus' => $validated['itemstatus'] ?? null,
-            'summary' => $validated['summary'] ?? null,
-            'detailednotes' => $validated['detailednotes'] ?? null,
-            'significance' => $validated['significance'] ?? null,
-            'reviewnotes' => $validated['reviewnotes'] ?? null,
-            'parentitemid' => $validated['parentitemid'] ?? null,
-            'placeid' => $validated['placeid'] ?? null,
-            'startdate' => $validated['startdate'] ?? null,
-            'enddate' => $validated['enddate'] ?? null,
-            'nextreviewdate' => $validated['nextreviewdate'] ?? null,
-            'sortorder' => $validated['sortorder'] ?? 0,
-            'isfeatured' => (bool) ($validated['isfeatured'] ?? false),
-            'iswatchlist' => (bool) ($validated['iswatchlist'] ?? false),
-            'isactive' => (bool) ($validated['isactive'] ?? false),
-        ]);
+            $knowledgeItem->tags()->sync($tagIds);
+        });
 
         $returnTo = $this->safeReturnUrl(
             $request,
@@ -782,9 +962,11 @@ class KnowledgeItemController extends Controller
         )->with('success', 'Knowledge item updated.');
     }
 
-    public function destroy(Request $request, KnowledgeItem $knowledgeItem): RedirectResponse
-    {
-        $knowledgeItem->load(['primaryCategory', 'childItems']);
+    public function destroy(
+        Request $request,
+        KnowledgeItem $knowledgeItem
+    ): RedirectResponse {
+        $knowledgeItem->load('primaryCategory:id,domainid');
 
         $returnTo = $this->safeReturnUrl(
             $request,
@@ -794,7 +976,10 @@ class KnowledgeItemController extends Controller
         if ($knowledgeItem->childItems()->exists()) {
             return redirect()->to(
                 $returnTo ?: route('knowledge.items.edit', $knowledgeItem)
-            )->with('error', 'This knowledge item cannot be deleted because it has child items.');
+            )->with(
+                'error',
+                'This knowledge item cannot be deleted because it has child items.'
+            );
         }
 
         $domainId = $knowledgeItem->primaryCategory?->domainid;
@@ -810,20 +995,32 @@ class KnowledgeItemController extends Controller
         )->with('success', 'Knowledge item deleted.');
     }
 
-    public function reorder(Request $request, KnowledgeItem $knowledgeItem): RedirectResponse
-    {
+    public function reorder(
+        Request $request,
+        KnowledgeItem $knowledgeItem
+    ): RedirectResponse {
         $validated = $request->validate([
             'notes' => ['required', 'array'],
             'notes.*.sortorder' => ['required', 'integer', 'min:1'],
         ]);
 
-        foreach ($validated['notes'] as $noteId => $row) {
-            $note = $knowledgeItem->notes()->whereKey($noteId)->first();
+        $noteSortOrders = collect($validated['notes'])
+            ->mapWithKeys(
+                fn (array $row, $noteId) => [
+                    (int) $noteId => (int) $row['sortorder'],
+                ]
+            )
+            ->all();
 
-            if ($note) {
-                $note->update([
-                    'sortorder' => $row['sortorder'],
-                ]);
+        $notes = $knowledgeItem->notes()
+            ->whereIn('id', array_keys($noteSortOrders))
+            ->get(['id', 'sortorder']);
+
+        foreach ($notes as $note) {
+            $sortOrder = $noteSortOrders[$note->id];
+
+            if ((int) $note->sortorder !== $sortOrder) {
+                $note->update(['sortorder' => $sortOrder]);
             }
         }
 

@@ -677,6 +677,7 @@
                                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Start Date</th>
                                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">End Date</th>
                                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Next Review</th>
+                                                    <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Watchlist</th>
                                                     <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Featured</th>
                                                     <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Active</th>
                                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -758,6 +759,16 @@
                                                             name="new[nextreviewdate]"
                                                             value="{{ old('new.nextreviewdate') }}"
                                                             class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                                        >
+                                                    </td>
+                                                    <td class="px-3 py-2 text-center">
+                                                        <input type="hidden" name="new[iswatchlist]" value="0">
+                                                        <input
+                                                            type="checkbox"
+                                                            name="new[iswatchlist]"
+                                                            value="1"
+                                                            class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                                            @checked(old('new.iswatchlist', false))
                                                         >
                                                     </td>
                                                     <td class="px-3 py-2 text-center">
@@ -877,6 +888,14 @@
                                                                    name="existing[{{ $item->id }}][nextreviewdate]"
                                                                    value="{{ old("existing.{$item->id}.nextreviewdate", optional($item->nextreviewdate)->format('Y-m-d')) }}"
                                                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                        </td>
+                                                        <td class="px-3 py-2 text-center">
+                                                            <input type="hidden" name="existing[{{ $item->id }}][iswatchlist]" value="0">
+                                                            <input type="checkbox"
+                                                                   name="existing[{{ $item->id }}][iswatchlist]"
+                                                                   value="1"
+                                                                   class="rounded border-gray-300 text-blue-600 shadow-sm"
+                                                                   @checked(old("existing.{$item->id}.iswatchlist", $item->iswatchlist))>
                                                         </td>
 
                                                         <td class="px-3 py-2 text-center">
