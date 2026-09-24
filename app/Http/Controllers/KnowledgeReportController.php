@@ -4,6 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\KnowledgeCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use PhpOffice\PhpWord\IOFactory;
+use PhpOffice\PhpWord\PhpWord;
+use PhpOffice\PhpWord\SimpleType\JcTable;
+use PhpOffice\PhpWord\Style\Table;
 
 class KnowledgeReportController extends Controller
 {
@@ -24,6 +29,16 @@ class KnowledgeReportController extends Controller
             ->all();
 
         $reviewOnly = $request->boolean('review_only');
+        $itemStatus = trim((string) $request->query('itemstatus', ''));
+
+        if (!array_key_exists(
+            $itemStatus,
+            $this->reportItemStatusOptions()
+        )) {
+            $itemStatus = '';
+        }
+
+        $agendaMode = $request->boolean('agenda_mode');
 
         $categoryOptions = KnowledgeCategory::query()
             ->with('domain')
@@ -40,7 +55,10 @@ class KnowledgeReportController extends Controller
                 'isactive',
             ]);
 
-        $categoriesQuery = $this->baseCategoryReferenceQuery($reviewOnly)
+        $categoriesQuery = $this->baseCategoryReferenceQuery(
+                $reviewOnly,
+                $itemStatus
+            )
             ->orderBy('domainid')
             ->orderBy('sortorder')
             ->orderBy('categoryname');
@@ -56,6 +74,16 @@ class KnowledgeReportController extends Controller
             'categoryOptions' => $categoryOptions,
             'selectedCategoryIds' => $selectedCategoryIds,
             'reviewOnly' => $reviewOnly,
+            'itemStatus' => $itemStatus,
+            'itemStatusOptions' => [
+                '' => 'All items',
+                'active' => 'Active items only',
+                'draft' => 'Draft',
+                'archived' => 'Archived',
+                'reference' => 'Reference',
+                'review' => 'Review',
+            ],
+            'agendaMode' => $agendaMode,
             'returnTo' => $request->input('return_to', url()->previous()),
         ]);
     }
@@ -67,12 +95,25 @@ class KnowledgeReportController extends Controller
     abort_if($domainId <= 0, 404, 'No domain selected.');
 
     $reviewOnly = $request->boolean('review_only');
+    $itemStatus = trim((string) $request->query('itemstatus', ''));
+
+    if (!array_key_exists(
+        $itemStatus,
+        $this->reportItemStatusOptions()
+    )) {
+        $itemStatus = '';
+    }
+
+    $agendaMode = $request->boolean('agenda_mode');
 
     // IMPORTANT:
     // Replace this with the SAME method used by your domain tree / sidebar.
     $selectedCategoryIds = $this->collectDomainTreeIdsInDisplayOrder($domainId);
 
-    $categoriesQuery = $this->baseCategoryReferenceQuery($reviewOnly)
+    $categoriesQuery = $this->baseCategoryReferenceQuery(
+            $reviewOnly,
+            $itemStatus
+        )
         ->whereIn('id', $selectedCategoryIds);
 
     if (!empty($selectedCategoryIds)) {
@@ -102,6 +143,16 @@ class KnowledgeReportController extends Controller
         'reportSubtitle' => $domain?->domainname
             ? 'Compiled reference report for all categories in ' . $domain->domainname
             : 'Compiled reference report by domain',
+        'itemStatus' => $itemStatus,
+        'itemStatusOptions' => [
+            '' => 'All items',
+            'active' => 'Active items only',
+            'draft' => 'Draft',
+            'archived' => 'Archived',
+            'reference' => 'Reference',
+            'review' => 'Review',
+        'agendaMode' => $agendaMode,
+        ],
     ]);
 }
 
@@ -139,6 +190,16 @@ class KnowledgeReportController extends Controller
         abort_if($categoryId <= 0, 404, 'No category selected.');
 
         $reviewOnly = $request->boolean('review_only');
+        $itemStatus = trim((string) $request->query('itemstatus', ''));
+
+        if (!array_key_exists(
+            $itemStatus,
+            $this->reportItemStatusOptions()
+        )) {
+            $itemStatus = '';
+        }
+
+        $agendaMode = $request->boolean('agenda_mode');
 
         $selectedCategory = KnowledgeCategory::query()
             ->with(['domain', 'parentCategory'])
@@ -147,7 +208,10 @@ class KnowledgeReportController extends Controller
         $selectedCategoryIds = $this->collectCategoryTreeIds($selectedCategory->id);
 
         $categories = $this->prepareCategoriesForReport(
-            $this->baseCategoryReferenceQuery($reviewOnly)
+            $this->baseCategoryReferenceQuery(
+                    $reviewOnly,
+                    $itemStatus
+                )
                 ->whereIn('id', $selectedCategoryIds)
                 ->orderBy('domainid')
                 ->orderBy('sortorder')
@@ -163,18 +227,44 @@ class KnowledgeReportController extends Controller
             'returnTo' => $request->input('return_to', url()->previous()),
             'reportTitle' => 'Knowledge Category Tree Report – ' . $selectedCategory->categoryname,
             'reportSubtitle' => 'Compiled reference report for this category and all categories beneath it',
+            'itemStatus' => $itemStatus,
+            'itemStatusOptions' => [
+                '' => 'All items',
+                'active' => 'Active items only',
+                'draft' => 'Draft',
+                'archived' => 'Archived',
+                'reference' => 'Reference',
+                'review' => 'Review',
+            ],
+            'agendaMode' => $agendaMode,
         ]);
     }
 
-    protected function baseCategoryReferenceQuery(bool $reviewOnly = false)
+    protected function baseCategoryReferenceQuery(
+            bool $reviewOnly = false,
+            string $itemStatus = ''
+        )
 {
     return KnowledgeCategory::query()
         ->with([
             'domain',
             'parentCategory',
-            'knowledgeItems' => function ($query) use ($reviewOnly) {
+            'knowledgeItems' => function ($query) use (
+                $reviewOnly,
+                $itemStatus
+            ) {
                 $query
-                    ->when($reviewOnly, fn ($q) => $q->whereNotNull('nextreviewdate'))
+                    ->when(
+                        $reviewOnly,
+                        fn ($query) => $query->whereNotNull('nextreviewdate')
+                    )
+                    ->when(
+                        $itemStatus !== '',
+                        fn ($query) => $query->where(
+                            'itemstatus',
+                            $itemStatus
+                        )
+                    )
                     ->orderBy('sortorder')
                     ->orderBy('itemname');
             },
@@ -534,4 +624,764 @@ protected function prepareKnowledgeItemForReport($item)
 
     return $item;
 }
+
+    protected function reportItemStatusOptions(): array
+    {
+        return [
+            '' => 'All items',
+            'active' => 'Active items only',
+            'draft' => 'Draft',
+            'archived' => 'Archived',
+            'reference' => 'Reference',
+            'review' => 'Review',
+        ];
+    }
+
+
+    public function agendaDocx(Request $request)
+    {
+        $categoryId = $request->integer('categoryid');
+
+        abort_if(
+            $categoryId <= 0,
+            404,
+            'No category selected for Agenda DOCX export.'
+        );
+
+        $reviewOnly = $request->boolean('review_only');
+
+        $itemStatus = trim((string) $request->query('itemstatus', ''));
+
+        if (!array_key_exists(
+            $itemStatus,
+            $this->reportItemStatusOptions()
+        )) {
+            $itemStatus = '';
+        }
+
+        $selectedCategory = KnowledgeCategory::query()
+            ->with(['domain', 'parentCategory'])
+            ->findOrFail($categoryId);
+
+        /*
+        * Use the exact same category-tree selection as the current on-screen
+        * Knowledge Category Tree Report.
+        */
+        $selectedCategoryIds = $this->collectCategoryTreeIds(
+            $selectedCategory->id
+        );
+
+        $categories = $this->prepareCategoriesForReport(
+            $this->baseCategoryReferenceQuery(
+                $reviewOnly,
+                $itemStatus
+            )
+                ->whereIn('id', $selectedCategoryIds)
+                ->orderBy('domainid')
+                ->orderBy('sortorder')
+                ->orderBy('categoryname')
+                ->get(),
+            $reviewOnly
+        );
+
+        $phpWord = new PhpWord();
+
+        $phpWord->setDefaultFontName('Arial');
+        $phpWord->setDefaultFontSize(11);
+
+        $phpWord->addTitleStyle(1, [
+            'name' => 'Arial',
+            'bold' => true,
+            'size' => 17,
+            'color' => '1F2937',
+        ]);
+
+        $phpWord->addTitleStyle(2, [
+            'name' => 'Arial',
+            'bold' => true,
+            'size' => 14,
+            'color' => '1F2937',
+        ]);
+
+        $phpWord->addTitleStyle(3, [
+            'name' => 'Arial',
+            'bold' => true,
+            'size' => 11,
+            'color' => '1F2937',
+        ]);
+
+        $section = $phpWord->addSection([
+            'marginTop' => 900,
+            'marginRight' => 900,
+            'marginBottom' => 900,
+            'marginLeft' => 900,
+        ]);
+
+        $section->addTitle(
+            $selectedCategory->categoryname . ' Agenda',
+            1
+        );
+
+        $metaText = collect([
+            $selectedCategory->domain?->domainname,
+            'Generated ' . now()->format('j F Y'),
+            $itemStatus !== ''
+                ? 'Items: '
+                    . (
+                        $this->reportItemStatusOptions()[$itemStatus]
+                        ?? ucfirst($itemStatus)
+                    )
+                : 'Items: All items',
+            $reviewOnly ? 'Review dates only' : null,
+        ])->filter()->implode(' · ');
+
+        if ($metaText !== '') {
+            $section->addText(
+                $metaText,
+                [
+                    'name' => 'Arial',
+                    'size' => 9,
+                    'italic' => true,
+                    'color' => '666666',
+                ],
+                [
+                    'spaceAfter' => 200,
+                ]
+            );
+        }
+
+        foreach ($categories as $category) {
+            $section->addTitle($category->categoryname, 2);
+
+            foreach ($category->knowledgeItems as $index => $item) {
+                $section->addTitle(
+                    ($index + 1) . '. ' . $item->itemname,
+                    3
+                );
+
+                /*
+                * Agenda-oriented content only. This mirrors the simplified
+                * Agenda report and deliberately excludes technical metadata,
+                * sources, attachments, relationships and reference material.
+                */
+                $agendaContent = [
+                    $item->summary,
+                    $item->detailednotes,
+                    $item->reviewnotes,
+                ];
+
+                foreach ($agendaContent as $content) {
+                    if (blank($content)) {
+                        continue;
+                    }
+
+                    $this->addMarkdownContentToDocx(
+                        $section,
+                        $content
+                    );
+                }
+
+                $reviewEntries = $item->reviewLogs
+                    ->filter(
+                        fn ($reviewLog) => filled($reviewLog->summary)
+                    );
+
+                if ($reviewEntries->isNotEmpty()) {
+                    $section->addText(
+                        'Previous decisions / reviews',
+                        [
+                            'name' => 'Arial',
+                            'size' => 10,
+                            'bold' => true,
+                            'color' => '374151',
+                        ],
+                        [
+                            'spaceBefore' => 120,
+                            'spaceAfter' => 50,
+                        ]
+                    );
+
+                    foreach ($reviewEntries as $reviewLog) {
+                        $reviewText = $this->plainTextForDocx(
+                            $reviewLog->summary
+                        );
+
+                        if ($reviewText === '') {
+                            continue;
+                        }
+
+                        $prefix = $reviewLog->reviewdate
+                            ? $reviewLog->reviewdate->format('d M Y') . ': '
+                            : '';
+
+                        $section->addListItem(
+                            $prefix . $reviewText,
+                            0,
+                            [
+                                'name' => 'Arial',
+                                'size' => 10,
+                            ]
+                        );
+                    }
+                }
+
+                /*
+                * Space between agenda items, while preserving a clean editable
+                * Word layout for recipients.
+                */
+                $section->addTextBreak(1);
+            }
+        }
+
+        $filename = Str::slug(
+            $selectedCategory->categoryname
+        ) . '-agenda-' . now()->format('Y-m-d') . '.docx';
+
+        return response()->streamDownload(
+            function () use ($phpWord) {
+                IOFactory::createWriter(
+                    $phpWord,
+                    'Word2007'
+                )->save('php://output');
+            },
+            $filename,
+            [
+                'Content-Type' =>
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            ]
+        );
+    }
+
+    public function testDocx()
+    {
+        $phpWord = new PhpWord();
+
+        $phpWord->setDefaultFontName('Arial');
+        $phpWord->setDefaultFontSize(11);
+
+        $phpWord->addTitleStyle(1, [
+            'name' => 'Arial',
+            'bold' => true,
+            'size' => 16,
+            'color' => '1F2937',
+        ]);
+
+        $section = $phpWord->addSection([
+            'marginTop' => 900,
+            'marginRight' => 900,
+            'marginBottom' => 900,
+            'marginLeft' => 900,
+        ]);
+
+        $section->addTitle(
+            'Knowledge Agenda DOCX Test',
+            1
+        );
+
+        $section->addText(
+            'This document confirms that PHPWord DOCX export is working.',
+            [
+                'name' => 'Arial',
+                'size' => 11,
+            ]
+        );
+
+        $section->addTextBreak(1);
+
+        $section->addListItem(
+            'This is an editable Word document.',
+            0,
+            [
+                'name' => 'Arial',
+                'size' => 11,
+            ]
+        );
+
+        $section->addListItem(
+            'The Agenda DOCX export can now be implemented safely.',
+            0,
+            [
+                'name' => 'Arial',
+                'size' => 11,
+            ]
+        );
+
+        return response()->streamDownload(
+            function () use ($phpWord) {
+                IOFactory::createWriter(
+                    $phpWord,
+                    'Word2007'
+                )->save('php://output');
+            },
+            'knowledge-agenda-docx-test.docx',
+            [
+                'Content-Type' =>
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            ]
+        );
+    }
+    protected function plainTextForDocx(?string $content): string
+    {
+        if (blank($content)) {
+            return '';
+        }
+
+        /*
+        * Preserve readable paragraph separation before stripping HTML.
+        */
+        $content = str_replace(
+            [
+                '<br>',
+                '<br/>',
+                '<br />',
+                '</p>',
+                '</li>',
+                '</div>',
+                '</h1>',
+                '</h2>',
+                '</h3>',
+                '</h4>',
+                '</h5>',
+                '</h6>',
+            ],
+            "\n",
+            $content
+        );
+
+        $content = strip_tags($content);
+
+        $content = html_entity_decode(
+            $content,
+            ENT_QUOTES | ENT_HTML5,
+            'UTF-8'
+        );
+
+        $content = preg_replace("/\r\n|\r/", "\n", $content);
+
+        $content = preg_replace("/[ \t]+\n/", "\n", $content);
+
+        $content = preg_replace("/\n{3,}/", "\n\n", $content);
+
+        return trim($content);
+    }
+
+    protected function isMarkdownTableLine(string $line): bool
+    {
+        if ($line === '') {
+            return false;
+        }
+
+        /*
+        * Markdown table rows always contain pipe delimiters. This also permits
+        * tables that omit leading/trailing pipes, although your stored content
+        * normally uses them.
+        */
+        return str_contains($line, '|');
+    }
+
+    protected function addMarkdownContentToDocx(
+        \PhpOffice\PhpWord\Element\Section $section,
+        ?string $content
+    ): void {
+        if (blank($content)) {
+            return;
+        }
+
+        $lines = preg_split(
+            "/\r\n|\r|\n/",
+            trim((string) $content)
+        );
+
+        $paragraphLines = [];
+        $tableLines = [];
+        $listItems = [];
+        $listType = null;
+
+        $flushParagraph = function () use (&$paragraphLines, $section) {
+            if ($paragraphLines === []) {
+                return;
+            }
+
+            $paragraph = trim(implode("\n", $paragraphLines));
+
+            if ($paragraph !== '') {
+                $this->addMarkdownParagraphToDocx(
+                    $section,
+                    $paragraph
+                );
+            }
+
+            $paragraphLines = [];
+        };
+
+        $flushTable = function () use (&$tableLines, $section) {
+            if ($tableLines === []) {
+                return;
+            }
+
+            $this->addMarkdownTableToDocx(
+                $section,
+                $tableLines
+            );
+
+            $tableLines = [];
+        };
+
+        $flushList = function () use (
+            &$listItems,
+            &$listType,
+            $section
+        ) {
+            if ($listItems === []) {
+                return;
+            }
+
+            foreach ($listItems as $listItem) {
+                $this->addMarkdownListItemToDocx(
+                    $section,
+                    $listItem,
+                    $listType === 'ordered'
+                );
+            }
+
+            $listItems = [];
+            $listType = null;
+        };
+
+        foreach ($lines as $line) {
+            $trimmedLine = trim($line);
+
+            if ($this->isMarkdownTableLine($trimmedLine)) {
+                $flushParagraph();
+                $flushList();
+
+                $tableLines[] = $trimmedLine;
+
+                continue;
+            }
+
+            if ($tableLines !== []) {
+                $flushTable();
+            }
+
+            if ($trimmedLine === '') {
+                $flushParagraph();
+                $flushList();
+
+                continue;
+            }
+
+            if (preg_match('/^[-*+]\s+(.+)$/', $trimmedLine, $matches)) {
+                $flushParagraph();
+
+                if ($listType !== null && $listType !== 'bullet') {
+                    $flushList();
+                }
+
+                $listType = 'bullet';
+                $listItems[] = $matches[1];
+
+                continue;
+            }
+
+            if (preg_match('/^\d+[.)]\s+(.+)$/', $trimmedLine, $matches)) {
+                $flushParagraph();
+
+                if ($listType !== null && $listType !== 'ordered') {
+                    $flushList();
+                }
+
+                $listType = 'ordered';
+                $listItems[] = $matches[1];
+
+                continue;
+            }
+
+            if ($listItems !== []) {
+                $flushList();
+            }
+
+            $paragraphLines[] = $line;
+        }
+
+        $flushTable();
+        $flushList();
+        $flushParagraph();
+    }
+
+    protected function addMarkdownTableToDocx(
+        \PhpOffice\PhpWord\Element\Section $section,
+        array $tableLines
+    ): void {
+        $rows = collect($tableLines)
+            ->map(fn (string $line) => $this->parseMarkdownTableRow($line))
+            ->filter(fn (array $cells) => $cells !== [])
+            ->values();
+
+        if ($rows->count() < 2) {
+            /*
+            * It was not a useful table. Preserve the source as ordinary text.
+            */
+            foreach ($tableLines as $line) {
+                $section->addText(
+                    $line,
+                    [
+                        'name' => 'Arial',
+                        'size' => 10,
+                    ]
+                );
+            }
+
+            return;
+        }
+
+        /*
+        * The second row is the Markdown divider:
+        *
+        * | --- | ---: | :--- |
+        *
+        * It is formatting syntax, not data.
+        */
+        if ($rows->count() >= 2 && $this->isMarkdownTableDivider($rows->get(1))) {
+            $headerRow = $rows->first();
+            $dataRows = $rows->slice(2)->values();
+        } else {
+            $headerRow = null;
+            $dataRows = $rows;
+        }
+
+        $columnCount = max(
+            $headerRow ? count($headerRow) : 0,
+            $dataRows->max(fn (array $row) => count($row)) ?? 0
+        );
+
+        if ($columnCount === 0) {
+            return;
+        }
+
+        $table = $section->addTable([
+            'borderSize' => 6,
+            'borderColor' => 'A6A6A6',
+            'cellMargin' => 80,
+            'alignment' => \PhpOffice\PhpWord\SimpleType\JcTable::CENTER,
+            'layout' => \PhpOffice\PhpWord\Style\Table::LAYOUT_FIXED,
+        ]);
+
+        if ($headerRow !== null) {
+            $table->addRow();
+
+            for ($columnIndex = 0; $columnIndex < $columnCount; $columnIndex++) {
+                $cell = $table->addCell(
+                    9000 / $columnCount,
+                    [
+                        'bgColor' => 'E5E7EB',
+                        'valign' => 'center',
+                    ]
+                );
+
+                $cell->addText(
+                    $headerRow[$columnIndex] ?? '',
+                    [
+                        'name' => 'Arial',
+                        'size' => 8.5,
+                        'bold' => true,
+                    ]
+                );
+            }
+        }
+
+        foreach ($dataRows as $row) {
+            $table->addRow();
+
+            for ($columnIndex = 0; $columnIndex < $columnCount; $columnIndex++) {
+                $cell = $table->addCell(
+                    9000 / $columnCount,
+                    [
+                        'valign' => 'center',
+                    ]
+                );
+
+                $cell->addText(
+                    $row[$columnIndex] ?? '',
+                    [
+                        'name' => 'Arial',
+                        'size' => 8.5,
+                    ]
+                );
+            }
+        }
+
+        $section->addTextBreak(1);
+    }
+
+    protected function parseMarkdownTableRow(string $line): array
+    {
+        $line = trim($line);
+
+        $line = preg_replace('/^\|/', '', $line);
+        $line = preg_replace('/\|$/', '', $line);
+
+        if ($line === '') {
+            return [];
+        }
+
+        return collect(explode('|', $line))
+            ->map(function (string $cell) {
+                $cell = trim($cell);
+
+                /*
+                * Preserve a literal pipe entered in Markdown as \|.
+                */
+                $cell = str_replace('\|', '|', $cell);
+
+                return $this->plainTextForDocx($cell);
+            })
+            ->all();
+    }
+
+    protected function isMarkdownTableDivider(array $cells): bool
+    {
+        if ($cells === []) {
+            return false;
+        }
+
+        return collect($cells)
+            ->every(function (string $cell) {
+                return (bool) preg_match(
+                    '/^:?-{3,}:?$/',
+                    trim($cell)
+                );
+            });
+    }
+
+    protected function addMarkdownParagraphToDocx(
+        \PhpOffice\PhpWord\Element\Section $section,
+        string $markdown
+    ): void {
+        $markdown = trim($markdown);
+
+        if ($markdown === '') {
+            return;
+        }
+
+        /*
+        * Join physical lines inside the same paragraph. This preserves paragraph
+        * structure while avoiding awkward Word line breaks from wrapped Markdown.
+        */
+        $markdown = preg_replace('/\s*\n\s*/', ' ', $markdown);
+
+        $textRun = $section->addTextRun([
+            'spaceAfter' => 120,
+        ]);
+
+        $this->addInlineMarkdownToTextRun(
+            $textRun,
+            $markdown,
+            [
+                'name' => 'Arial',
+                'size' => 11,
+            ]
+        );
+    } 
+    protected function addMarkdownListItemToDocx(
+        \PhpOffice\PhpWord\Element\Section $section,
+        string $markdown,
+        bool $ordered = false
+    ): void {
+        $textRun = $section->addListItemRun(
+            0,
+            $ordered
+                ? [
+                    'listType' => \PhpOffice\PhpWord\Style\ListItem::TYPE_NUMBER,
+                ]
+                : [
+                    'listType' => \PhpOffice\PhpWord\Style\ListItem::TYPE_BULLET_FILLED,
+                ],
+            [
+                'spaceAfter' => 50,
+            ]
+        );
+
+        $this->addInlineMarkdownToTextRun(
+            $textRun,
+            $markdown,
+            [
+                'name' => 'Arial',
+                'size' => 11,
+            ]
+        );
+    }  
+    protected function addInlineMarkdownToTextRun(
+        \PhpOffice\PhpWord\Element\TextRun $textRun,
+        string $markdown,
+        array $baseFontStyle = []
+    ): void {
+        /*
+        * Supports:
+        *
+        * **bold**
+        * __bold__
+        * *italic*
+        * _italic_
+        * `code`
+        *
+        * This is intentionally a practical Markdown subset for agenda material.
+        */
+        $pattern = '/(\*\*.+?\*\*|__.+?__|\*.+?\*|_.+?_|`.+?`)/u';
+
+        $parts = preg_split(
+            $pattern,
+            $markdown,
+            -1,
+            PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY
+        );
+
+        foreach ($parts as $part) {
+            $style = $baseFontStyle;
+            $text = $part;
+
+            if (
+                str_starts_with($part, '**')
+                && str_ends_with($part, '**')
+            ) {
+                $text = mb_substr($part, 2, -2);
+                $style['bold'] = true;
+            } elseif (
+                str_starts_with($part, '__')
+                && str_ends_with($part, '__')
+            ) {
+                $text = mb_substr($part, 2, -2);
+                $style['bold'] = true;
+            } elseif (
+                str_starts_with($part, '*')
+                && str_ends_with($part, '*')
+            ) {
+                $text = mb_substr($part, 1, -1);
+                $style['italic'] = true;
+            } elseif (
+                str_starts_with($part, '_')
+                && str_ends_with($part, '_')
+            ) {
+                $text = mb_substr($part, 1, -1);
+                $style['italic'] = true;
+            } elseif (
+                str_starts_with($part, '`')
+                && str_ends_with($part, '`')
+            ) {
+                $text = mb_substr($part, 1, -1);
+                $style['name'] = 'Courier New';
+            }
+
+            if ($text !== '') {
+                $textRun->addText(
+                    html_entity_decode(
+                        $text,
+                        ENT_QUOTES | ENT_HTML5,
+                        'UTF-8'
+                    ),
+                    $style
+                );
+            }
+        }
+    }
 }

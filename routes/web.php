@@ -610,6 +610,8 @@ Route::middleware('auth')->group(function () {
             Route::post('{knowledgeItem}/sources/fetch', [KnowledgeItemSourceController::class, 'fetchFromInternet'])
                 ->name('sources.fetch');
 
+            Route::patch('{knowledgeItem}/review-logs/{knowledgeReviewLog}/complete', [KnowledgeItemReviewLogController::class, 'complete'])->name('knowledge-items.review-logs.complete');
+
             Route::resource('{knowledgeItem}/review-logs', KnowledgeItemReviewLogController::class)
                 ->except(['index', 'show', 'create'])
                 ->parameters([
@@ -673,6 +675,8 @@ Route::middleware('auth')->group(function () {
                 ->name('instrument.transactions.destroy');
         });
     });
+    Route::get('/reports/knowledge/test-docx',[KnowledgeReportController::class, 'testDocx'])->name('reports.knowledge.test-docx');
+    Route::get('/reports/knowledge/categories/agenda-docx', [KnowledgeReportController::class, 'agendaDocx'])->name('reports.knowledge.categories.agenda-docx');
 
     Route::get('/destination-item-types', [DestinationItemTypeController::class, 'index'])
         ->name('destination-item-types.index');

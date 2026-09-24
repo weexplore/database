@@ -33,6 +33,9 @@ class KnowledgeReviewLog extends Model
 
     public const TYPE_OPTIONS = [
         'routine' => 'Routine',
+        'action' => 'Action',
+        'questions' => 'Questions',
+        'feedback' => 'Feedback',
         'deep-dive' => 'Deep Dive',
         'expiry-check' => 'Expiry Check',
         'quality-check' => 'Quality Check',

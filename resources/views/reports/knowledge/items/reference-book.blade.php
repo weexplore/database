@@ -46,7 +46,7 @@
         </div>
     </x-slot>
 
-    <div class="py-6">
+    <div class="py-6 report-content">
         <div class="w-full max-w-none mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 space-y-6">
             @include('partials.admin.flash-messages')
             @include('partials.admin.validation-summary')
@@ -535,159 +535,116 @@
                             </div>
                         @endif
 
-                        {{-- Knowledge Notes --}}
-                        @if ($knowledgeItem->notes?->isNotEmpty())
-                            <div class="rounded-lg border border-gray-200 p-4 space-y-3">
-                                <h3 class="text-sm font-semibold text-gray-900">Knowledge Notes</h3>
+                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                            {{-- Knowledge Notes --}}
+                            @if ($knowledgeItem->notes?->isNotEmpty())
+                                <div class="rounded-lg border border-gray-200 p-4 space-y-3">
+                                    <h3 class="text-sm font-semibold text-gray-900">Knowledge Notes</h3>
 
-                                @foreach ($knowledgeItem->notes as $note)
-                                    <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
-                                        <div class="flex flex-wrap gap-2 text-xs mb-2">
-                                            @if ($note->notetype)
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                                    {{ \App\Models\KnowledgeNote::TYPE_OPTIONS[$note->notetype]
-                                                        ?? ucfirst(str_replace(['-', '_'], ' ', $note->notetype)) }}
-                                                </span>
+                                    @foreach ($knowledgeItem->notes as $note)
+                                        <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
+                                            <div class="flex flex-wrap gap-2 text-xs mb-2">
+                                                @if ($note->notetype)
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                        {{ \App\Models\KnowledgeNote::TYPE_OPTIONS[$note->notetype]
+                                                            ?? ucfirst(str_replace(['-', '_'], ' ', $note->notetype)) }}
+                                                    </span>
+                                                @endif
+
+                                                @if (filled($note->stance))
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
+                                                        Stance: {{ ucfirst($note->stance) }}
+                                                    </span>
+                                                @endif
+
+                                                @if ($note->reviewdate)
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                        Review: {{ $note->reviewdate->format('d M Y') }}
+                                                    </span>
+                                                @endif
+
+                                                @if ($note->isprivate)
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-200">
+                                                        Private
+                                                    </span>
+                                                @endif
+                                            </div>
+
+                                            @if (filled($note->title))
+                                                <div class="text-sm font-medium text-gray-800">
+                                                    {{ $note->title }}
+                                                </div>
                                             @endif
 
-                                            @if (filled($note->stance))
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
-                                                    Stance: {{ ucfirst($note->stance) }}
-                                                </span>
-                                            @endif
-
-                                            @if ($note->reviewdate)
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                                    Review: {{ $note->reviewdate->format('d M Y') }}
-                                                </span>
-                                            @endif
-
-                                            @if ($note->isprivate)
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-200">
-                                                    Private
-                                                </span>
+                                            @if (filled($note->notecontent))
+                                                <div class="mt-1 text-sm text-gray-700 markdown-content">
+                                                    @include('partials.markdown.rendered-block', [
+                                                        'content' => $note->notecontent,
+                                                    ])
+                                                </div>
                                             @endif
                                         </div>
+                                    @endforeach
+                                </div>
+                            @endif
 
-                                        @if (filled($note->title))
-                                            <div class="text-sm font-medium text-gray-800">
-                                                {{ $note->title }}
+                            {{-- Review History --}}
+                            @if ($knowledgeItem->reviewLogs?->isNotEmpty())
+                                <div class="rounded-lg border border-gray-200 p-4 space-y-3">
+                                    <h3 class="text-sm font-semibold text-gray-900">Review History</h3>
+
+                                    @foreach ($knowledgeItem->reviewLogs as $log)
+                                        <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
+                                            <div class="flex flex-wrap gap-2 text-xs mb-2">
+                                                @if ($log->reviewdate)
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                        {{ $log->reviewdate->format('d M Y') }}
+                                                    </span>
+                                                @endif
+
+                                                @if ($log->reviewtype)
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                        {{ \App\Models\KnowledgeReviewLog::TYPE_OPTIONS[$log->reviewtype]
+                                                            ?? ucfirst(str_replace(['-', '_'], ' ', $log->reviewtype)) }}
+                                                    </span>
+                                                @endif
+
+                                                @if ($log->outcome)
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                                        {{ ucfirst($log->outcome) }}
+                                                    </span>
+                                                @endif
+
+                                                @if ($log->nextreviewdate)
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
+                                                        Next review: {{ $log->nextreviewdate->format('d M Y') }}
+                                                    </span>
+                                                @endif
                                             </div>
-                                        @endif
 
-                                        @if (filled($note->notecontent))
-                                            <div class="mt-1 text-sm text-gray-700 markdown-content">
-                                                @include('partials.markdown.rendered-block', [
-                                                    'content' => $note->notecontent,
-                                                ])
-                                            </div>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
-
-                        {{-- Review History --}}
-                        @if ($knowledgeItem->reviewLogs?->isNotEmpty())
-                            <div class="rounded-lg border border-gray-200 p-4 space-y-3">
-                                <h3 class="text-sm font-semibold text-gray-900">Review History</h3>
-
-                                @foreach ($knowledgeItem->reviewLogs as $log)
-                                    <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
-                                        <div class="flex flex-wrap gap-2 text-xs mb-2">
-                                            @if ($log->reviewdate)
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                                    {{ $log->reviewdate->format('d M Y') }}
-                                                </span>
-                                            @endif
-
-                                            @if ($log->reviewtype)
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                                    {{ \App\Models\KnowledgeReviewLog::TYPE_OPTIONS[$log->reviewtype]
-                                                        ?? ucfirst(str_replace(['-', '_'], ' ', $log->reviewtype)) }}
-                                                </span>
-                                            @endif
-
-                                            @if ($log->outcome)
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                                                    {{ ucfirst($log->outcome) }}
-                                                </span>
-                                            @endif
-
-                                            @if ($log->nextreviewdate)
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
-                                                    Next review: {{ $log->nextreviewdate->format('d M Y') }}
-                                                </span>
+                                            @if (filled($log->summary))
+                                                <div class="mt-1 text-sm text-gray-700 markdown-content">
+                                                    @include('partials.markdown.rendered-block', [
+                                                        'content' => $log->summary,
+                                                    ])
+                                                </div>
                                             @endif
                                         </div>
+                                    @endforeach
+                                </div>
+                            @endif
 
-                                        @if (filled($log->summary))
-                                            <div class="mt-1 text-sm text-gray-700 markdown-content">
-                                                @include('partials.markdown.rendered-block', [
-                                                    'content' => $log->summary,
-                                                ])
-                                            </div>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
-
-                        {{-- Attachments --}}
-                        @includeWhen(
-                            $knowledgeItem->attachments?->isNotEmpty(),
-                            'reports.knowledge.partials.attachments',
-                            [
-                                'attachments' => $knowledgeItem->attachments,
-                                'heading' => 'Attachments',
-                            ]
-                        )
-
-                        {{-- Review History --}}
-                        @if ($knowledgeItem->reviewLogs?->isNotEmpty())
-                            <div class="rounded-lg border border-gray-200 p-4 space-y-3">
-                                <h3 class="text-sm font-semibold text-gray-900">Review History</h3>
-
-                                @foreach ($knowledgeItem->reviewLogs as $log)
-                                    <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
-                                        <div class="flex flex-wrap gap-2 text-xs mb-2">
-                                            @if ($log->reviewdate)
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                                    {{ $log->reviewdate->format('d M Y') }}
-                                                </span>
-                                            @endif
-
-                                            @if ($log->reviewtype)
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                                    {{ \App\Models\KnowledgeReviewLog::TYPE_OPTIONS[$log->reviewtype]
-                                                        ?? ucfirst(str_replace(['-', '_'], ' ', $log->reviewtype)) }}
-                                                </span>
-                                            @endif
-
-                                            @if ($log->outcome)
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                                                    {{ ucfirst($log->outcome) }}
-                                                </span>
-                                            @endif
-
-                                            @if ($log->nextreviewdate)
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
-                                                    Next review: {{ $log->nextreviewdate->format('d M Y') }}
-                                                </span>
-                                            @endif
-                                        </div>
-
-                                        @if (filled($log->summary))
-                                            <div class="mt-1 text-sm text-gray-700 markdown-content">
-                                                @include('partials.markdown.rendered-block', [
-                                                    'content' => $log->summary,
-                                                ])
-                                            </div>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
+                            {{-- Attachments --}}
+                            @includeWhen(
+                                $knowledgeItem->attachments?->isNotEmpty(),
+                                'reports.knowledge.partials.attachments',
+                                [
+                                    'attachments' => $knowledgeItem->attachments,
+                                    'heading' => 'Attachments',
+                                ]
+                            )
+                        </div>
+                        
                     </div>
                 </section>
             @endif

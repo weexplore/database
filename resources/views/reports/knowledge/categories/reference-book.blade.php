@@ -4,6 +4,7 @@
         $title = $reportTitle ?? 'Knowledge Category Report';
         $subtitle = $reportSubtitle ?? 'Compiled reference report by category';
         $currentParentHeading = null;
+        $agendaMode = (bool) ($agendaMode ?? false);
     @endphp
 
     <x-slot name="header">
@@ -12,22 +13,30 @@
         <div class="flex items-center justify-between gap-4">
             <div>
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                    {{ $title }}
+                    {{ $agendaMode ? $title : $title }}
                 </h2>
-                <p class="mt-1 text-sm text-gray-500">
-                    {{ $subtitle }}
-                </p>
 
-                @if(!empty($selectedCategoryIds))
-                    <p class="mt-1 text-xs text-gray-500">
-                        Categories:
-                        {{ implode(', ', $selectedCategoryIds) }}
+                @if (!$agendaMode)
+                    <p class="mt-1 text-sm text-gray-500">
+                        {{ $subtitle }}
                     </p>
                 @endif
 
-                @if(!empty($reviewOnly))
+                @if (!$agendaMode && !empty($selectedCategoryIds))
+                    <p class="mt-1 text-xs text-gray-500">
+                        Categories: {{ implode(', ', $selectedCategoryIds) }}
+                    </p>
+                @endif
+
+                @if (!$agendaMode && !empty($reviewOnly))
                     <p class="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full bg-yellow-50 text-yellow-700 text-xs border border-yellow-200">
                         Showing only items with a review date.
+                    </p>
+                @endif
+                @if (($itemStatus ?? '') !== '')
+                    <p class="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs border border-blue-200">
+                        Item status:
+                        {{ $itemStatusOptions[$itemStatus] ?? ucfirst($itemStatus) }}
                     </p>
                 @endif
             </div>
@@ -36,17 +45,53 @@
                 <form
                     method="GET"
                     action="{{ request()->url() }}"
-                    class="flex items-center gap-2"
+                    class="flex flex-wrap items-center justify-end gap-2"
                 >
-                    @foreach(request()->except(['review_only']) as $name => $value)
-                        @if(is_array($value))
-                            @foreach($value as $v)
-                                <input type="hidden" name="{{ $name }}[]" value="{{ $v }}">
+                    @foreach (
+                            request()->except([
+                                'review_only',
+                                'itemstatus',
+                                'agenda_mode',
+                            ]) as $name => $value
+                        )
+                        @if (is_array($value))
+                            @foreach ($value as $entry)
+                                <input
+                                    type="hidden"
+                                    name="{{ $name }}[]"
+                                    value="{{ $entry }}"
+                                >
                             @endforeach
                         @else
-                            <input type="hidden" name="{{ $name }}" value="{{ $value }}">
+                            <input
+                                type="hidden"
+                                name="{{ $name }}"
+                                value="{{ $value }}"
+                            >
                         @endif
                     @endforeach
+
+                    <label
+                        for="report-itemstatus"
+                        class="text-xs font-medium text-gray-700"
+                    >
+                        Item status
+                    </label>
+
+                    <select
+                        id="report-itemstatus"
+                        name="itemstatus"
+                        class="rounded-md border-gray-300 py-1.5 text-xs shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    >
+                        @foreach ($itemStatusOptions as $value => $label)
+                            <option
+                                value="{{ $value }}"
+                                @selected((string) $itemStatus === (string) $value)
+                            >
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                    </select>
 
                     <label class="inline-flex items-center gap-1 text-xs text-gray-700">
                         <input
@@ -57,6 +102,16 @@
                             class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         >
                         Review dates only
+                    </label>
+                    <label class="inline-flex items-center gap-1 text-xs text-gray-700">
+                        <input
+                            type="checkbox"
+                            name="agenda_mode"
+                            value="1"
+                            @checked(!empty($agendaMode))
+                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        >
+                        Agenda format
                     </label>
 
                     <button
@@ -75,6 +130,24 @@
                     Print Report
                 </button>
 
+                @if ($agendaMode)
+                    <a
+                        href="{{ route(
+                            'reports.knowledge.categories.agenda-docx',
+                            array_merge(
+                                request()->query(),
+                                [
+                                    'categoryid' => request()->integer('categoryid'),
+                                    'agenda_mode' => 1,
+                                ]
+                            )
+                        ) }}"
+                        class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-sm print-hide"
+                    >
+                        Export DOCX
+                    </a>
+                @endif
+
                 @if(!empty($returnTo))
                     <a
                         href="{{ $returnTo }}"
@@ -87,7 +160,11 @@
         </div>
     </x-slot>
 
-    <div class="py-6">
+    <div @class([
+            'py-6',
+            'report-content',
+            'agenda-report' => $agendaMode,
+        ])>
         <div class="w-full max-w-none mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 space-y-6">
 
             @include('partials.admin.flash-messages')
@@ -114,27 +191,39 @@
                 @endif
 
                 <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden report-category-card">
-                    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-4">
-                        <div>
+                    @if ($agendaMode)
+                        <div class="px-6 py-4 border-b border-gray-200">
                             <h2 class="text-2xl font-bold text-gray-900 report-category-heading">
-                                {{ $category->domain?->domainname ?? 'Unassigned Domain' }} – {{ $category->categoryname }}
+                                {{ $category->categoryname }}
                             </h2>
-                            <p class="mt-1 text-xs text-gray-500">
-                                Category ID: {{ $category->id }}
-                                @if($category->parentCategory)
-                                    · Parent: {{ $category->parentCategory->categoryname }}
-                                @endif
-                                @if(!empty($category->categorytype))
-                                    · Type: {{ ucfirst($category->categorytype) }}
-                                @endif
-                            </p>
                         </div>
+                    @else
+                        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-4">
+                            <div>
+                                <h2 class="text-2xl font-bold text-gray-900 report-category-heading">
+                                    {{ $category->domain?->domainname ?? 'Unassigned Domain' }}
+                                    – {{ $category->categoryname }}
+                                </h2>
 
-                        <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                            <span>Sort: {{ $category->sortorder ?? 0 }}</span>
-                            <span>Items: {{ $category->knowledgeItems->count() }}</span>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    Category ID: {{ $category->id }}
+
+                                    @if ($category->parentCategory)
+                                        · Parent: {{ $category->parentCategory->categoryname }}
+                                    @endif
+
+                                    @if (!empty($category->categorytype))
+                                        · Type: {{ ucfirst($category->categorytype) }}
+                                    @endif
+                                </p>
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                                <span>Sort: {{ $category->sortorder ?? 0 }}</span>
+                                <span>Items: {{ $category->knowledgeItems->count() }}</span>
+                            </div>
                         </div>
-                    </div>
+                    @endif
 
                     @if($category->knowledgeItems->isEmpty())
                         <div class="px-6 py-4 text-sm text-gray-500">
@@ -151,26 +240,34 @@
                                     <div class="flex flex-wrap items-start justify-between gap-4">
                                         <div class="space-y-1 min-w-0">
                                             <div class="flex items-center gap-2">
-                                                <h4 class="text-base font-semibold text-gray-900 report-item-heading">
-                                                    {{ $knowledgeItem->itemname }}
-                                                </h4>
+                                                @if ($agendaMode)
+                                                    <div class="space-y-1 min-w-0">
+                                                        <h4 class="text-base font-semibold text-gray-900 report-item-heading">
+                                                            {{ $knowledgeItem->itemname }}
+                                                        </h4>
+                                                    </div>
+                                                @else
+                                                    <h4 class="text-base font-semibold text-gray-900 report-item-heading">
+                                                        {{ $knowledgeItem->itemname }}
+                                                    </h4>
 
-                                                @if($knowledgeItem->itemstatus)
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs border border-gray-200">
-                                                        {{ $knowledgeItem->itemstatus }}
-                                                    </span>
-                                                @endif
+                                                    @if($knowledgeItem->itemstatus)
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs border border-gray-200">
+                                                            {{ $knowledgeItem->itemstatus }}
+                                                        </span>
+                                                    @endif
 
-                                                @if($knowledgeItem->itemType)
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs border border-blue-200">
-                                                        {{ $knowledgeItem->itemType->typename }}
-                                                    </span>
-                                                @endif
+                                                    @if($knowledgeItem->itemType)
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs border border-blue-200">
+                                                            {{ $knowledgeItem->itemType->typename }}
+                                                        </span>
+                                                    @endif
 
-                                                @if($knowledgeItem->isfeatured)
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 text-xs border border-yellow-200">
-                                                        Featured
-                                                    </span>
+                                                    @if($knowledgeItem->isfeatured)
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 text-xs border border-yellow-200">
+                                                            Featured
+                                                        </span>
+                                                    @endif
                                                 @endif
                                             </div>
 
@@ -182,20 +279,21 @@
                                                 @if($knowledgeItem->place)
                                                     <span>Place: {{ $knowledgeItem->place->placename }}</span>
                                                 @endif
+                                                @if (!$agendaMode)
+                                                    @if($knowledgeItem->startdate)
+                                                        <span>Start: {{ $knowledgeItem->startdate->format('d M Y') }}</span>
+                                                    @endif
 
-                                                @if($knowledgeItem->startdate)
-                                                    <span>Start: {{ $knowledgeItem->startdate->format('d M Y') }}</span>
+                                                    @if($knowledgeItem->enddate)
+                                                        <span>End: {{ $knowledgeItem->enddate->format('d M Y') }}</span>
+                                                    @endif
                                                 @endif
-
-                                                @if($knowledgeItem->enddate)
-                                                    <span>End: {{ $knowledgeItem->enddate->format('d M Y') }}</span>
-                                                @endif
-
                                                 @if($knowledgeItem->nextreviewdate)
                                                     <span>Next review: {{ $knowledgeItem->nextreviewdate->format('d M Y') }}</span>
                                                 @endif
-
-                                                <span>Sort: {{ $knowledgeItem->sortorder ?? 0 }}</span>
+                                                @if (!$agendaMode)
+                                                    <span>Sort: {{ $knowledgeItem->sortorder ?? 0 }}</span>
+                                                @endif
                                             </div>
                                         </div>
 
@@ -295,7 +393,9 @@
                                         <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
                                             @if (filled($knowledgeItem->summary))
                                                 <div class="rounded-lg border border-gray-200 p-4">
-                                                    <h5 class="text-sm font-semibold text-gray-900 mb-2">Summary</h5>
+                                                    @if (!$agendaMode)
+                                                        <h5 class="text-sm font-semibold text-gray-900 mb-2">Summary</h5>
+                                                    @endif
                                                     <div class="text-sm text-gray-700 markdown-content">
                                                         @include('partials.markdown.rendered-block', [
                                                             'content' => $knowledgeItem->summary,
@@ -317,7 +417,9 @@
 
                                             @if (filled($knowledgeItem->detailednotes))
                                                 <div class="rounded-lg border border-gray-200 p-4 xl:col-span-2">
-                                                    <h5 class="text-sm font-semibold text-gray-900 mb-2">Detailed Notes</h5>
+                                                    @if (!$agendaMode)
+                                                        <h5 class="text-sm font-semibold text-gray-900 mb-2">Detailed Notes</h5>
+                                                    @endif
 
                                                     <div class="text-sm text-gray-700 markdown-content">
                                                         @include('partials.markdown.rendered-block', [
@@ -329,9 +431,11 @@
 
                                             @if (filled($knowledgeItem->reviewnotes))
                                                 <div class="rounded-lg border border-gray-200 p-4 xl:col-span-2 report-long-section">
-                                                    <h5 class="text-sm font-semibold text-gray-900 mb-2 report-section-heading">
-                                                        Review Notes
-                                                    </h5>
+                                                    @if (!$agendaMode)
+                                                        <h5 class="text-sm font-semibold text-gray-900 mb-2 report-section-heading">
+                                                            Review Notes
+                                                        </h5>
+                                                    @endif
 
                                                     <div class="text-sm text-gray-700 markdown-content report-section-content">
                                                         @include('partials.markdown.rendered-block', [
@@ -658,7 +762,9 @@
 
                                                         @if (filled($source->importedsummary))
                                                             <div>
-                                                                <div class="text-xs font-medium text-gray-500 mb-1">Imported Summary</div>
+                                                                @if (!$agendaMode)
+                                                                    <div class="text-xs font-medium text-gray-500 mb-1">Imported Summary</div>
+                                                                @endif
                                                                 <div class="text-sm text-gray-700 markdown-content">
                                                                     @include('partials.markdown.rendered-block', [
                                                                         'content' => $source->importedsummary,
@@ -692,51 +798,52 @@
                                                 @endforeach
                                             </section>
                                         @endif
-                                    </div>
+                                    
 
-                                    @if($knowledgeItem->reviewLogs->isNotEmpty())
-                                        <div class="rounded-lg border border-gray-200 p-4 space-y-3">
-                                            <h5 class="text-sm font-semibold text-gray-900">Review History</h5>
+                                        @if($knowledgeItem->reviewLogs->isNotEmpty())
+                                            <div class="rounded-lg border border-gray-200 p-4 space-y-3">
+                                                <h5 class="text-sm font-semibold text-gray-900">Review History</h5>
 
-                                            @foreach($knowledgeItem->reviewLogs as $log)
-                                                <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
-                                                    <div class="flex flex-wrap gap-2 text-xs mb-2">
-                                                        @if($log->reviewdate)
-                                                            <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                                                {{ $log->reviewdate->format('d M Y') }}
-                                                            </span>
-                                                        @endif
+                                                @foreach($knowledgeItem->reviewLogs as $log)
+                                                    <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
+                                                        <div class="flex flex-wrap gap-2 text-xs mb-2">
+                                                            @if($log->reviewdate)
+                                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                                    {{ $log->reviewdate->format('d M Y') }}
+                                                                </span>
+                                                            @endif
 
-                                                        @if($log->reviewtype)
-                                                            <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                                                {{ \App\Models\KnowledgeReviewLog::TYPE_OPTIONS[$log->reviewtype] ?? $log->reviewtype }}
-                                                            </span>
-                                                        @endif
+                                                            @if($log->reviewtype)
+                                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                                    {{ \App\Models\KnowledgeReviewLog::TYPE_OPTIONS[$log->reviewtype] ?? $log->reviewtype }}
+                                                                </span>
+                                                            @endif
 
-                                                        @if ($log->outcome)
-                                                            <span class="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                                                                {{ ucfirst($log->outcome) }}
-                                                            </span>
-                                                        @endif
+                                                            @if ($log->outcome)
+                                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                                                    {{ ucfirst($log->outcome) }}
+                                                                </span>
+                                                            @endif
 
-                                                        @if ($log->nextreviewdate)
-                                                            <span class="inline-flex items-center px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
-                                                                Next review: {{ $log->nextreviewdate->format('d M Y') }}
-                                                            </span>
+                                                            @if ($log->nextreviewdate)
+                                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
+                                                                    Next review: {{ $log->nextreviewdate->format('d M Y') }}
+                                                                </span>
+                                                            @endif
+                                                        </div>
+
+                                                        @if (filled($log->summary))
+                                                            <div class="mt-1 text-sm text-gray-700 markdown-content">
+                                                                @include('partials.markdown.rendered-block', [
+                                                                    'content' => $log->summary,
+                                                                ])
+                                                            </div>
                                                         @endif
                                                     </div>
-
-                                                    @if (filled($log->summary))
-                                                        <div class="mt-1 text-sm text-gray-700 markdown-content">
-                                                            @include('partials.markdown.rendered-block', [
-                                                                'content' => $log->summary,
-                                                            ])
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    @endif
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </div>
                                 </div>
                             @endforeach
                         </div>

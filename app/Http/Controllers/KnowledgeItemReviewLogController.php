@@ -10,22 +10,13 @@ use Illuminate\Validation\Rule;
 
 class KnowledgeItemReviewLogController extends Controller
 {
-    public function store(Request $request, KnowledgeItem $knowledgeItem)
-    {
+    public function store(
+        Request $request,
+        KnowledgeItem $knowledgeItem
+    ) {
         $validated = $this->validatedData($request);
 
         $reviewLog = $knowledgeItem->reviewLogs()->create($validated);
-
-        /*
-         * Option 1: The parent item's next review date is updated only when
-         * a review log explicitly provides one. It is not recalculated when
-         * logs are edited, cleared, or deleted.
-         */
-        if (!empty($validated['nextreviewdate'])) {
-            $knowledgeItem->update([
-                'nextreviewdate' => $validated['nextreviewdate'],
-            ]);
-        }
 
         return response()->json([
             'reviewLog' => $this->reviewLogPayload($reviewLog->fresh()),
@@ -47,17 +38,29 @@ class KnowledgeItemReviewLogController extends Controller
 
         $knowledgeReviewLog->update($validated);
 
-        /*
-         * Retain the explicit/manual parent-date rule.
-         */
-        if (!empty($validated['nextreviewdate'])) {
-            $knowledgeItem->update([
-                'nextreviewdate' => $validated['nextreviewdate'],
-            ]);
-        }
-
         return response()->json([
             'reviewLog' => $this->reviewLogPayload($knowledgeReviewLog->fresh()),
+            'knowledgeItemNextReviewDate' => $knowledgeItem
+                ->fresh()
+                ->nextreviewdate
+                ?->format('Y-m-d'),
+        ]);
+    }
+
+    public function complete(
+        KnowledgeItem $knowledgeItem,
+        KnowledgeReviewLog $knowledgeReviewLog
+    ) {
+        $this->ensureOwnership($knowledgeItem, $knowledgeReviewLog);
+
+        $knowledgeReviewLog->update([
+            'nextreviewdate' => null,
+        ]);
+
+        return response()->json([
+            'reviewLog' => $this->reviewLogPayload(
+                $knowledgeReviewLog->fresh()
+            ),
             'knowledgeItemNextReviewDate' => $knowledgeItem
                 ->fresh()
                 ->nextreviewdate

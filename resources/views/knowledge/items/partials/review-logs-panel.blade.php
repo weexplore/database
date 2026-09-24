@@ -265,6 +265,17 @@
                                     Edit
                                 </button>
 
+                                <template x-if="log.nextreviewdate">
+                                    <button
+                                        type="button"
+                                        @click="completeLog(log)"
+                                        :disabled="saving"
+                                        class="inline-flex items-center px-3 py-1.5 bg-emerald-600 text-white rounded text-xs hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        Complete
+                                    </button>
+                                </template>
+
                                 <button type="button"
                                         @click="deleteLog(log)"
                                         class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white rounded text-xs hover:bg-red-700">
@@ -514,6 +525,71 @@
                     log.editing = false;
                     log.draft = null;
                 });
+            },
+
+            async completeLog(log) {
+                if (!log.nextreviewdate) {
+                    return;
+                }
+
+                if (
+                    !window.confirm(
+                        'Mark this review follow-up as complete? Its next review date will be cleared.'
+                    )
+                ) {
+                    return;
+                }
+
+                this.errorMessage = '';
+                this.saving = true;
+
+                try {
+                    const response = await fetch(
+                        `${this.baseUrl}/${log.id}/complete`,
+                        {
+                            method: 'PATCH',
+                            headers: {
+                                'X-CSRF-TOKEN': this.csrfToken,
+                                'Accept': 'application/json',
+                            },
+                        }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error(await this.responseMessage(response));
+                    }
+
+                    const data = await response.json();
+
+                    const index = this.reviewLogs.findIndex(
+                        item => Number(item.id) === Number(log.id)
+                    );
+
+                    if (index !== -1) {
+                        this.reviewLogs.splice(
+                            index,
+                            1,
+                            this.prepareLog(data.reviewLog)
+                        );
+                    }
+
+                    /*
+                    * This normally remains unchanged because Review Logs no longer update
+                    * the Knowledge Item next review date. Retain the assignment so the UI
+                    * remains correct if that behavior changes later.
+                    */
+                    this.knowledgeItemNextReviewDate =
+                        data.knowledgeItemNextReviewDate ?? null;
+
+                    this.sortLogs();
+                } catch (error) {
+                    this.errorMessage =
+                        error.message || 'Unable to complete the review follow-up.';
+
+                    console.error('Review log completion failed:', error);
+                } finally {
+                    this.saving = false;
+                }
             },
 
             async saveNewLog() {
