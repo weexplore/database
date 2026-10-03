@@ -12,9 +12,11 @@
 
         <div class="flex items-center justify-between gap-4">
             <div>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                    {{ $agendaMode ? $title : $title }}
-                </h2>
+                @if (! $agendaMode)
+                    <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                        {{ $title }}
+                    </h2>
+                @endif
 
                 @if (!$agendaMode)
                     <p class="mt-1 text-sm text-gray-500">
@@ -131,21 +133,32 @@
                 </button>
 
                 @if ($agendaMode)
-                    <a
-                        href="{{ route(
-                            'reports.knowledge.categories.agenda-docx',
-                            array_merge(
-                                request()->query(),
-                                [
-                                    'categoryid' => request()->integer('categoryid'),
-                                    'agenda_mode' => 1,
-                                ]
-                            )
-                        ) }}"
-                        class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-sm print-hide"
-                    >
-                        Export DOCX
-                    </a>
+                   @php
+                        $agendaCategoryId = (int) (
+                            $selectedCategoryId
+                            ?? request()->integer('categoryid')
+                        );
+
+                        $agendaDocxParameters = array_filter([
+                            'categoryid' => $agendaCategoryId,
+                            'agenda_mode' => 1,
+                            'review_only' => !empty($reviewOnly) ? 1 : null,
+                            'itemstatus' => $itemStatus ?? null,
+                            'return_to' => $returnTo ?? url()->previous(),
+                        ], fn ($value) => $value !== null && $value !== '');
+                    @endphp
+
+                    @if ($agendaMode && $agendaCategoryId > 0)
+                        <a
+                            href="{{ route(
+                                'reports.knowledge.categories.agenda-docx',
+                                $agendaDocxParameters
+                            ) }}"
+                            class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-sm print-hide"
+                        >
+                            Export DOCX
+                        </a>
+                    @endif
                 @endif
 
                 @if(!empty($returnTo))
@@ -172,11 +185,13 @@
 
             @forelse($categories as $category)
                 @php
-                    $parentHeading = $category->parentCategory?->categoryname ?: $category->categoryname;
+                    $parentHeading = $category->parentCategory?->categoryname
+                        ?: $category->categoryname;
+
                     $isParentHeadingChanged = $currentParentHeading !== $parentHeading;
                 @endphp
 
-                @if($isParentHeadingChanged)
+                @if (! $agendaMode && $isParentHeadingChanged)
                     <section class="report-category-break">
                         <div class="px-1 pt-2 pb-1">
                             <h2 class="text-2xl font-bold text-gray-900 report-parent-heading">
@@ -184,7 +199,9 @@
                             </h2>
                         </div>
                     </section>
+                @endif
 
+                @if ($isParentHeadingChanged)
                     @php
                         $currentParentHeading = $parentHeading;
                     @endphp
@@ -639,32 +656,36 @@
                                     <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
                                         @if($knowledgeItem->notes->isNotEmpty())
                                             <div class="rounded-lg border border-gray-200 p-4 space-y-3">
-                                                <h5 class="text-sm font-semibold text-gray-900">Knowledge Notes</h5>
+                                                @if (!$agendaMode)
+                                                    <h5 class="text-sm font-semibold text-gray-900">Knowledge Notes</h5>
+                                                @endif
 
                                                 @foreach($knowledgeItem->notes as $note)
                                                     <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
                                                         <div class="flex flex-wrap gap-2 text-xs mb-2">
-                                                            @if($note->notetype)
-                                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                                                    {{ \App\Models\KnowledgeNote::TYPE_OPTIONS[$note->notetype] ?? $note->notetype }}
-                                                                </span>
-                                                            @endif
-                                                            @if (filled($note->stance))
-                                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
-                                                                    Stance: {{ ucfirst($note->stance) }}
-                                                                </span>
-                                                            @endif
+                                                            @if (!$agendaMode)
+                                                                @if($note->notetype)
+                                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                                        {{ \App\Models\KnowledgeNote::TYPE_OPTIONS[$note->notetype] ?? $note->notetype }}
+                                                                    </span>
+                                                                @endif
+                                                                @if (filled($note->stance))
+                                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
+                                                                        Stance: {{ ucfirst($note->stance) }}
+                                                                    </span>
+                                                                @endif
 
-                                                            @if($note->reviewdate)
-                                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                                                    Review: {{ $note->reviewdate->format('d M Y') }}
-                                                                </span>
-                                                            @endif
+                                                                @if($note->reviewdate)
+                                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                                        Review: {{ $note->reviewdate->format('d M Y') }}
+                                                                    </span>
+                                                                @endif
 
-                                                            @if($note->isprivate)
-                                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-200">
-                                                                    Private
-                                                                </span>
+                                                                @if($note->isprivate)
+                                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-200">
+                                                                        Private
+                                                                    </span>
+                                                                @endif
                                                             @endif
                                                         </div>
 

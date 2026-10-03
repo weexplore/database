@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\KnowledgeCategory;
+use App\Models\KnowledgeItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use PhpOffice\PhpWord\IOFactory;
@@ -223,6 +224,7 @@ class KnowledgeReportController extends Controller
         return view('reports.knowledge.categories.reference-book', [
             'categories' => $categories,
             'selectedCategoryIds' => $selectedCategoryIds,
+            'selectedCategoryId' => $selectedCategory->id,
             'reviewOnly' => $reviewOnly,
             'returnTo' => $request->input('return_to', url()->previous()),
             'reportTitle' => 'Knowledge Category Tree Report – ' . $selectedCategory->categoryname,
@@ -241,14 +243,20 @@ class KnowledgeReportController extends Controller
     }
 
     protected function baseCategoryReferenceQuery(
-            bool $reviewOnly = false,
-            string $itemStatus = ''
-        )
-{
+    bool $reviewOnly = false,
+    string $itemStatus = ''
+) {
+    $activeOnly = $itemStatus === 'active';
+
     return KnowledgeCategory::query()
         ->with([
             'domain',
             'parentCategory',
+
+            /*
+             * When itemstatus is "active", inactive knowledge items
+             * are excluded completely from the report.
+             */
             'knowledgeItems' => function ($query) use (
                 $reviewOnly,
                 $itemStatus
@@ -256,7 +264,8 @@ class KnowledgeReportController extends Controller
                 $query
                     ->when(
                         $reviewOnly,
-                        fn ($query) => $query->whereNotNull('nextreviewdate')
+                        fn ($query) => $query
+                            ->whereNotNull('nextreviewdate')
                     )
                     ->when(
                         $itemStatus !== '',
@@ -268,81 +277,130 @@ class KnowledgeReportController extends Controller
                     ->orderBy('sortorder')
                     ->orderBy('itemname');
             },
+
             'knowledgeItems.primaryCategory',
             'knowledgeItems.parentItem',
             'knowledgeItems.place',
             'knowledgeItems.itemType',
+
             'knowledgeItems.personFacts' => function ($query) {
                 $query->with('place')
                     ->orderBy('sortorder')
                     ->orderBy('datefrom')
                     ->orderBy('id');
             },
+
             'knowledgeItems.personFacts.place',
-            'knowledgeItems.notes' => function ($query) {
-                $query->orderBy('sortorder')
+
+            /*
+             * Active Only:
+             * load only active notes belonging to active items.
+             */
+            'knowledgeItems.notes' => function ($query) use (
+                $activeOnly
+            ) {
+                $query
+                    ->when(
+                        $activeOnly,
+                        fn ($query) => $query->active()
+                    )
+                    ->orderBy('sortorder')
                     ->orderByDesc('reviewdate')
                     ->orderByDesc('id');
             },
+
             'knowledgeItems.sources' => function ($query) {
                 $query->orderByDesc('retrievedon')
                     ->orderByDesc('id');
             },
-            'knowledgeItems.reviewLogs' => function ($query) {
-                $query->orderByDesc('reviewdate')
+
+            /*
+             * Active Only:
+             * load only active review logs belonging to active items.
+             */
+            'knowledgeItems.reviewLogs' => function ($query) use (
+                $activeOnly
+            ) {
+                $query
+                    ->when(
+                        $activeOnly,
+                        fn ($query) => $query->active()
+                    )
+                    ->orderByDesc('reviewdate')
                     ->orderByDesc('id');
             },
+
             'knowledgeItems.outgoingRelationships',
             'knowledgeItems.outgoingRelationships.toItem.primaryCategory',
-            'knowledgeItems.outgoingRelationships.relationshipFacts' => function ($query) {
-                $query->with('place')
-                    ->orderBy('sortorder')
-                    ->orderBy('datefrom')
-                    ->orderBy('id');
-            },
+
+            'knowledgeItems.outgoingRelationships.relationshipFacts'
+                => function ($query) {
+                    $query->with('place')
+                        ->orderBy('sortorder')
+                        ->orderBy('datefrom')
+                        ->orderBy('id');
+                },
+
             'knowledgeItems.outgoingRelationships.relationshipFacts.place',
+
             'knowledgeItems.incomingRelationships',
             'knowledgeItems.incomingRelationships.fromItem.primaryCategory',
-            'knowledgeItems.incomingRelationships.relationshipFacts' => function ($query) {
-                $query->with('place')
-                    ->orderBy('sortorder')
-                    ->orderBy('datefrom')
-                    ->orderBy('id');
-            },
+
+            'knowledgeItems.incomingRelationships.relationshipFacts'
+                => function ($query) {
+                    $query->with('place')
+                        ->orderBy('sortorder')
+                        ->orderBy('datefrom')
+                        ->orderBy('id');
+                },
+
             'knowledgeItems.incomingRelationships.relationshipFacts.place',
+
             'knowledgeItems.attachments' => function ($query) {
                 $query->orderByPivot('isprimary', 'desc')
                     ->orderByPivot('sortorder')
                     ->orderBy('originalfilename')
                     ->orderBy('filename');
             },
+
             'knowledgeItems.bibleReferences' => function ($query) {
                 $query->orderBy('bookid')
                     ->orderBy('chapterfrom')
                     ->orderBy('versefrom');
             },
+
             'knowledgeItems.bibleReferences.book',
             'knowledgeItems.bibleReferences.version',
+
             'knowledgeItems.instrument',
             'knowledgeItems.instrument.instrumentType',
             'knowledgeItems.instrument.exchange',
+
             'knowledgeItems.instrument.aliases' => function ($query) {
                 $query->orderBy('aliastype')
                     ->orderBy('aliasvalue');
             },
-            'knowledgeItems.instrument.priceObservations' => function ($query) {
-                $query->orderByDesc('observedon')
-                    ->orderByDesc('id');
-            },
-            'knowledgeItems.instrument.corporateActions' => function ($query) {
-                $query->orderByDesc('actiondate')
-                    ->orderByDesc('id');
-            },
+
+            'knowledgeItems.instrument.priceObservations'
+                => function ($query) {
+                    $query->orderByDesc('observedon')
+                        ->orderByDesc('id');
+                },
+
+            'knowledgeItems.instrument.corporateActions'
+                => function ($query) {
+                    $query->orderByDesc('actiondate')
+                        ->orderByDesc('id');
+                },
+
             'knowledgeItems.instrument.corporateActions.source',
-            'knowledgeItems.instrument.transactions' => function ($query) {
-                $query->orderByDesc('transactiondate')
-                    ->orderByDesc('id');
-            },
+
+            'knowledgeItems.instrument.transactions'
+                => function ($query) {
+                    $query->orderByDesc('transactiondate')
+                        ->orderByDesc('id');
+                },
+
             'knowledgeItems.instrument.transactions.portfolio',
         ]);
 }
@@ -424,37 +482,46 @@ protected function collectDomainTreeIdsInDisplayOrder(int $domainId): array
         ->all();
 }
 
-public function knowledgeItemReferenceBook(Request $request, int $knowledgeItemId)
-{
+public function knowledgeItemReferenceBook(
+    Request $request,
+    int $knowledgeItemId
+) {
     $reviewOnly = $request->boolean('review_only');
+    $agendaMode = $request->boolean('agenda_mode');
 
-    $item = \App\Models\KnowledgeItem::query()
+    $item = KnowledgeItem::query()
         ->with([
             'primaryCategory.domain',
             'primaryCategory.parentCategory',
             'parentItem',
             'place',
             'itemType',
+
             'personFacts' => function ($query) {
                 $query->with('place')
                     ->orderBy('sortorder')
                     ->orderBy('datefrom')
                     ->orderBy('id');
             },
+
             'personFacts.place',
+
             'notes' => function ($query) {
                 $query->orderBy('sortorder')
                     ->orderByDesc('reviewdate')
                     ->orderByDesc('id');
             },
+
             'sources' => function ($query) {
                 $query->orderByDesc('retrievedon')
                     ->orderByDesc('id');
             },
+
             'reviewLogs' => function ($query) {
                 $query->orderByDesc('reviewdate')
                     ->orderByDesc('id');
             },
+
             'outgoingRelationships',
             'outgoingRelationships.toItem.primaryCategory',
             'outgoingRelationships.relationshipFacts' => function ($query) {
@@ -464,6 +531,7 @@ public function knowledgeItemReferenceBook(Request $request, int $knowledgeItemI
                     ->orderBy('id');
             },
             'outgoingRelationships.relationshipFacts.place',
+
             'incomingRelationships',
             'incomingRelationships.fromItem.primaryCategory',
             'incomingRelationships.relationshipFacts' => function ($query) {
@@ -473,11 +541,13 @@ public function knowledgeItemReferenceBook(Request $request, int $knowledgeItemI
                     ->orderBy('id');
             },
             'incomingRelationships.relationshipFacts.place',
+
             'attachments' => function ($query) {
                 $query->orderByDesc('isprimary')
                     ->orderBy('originalfilename')
                     ->orderBy('filename');
             },
+
             'bibleReferences' => function ($query) {
                 $query->orderBy('bookid')
                     ->orderBy('chapterfrom')
@@ -485,22 +555,27 @@ public function knowledgeItemReferenceBook(Request $request, int $knowledgeItemI
             },
             'bibleReferences.book',
             'bibleReferences.version',
+
             'instrument',
             'instrument.instrumentType',
             'instrument.exchange',
+
             'instrument.aliases' => function ($query) {
                 $query->orderBy('aliastype')
                     ->orderBy('aliasvalue');
             },
+
             'instrument.priceObservations' => function ($query) {
                 $query->orderByDesc('observedon')
                     ->orderByDesc('id');
             },
+
             'instrument.corporateActions' => function ($query) {
                 $query->orderByDesc('actiondate')
                     ->orderByDesc('id');
             },
             'instrument.corporateActions.source',
+
             'instrument.transactions' => function ($query) {
                 $query->orderByDesc('transactiondate')
                     ->orderByDesc('id');
@@ -514,10 +589,13 @@ public function knowledgeItemReferenceBook(Request $request, int $knowledgeItemI
     }
 
     $item = $this->prepareKnowledgeItemForReport($item);
+    $reviewOnly = $request->boolean('review_only');
+    $agendaMode = $request->boolean('agenda_mode');
 
     return view('reports.knowledge.items.reference-book', [
         'knowledgeItem' => $item,
         'reviewOnly' => $reviewOnly,
+        'agendaMode' => $agendaMode,
         'returnTo' => $request->input('return_to', url()->previous()),
         'reportTitle' => 'Knowledge Item Report – ' . $item->itemname,
         'reportSubtitle' => 'Compiled reference report for a single knowledge item',
@@ -642,6 +720,13 @@ protected function prepareKnowledgeItemForReport($item)
     {
         $categoryId = $request->integer('categoryid');
 
+        if ($categoryId <= 0) {
+            $categoryId = collect($request->input('category_ids', []))
+                ->filter(fn ($id) => filled($id))
+                ->map(fn ($id) => (int) $id)
+                ->first() ?? 0;
+        }
+
         abort_if(
             $categoryId <= 0,
             404,
@@ -722,18 +807,21 @@ protected function prepareKnowledgeItemForReport($item)
             1
         );
 
-        $metaText = collect([
-            $selectedCategory->domain?->domainname,
-            'Generated ' . now()->format('j F Y'),
-            $itemStatus !== ''
+        // Agenda DOCX deliberately omits report metadata.
+        /* 
+           $metaText = collect([
+           $selectedCategory->domain?->domainname,
+           'Generated ' . now()->format('j F Y'),
+           $itemStatus !== ''
                 ? 'Items: '
-                    . (
-                        $this->reportItemStatusOptions()[$itemStatus]
-                        ?? ucfirst($itemStatus)
-                    )
+                   . (
+                       $this->reportItemStatusOptions()[$itemStatus]
+                       ?? ucfirst($itemStatus)
+                   )
                 : 'Items: All items',
             $reviewOnly ? 'Review dates only' : null,
-        ])->filter()->implode(' · ');
+            ])->filter()->implode(' · ');
+        
 
         if ($metaText !== '') {
             $section->addText(
@@ -749,6 +837,7 @@ protected function prepareKnowledgeItemForReport($item)
                 ]
             );
         }
+        */
 
         foreach ($categories as $category) {
             $section->addTitle($category->categoryname, 2);
@@ -778,6 +867,45 @@ protected function prepareKnowledgeItemForReport($item)
                     $this->addMarkdownContentToDocx(
                         $section,
                         $content
+                    );
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | Knowledge Notes
+                |--------------------------------------------------------------------------
+                | Agenda mode displays note content but excludes note metadata such as
+                | type, review status, private status, dates, and other badges.
+                */
+                $agendaNotes = $item->notes
+                    ->filter(fn ($note) => filled($note->notecontent))
+                    ->sortBy([
+                        ['sortorder', 'asc'],
+                        ['reviewdate', 'desc'],
+                        ['id', 'asc'],
+                    ])
+                    ->values();
+
+                foreach ($agendaNotes as $note) {
+                    if (filled($note->title)) {
+                        $section->addText(
+                            $note->title,
+                            [
+                                'name' => 'Arial',
+                                'size' => 10,
+                                'bold' => true,
+                                'color' => '374151',
+                            ],
+                            [
+                                'spaceBefore' => 100,
+                                'spaceAfter' => 50,
+                            ]
+                        );
+                    }
+
+                    $this->addMarkdownContentToDocx(
+                        $section,
+                        $note->notecontent
                     );
                 }
 
@@ -852,6 +980,165 @@ protected function prepareKnowledgeItemForReport($item)
         );
     }
 
+    public function knowledgeItemAgendaDocx(
+        Request $request,
+        int $knowledgeItemId
+    ) {
+        $reviewOnly = $request->boolean('review_only');
+
+        $item = KnowledgeItem::query()
+            ->with([
+                'primaryCategory.domain',
+                'primaryCategory.parentCategory',
+                'notes' => function ($query) {
+                    $query->orderBy('sortorder')
+                        ->orderByDesc('reviewdate')
+                        ->orderByDesc('id');
+                },
+                'reviewLogs' => function ($query) {
+                    $query->orderByDesc('reviewdate')
+                        ->orderByDesc('id');
+                },
+            ])
+            ->findOrFail($knowledgeItemId);
+
+        if ($reviewOnly && empty($item->nextreviewdate)) {
+            abort(404, 'This knowledge item does not have a review date.');
+        }
+
+        $phpWord = new PhpWord();
+
+        $phpWord->setDefaultFontName('Arial');
+        $phpWord->setDefaultFontSize(11);
+
+        $phpWord->addTitleStyle(1, [
+            'name' => 'Arial',
+            'bold' => true,
+            'size' => 17,
+            'color' => '1F2937',
+        ]);
+
+        $phpWord->addTitleStyle(2, [
+            'name' => 'Arial',
+            'bold' => true,
+            'size' => 14,
+            'color' => '1F2937',
+        ]);
+
+        $section = $phpWord->addSection([
+            'marginTop' => 900,
+            'marginRight' => 900,
+            'marginBottom' => 900,
+            'marginLeft' => 900,
+        ]);
+
+        $section->addTitle($item->itemname, 1);
+
+        $agendaContent = [
+            $item->summary,
+            $item->detailednotes,
+            $item->reviewnotes,
+        ];
+
+        foreach ($agendaContent as $content) {
+            if (blank($content)) {
+                continue;
+            }
+
+            $this->addMarkdownContentToDocx($section, $content);
+        }
+
+        $agendaNotes = $item->notes
+            ->filter(fn ($note) => filled($note->notecontent))
+            ->sortBy([
+                ['sortorder', 'asc'],
+                ['reviewdate', 'desc'],
+                ['id', 'asc'],
+            ])
+            ->values();
+
+        foreach ($agendaNotes as $note) {
+            if (filled($note->title)) {
+                $section->addText(
+                    $note->title,
+                    [
+                        'name' => 'Arial',
+                        'size' => 10,
+                        'bold' => true,
+                        'color' => '374151',
+                    ],
+                    [
+                        'spaceBefore' => 120,
+                        'spaceAfter' => 50,
+                    ]
+                );
+            }
+
+            $this->addMarkdownContentToDocx(
+                $section,
+                $note->notecontent
+            );
+        }
+
+        $reviewEntries = $item->reviewLogs
+            ->filter(fn ($reviewLog) => filled($reviewLog->summary));
+
+        if ($reviewEntries->isNotEmpty()) {
+            $section->addText(
+                'Previous decisions / reviews',
+                [
+                    'name' => 'Arial',
+                    'size' => 10,
+                    'bold' => true,
+                    'color' => '374151',
+                ],
+                [
+                    'spaceBefore' => 120,
+                    'spaceAfter' => 50,
+                ]
+            );
+
+            foreach ($reviewEntries as $reviewLog) {
+                $reviewText = $this->plainTextForDocx(
+                    $reviewLog->summary
+                );
+
+                if ($reviewText === '') {
+                    continue;
+                }
+
+                $prefix = $reviewLog->reviewdate
+                    ? $reviewLog->reviewdate->format('d M Y') . ': '
+                    : '';
+
+                $section->addListItem(
+                    $prefix . $reviewText,
+                    0,
+                    [
+                        'name' => 'Arial',
+                        'size' => 10,
+                    ]
+                );
+            }
+        }
+
+        $filename = Str::slug($item->itemname)
+            . '-agenda-'
+            . now()->format('Y-m-d')
+            . '.docx';
+
+        return response()->streamDownload(
+            function () use ($phpWord) {
+                IOFactory::createWriter($phpWord, 'Word2007')
+                    ->save('php://output');
+            },
+            $filename,
+            [
+                'Content-Type' =>
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            ]
+        );
+    }
     public function testDocx()
     {
         $phpWord = new PhpWord();
@@ -980,134 +1267,174 @@ protected function prepareKnowledgeItemForReport($item)
     }
 
     protected function addMarkdownContentToDocx(
-        \PhpOffice\PhpWord\Element\Section $section,
-        ?string $content
-    ): void {
-        if (blank($content)) {
+    $section,
+    ?string $content
+): void {
+    if (blank($content)) {
+        return;
+    }
+
+    $lines = preg_split('/\R/', trim((string) $content));
+
+    $paragraphLines = [];
+    $tableLines = [];
+    $listItems = [];
+    $listType = null;
+
+    $flushParagraph = function () use (&$paragraphLines, $section): void {
+        if (empty($paragraphLines)) {
             return;
         }
 
-        $lines = preg_split(
-            "/\r\n|\r|\n/",
-            trim((string) $content)
-        );
+        $paragraph = trim(implode(' ', $paragraphLines));
 
-        $paragraphLines = [];
-        $tableLines = [];
-        $listItems = [];
-        $listType = null;
-
-        $flushParagraph = function () use (&$paragraphLines, $section) {
-            if ($paragraphLines === []) {
-                return;
-            }
-
-            $paragraph = trim(implode("\n", $paragraphLines));
-
-            if ($paragraph !== '') {
-                $this->addMarkdownParagraphToDocx(
-                    $section,
-                    $paragraph
-                );
-            }
-
-            $paragraphLines = [];
-        };
-
-        $flushTable = function () use (&$tableLines, $section) {
-            if ($tableLines === []) {
-                return;
-            }
-
-            $this->addMarkdownTableToDocx(
-                $section,
-                $tableLines
-            );
-
-            $tableLines = [];
-        };
-
-        $flushList = function () use (
-            &$listItems,
-            &$listType,
-            $section
-        ) {
-            if ($listItems === []) {
-                return;
-            }
-
-            foreach ($listItems as $listItem) {
-                $this->addMarkdownListItemToDocx(
-                    $section,
-                    $listItem,
-                    $listType === 'ordered'
-                );
-            }
-
-            $listItems = [];
-            $listType = null;
-        };
-
-        foreach ($lines as $line) {
-            $trimmedLine = trim($line);
-
-            if ($this->isMarkdownTableLine($trimmedLine)) {
-                $flushParagraph();
-                $flushList();
-
-                $tableLines[] = $trimmedLine;
-
-                continue;
-            }
-
-            if ($tableLines !== []) {
-                $flushTable();
-            }
-
-            if ($trimmedLine === '') {
-                $flushParagraph();
-                $flushList();
-
-                continue;
-            }
-
-            if (preg_match('/^[-*+]\s+(.+)$/', $trimmedLine, $matches)) {
-                $flushParagraph();
-
-                if ($listType !== null && $listType !== 'bullet') {
-                    $flushList();
-                }
-
-                $listType = 'bullet';
-                $listItems[] = $matches[1];
-
-                continue;
-            }
-
-            if (preg_match('/^\d+[.)]\s+(.+)$/', $trimmedLine, $matches)) {
-                $flushParagraph();
-
-                if ($listType !== null && $listType !== 'ordered') {
-                    $flushList();
-                }
-
-                $listType = 'ordered';
-                $listItems[] = $matches[1];
-
-                continue;
-            }
-
-            if ($listItems !== []) {
-                $flushList();
-            }
-
-            $paragraphLines[] = $line;
+        if ($paragraph !== '') {
+            $this->addMarkdownParagraphToDocx($section, $paragraph);
         }
 
-        $flushTable();
-        $flushList();
-        $flushParagraph();
+        $paragraphLines = [];
+    };
+
+    $flushTable = function () use (&$tableLines, $section): void {
+        if (empty($tableLines)) {
+            return;
+        }
+
+        $this->addMarkdownTableToDocx($section, $tableLines);
+
+        $tableLines = [];
+    };
+
+    $flushList = function () use (&$listItems, &$listType, $section): void {
+        if (empty($listItems)) {
+            return;
+        }
+
+        foreach ($listItems as $listItem) {
+            $this->addMarkdownListItemToDocx(
+                $section,
+                $listItem['text'],
+                $listType === 'ordered',
+                $listItem['level']
+            );
+        }
+
+        $listItems = [];
+        $listType = null;
+    };
+
+    foreach ($lines as $line) {
+        $trimmedLine = trim($line);
+
+        if ($this->isMarkdownTableLine($trimmedLine)) {
+            $flushParagraph();
+            $flushList();
+
+            $tableLines[] = $trimmedLine;
+
+            continue;
+        }
+
+        if (!empty($tableLines)) {
+            $flushTable();
+        }
+
+        if ($trimmedLine === '') {
+            $flushParagraph();
+            $flushList();
+
+            continue;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Nested bullet list: >- Item
+        |--------------------------------------------------------------------------
+        | Accepts:
+        | >- Item
+        | > - Item
+        | >>- Item
+        | >> - Item
+        */
+        if (preg_match('/^(>+)\s*-\s+(.+)$/', $trimmedLine, $matches)) {
+            $flushParagraph();
+            $flushList();
+
+            $indentLevel = strlen($matches[1]);
+
+            $section->addText(
+                $matches[2],
+                [
+                    'name' => 'Arial',
+                    'size' => 11,
+                ],
+                [
+                    'indentation' => [
+                        'left' => 720 * $indentLevel,
+                        'hanging' => 0,
+                    ],
+                    'spaceAfter' => 50,
+                ]
+            );
+
+            continue;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Standard bullet list: - Item, * Item, + Item
+        |--------------------------------------------------------------------------
+        */
+        if (preg_match('/^[-*+]\s+(.+)$/', $trimmedLine, $matches)) {
+            $flushParagraph();
+
+            if ($listType !== null && $listType !== 'bullet') {
+                $flushList();
+            }
+
+            $listType = 'bullet';
+
+            $listItems[] = [
+                'text' => $matches[1],
+                'level' => 0,
+            ];
+
+            continue;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Ordered list: 1. Item
+        |--------------------------------------------------------------------------
+        */
+        if (preg_match('/^\d+\.\s+(.+)$/', $trimmedLine, $matches)) {
+            $flushParagraph();
+
+            if ($listType !== null && $listType !== 'ordered') {
+                $flushList();
+            }
+
+            $listType = 'ordered';
+
+            $listItems[] = [
+                'text' => $matches[1],
+                'level' => 0,
+            ];
+
+            continue;
+        }
+
+        if (!empty($listItems)) {
+            $flushList();
+        }
+
+        $paragraphLines[] = $line;
     }
+
+    $flushTable();
+    $flushList();
+    $flushParagraph();
+}
 
     protected function addMarkdownTableToDocx(
         \PhpOffice\PhpWord\Element\Section $section,

@@ -79,55 +79,7 @@ class DestinationItem extends Model
             'if_nearby' => 'If nearby',
         ];
     }
-    public static function itemTypeOptions(): array
-    {
-        return [
-            'attraction' => 'Attraction',
-            'walk' => 'Walk',
-            'museum' => 'Museum',
-            'drive' => 'Drive',
-            'lookout' => 'Lookout',
-            'market' => 'Market',
-            'beach' => 'Beach',
-            'river' => 'River',
-            'lake' => 'Lake',
-            'artesian Pool' => 'Artesian Pool',
-            'swimming-pool' => 'Swimming Pool',
-            'jetty' => 'Jetty',
-            'lighthouse' => 'Lighthouse',
-            'memorials' => 'Memorials',
-            'quilt-shop' => 'Quilt Shop',
-            'campground' => 'Campground',
-            'caravan-park' => 'Caravan Park',
-            'free-camp' => 'Free Camp',
-            'cafe' => 'Cafe',
-            'picnic-area' => 'Picnic Area',
-            'bakery' => 'Bakery',
-            'butcher' => 'Butcher',
-            'takeaway' => 'Takeaway',
-            'shopping-area' => 'Shopping Area',
-            'hotel-motel' => 'Hotel/Motel',
-            'restaurant' => 'Restaurant',
-            'craft-beer' => 'Craft Beer',
-            'winery' => 'Winery',
-            'supermarket' => 'Supermarket',
-            'dump_point' => 'Dump Point',
-            'water_point' => 'Water Point',
-            'water_dump_point' => 'Water & Dump Point',
-            'church' => 'Church',
-            'hospital' => 'Hospital',
-            'medical-centre' => 'Medical Centre',
-            'information' => 'Information',
-            'vehicle-repair' => 'Vehicle Repair',
-            'rest-area' => 'Rest Area',
-            'photography' => 'Photography',
-            'silo-art' => 'Silo Art',
-            'street-art' => 'Street Art',
-            'family-friends' => 'Family-Friends',
-            'other' => 'Other',
-        ];
-    }
-
+    
     public function destination(): BelongsTo
     {
         return $this->belongsTo(Destination::class, 'destinationid');

@@ -11,8 +11,10 @@ use Illuminate\Validation\Rule;
 
 class KnowledgeItemNoteController extends Controller
 {
-    public function store(Request $request, KnowledgeItem $knowledgeItem)
-    {
+    public function store(
+        Request $request,
+        KnowledgeItem $knowledgeItem
+    ) {
         $validated = $this->validatedData($request);
 
         $note = KnowledgeNote::create([
@@ -30,7 +32,10 @@ class KnowledgeItemNoteController extends Controller
         KnowledgeItem $knowledgeItem,
         KnowledgeNote $knowledgeNote
     ) {
-        $this->ensureOwnership($knowledgeItem, $knowledgeNote);
+        $this->ensureOwnership(
+            $knowledgeItem,
+            $knowledgeNote
+        );
 
         $validated = $this->validatedData($request);
 
@@ -39,7 +44,9 @@ class KnowledgeItemNoteController extends Controller
         );
 
         return response()->json([
-            'note' => $this->notePayload($knowledgeNote->fresh()),
+            'note' => $this->notePayload(
+                $knowledgeNote->fresh()
+            ),
         ]);
     }
 
@@ -47,18 +54,30 @@ class KnowledgeItemNoteController extends Controller
         KnowledgeItem $knowledgeItem,
         KnowledgeNote $knowledgeNote
     ) {
-        $this->ensureOwnership($knowledgeItem, $knowledgeNote);
+        $this->ensureOwnership(
+            $knowledgeItem,
+            $knowledgeNote
+        );
 
         $knowledgeNote->delete();
 
         return response()->noContent();
     }
 
-    public function reorder(Request $request, KnowledgeItem $knowledgeItem)
-    {
+    public function reorder(
+        Request $request,
+        KnowledgeItem $knowledgeItem
+    ) {
         $validated = $request->validate([
-            'note_order' => ['required', 'array'],
-            'note_order.*' => ['required', 'integer', 'min:1'],
+            'note_order' => [
+                'required',
+                'array',
+            ],
+            'note_order.*' => [
+                'required',
+                'integer',
+                'min:1',
+            ],
         ]);
 
         $noteOrder = $validated['note_order'];
@@ -69,21 +88,27 @@ class KnowledgeItemNoteController extends Controller
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        DB::transaction(function () use ($knowledgeItem, $noteOrder, $noteIds) {
-            foreach ($noteOrder as $noteId => $sortOrder) {
-                $noteId = (int) $noteId;
+        DB::transaction(
+            function () use (
+                $knowledgeItem,
+                $noteOrder,
+                $noteIds
+            ) {
+                foreach ($noteOrder as $noteId => $sortOrder) {
+                    $noteId = (int) $noteId;
 
-                if (!in_array($noteId, $noteIds, true)) {
-                    continue;
+                    if (!in_array($noteId, $noteIds, true)) {
+                        continue;
+                    }
+
+                    $knowledgeItem->notes()
+                        ->where('id', $noteId)
+                        ->update([
+                            'sortorder' => (int) $sortOrder,
+                        ]);
                 }
-
-                $knowledgeItem->notes()
-                    ->where('id', $noteId)
-                    ->update([
-                        'sortorder' => (int) $sortOrder,
-                    ]);
             }
-        });
+        );
 
         return response()->noContent();
     }
@@ -96,28 +121,76 @@ class KnowledgeItemNoteController extends Controller
                 'string',
                 Rule::in(KnowledgeNote::typeValues()),
             ],
-            'title' => ['nullable', 'string', 'max:255'],
-            'notecontent' => ['required', 'string'],
-            'stance' => ['nullable', 'string', 'max:30'],
-            'convictionlevel' => ['nullable', 'integer', 'min:1', 'max:5'],
-            'reviewdate' => ['nullable', 'date'],
-            'isprivate' => ['nullable', 'boolean'],
-            'sortorder' => ['nullable', 'integer', 'min:0'],
+            'title' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+            'notecontent' => [
+                'required',
+                'string',
+            ],
+            'stance' => [
+                'nullable',
+                'string',
+                'max:30',
+            ],
+            'convictionlevel' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:5',
+            ],
+            'reviewdate' => [
+                'nullable',
+                'date',
+            ],
+            'isprivate' => [
+                'nullable',
+                'boolean',
+            ],
+            'isactive' => [
+                'sometimes',
+                'boolean',
+            ],
+            'sortorder' => [
+                'nullable',
+                'integer',
+                'min:0',
+            ],
         ]);
     }
 
     private function noteAttributes(array $validated): array
     {
-        return [
+        $attributes = [
             'notetype' => $validated['notetype'],
             'title' => $validated['title'] ?? null,
             'notecontent' => $validated['notecontent'],
             'stance' => $validated['stance'] ?? null,
-            'convictionlevel' => $validated['convictionlevel'] ?? null,
+            'convictionlevel' =>
+                $validated['convictionlevel'] ?? null,
             'reviewdate' => $validated['reviewdate'] ?? null,
-            'isprivate' => (bool) ($validated['isprivate'] ?? false),
+            'isprivate' =>
+                (bool) ($validated['isprivate'] ?? false),
             'sortorder' => $validated['sortorder'] ?? 0,
         ];
+
+        /*
+         * Only change isactive when it was submitted.
+         *
+         * For new notes, an omitted value allows the model/database
+         * default of true to be used.
+         *
+         * For existing notes, an omitted value leaves the current
+         * active setting unchanged.
+         */
+        if (array_key_exists('isactive', $validated)) {
+            $attributes['isactive'] =
+                (bool) $validated['isactive'];
+        }
+
+        return $attributes;
     }
 
     private function ensureOwnership(
@@ -125,7 +198,8 @@ class KnowledgeItemNoteController extends Controller
         KnowledgeNote $knowledgeNote
     ): void {
         abort_unless(
-            (int) $knowledgeNote->knowledgeitemid === (int) $knowledgeItem->id,
+            (int) $knowledgeNote->knowledgeitemid
+                === (int) $knowledgeItem->id,
             404
         );
     }
@@ -137,7 +211,8 @@ class KnowledgeItemNoteController extends Controller
         return [
             'id' => $note->id,
             'notetype' => $note->notetype,
-            'notetype_label' => $noteTypeOptions[$note->notetype]
+            'notetype_label' =>
+                $noteTypeOptions[$note->notetype]
                 ?? $note->notetype
                 ?? 'Note',
             'title' => $note->title ?? '',
@@ -147,10 +222,14 @@ class KnowledgeItemNoteController extends Controller
                 ->toHtml(),
             'stance' => $note->stance ?? '',
             'convictionlevel' => $note->convictionlevel,
-            'reviewdate' => $note->reviewdate?->format('Y-m-d'),
-            'reviewdate_display' => $note->reviewdate?->format('d M Y'),
+            'reviewdate' =>
+                $note->reviewdate?->format('Y-m-d'),
+            'reviewdate_display' =>
+                $note->reviewdate?->format('d M Y'),
             'isprivate' => (bool) $note->isprivate,
-            'sortorder' => (int) ($note->sortorder ?? 0),
+            'isactive' => (bool) $note->isactive,
+            'sortorder' =>
+                (int) ($note->sortorder ?? 0),
         ];
     }
 }

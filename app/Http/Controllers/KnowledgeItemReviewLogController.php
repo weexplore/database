@@ -16,10 +16,14 @@ class KnowledgeItemReviewLogController extends Controller
     ) {
         $validated = $this->validatedData($request);
 
-        $reviewLog = $knowledgeItem->reviewLogs()->create($validated);
+        $reviewLog = $knowledgeItem
+            ->reviewLogs()
+            ->create($validated);
 
         return response()->json([
-            'reviewLog' => $this->reviewLogPayload($reviewLog->fresh()),
+            'reviewLog' => $this->reviewLogPayload(
+                $reviewLog->fresh()
+            ),
             'knowledgeItemNextReviewDate' => $knowledgeItem
                 ->fresh()
                 ->nextreviewdate
@@ -32,14 +36,19 @@ class KnowledgeItemReviewLogController extends Controller
         KnowledgeItem $knowledgeItem,
         KnowledgeReviewLog $knowledgeReviewLog
     ) {
-        $this->ensureOwnership($knowledgeItem, $knowledgeReviewLog);
+        $this->ensureOwnership(
+            $knowledgeItem,
+            $knowledgeReviewLog
+        );
 
         $validated = $this->validatedData($request);
 
         $knowledgeReviewLog->update($validated);
 
         return response()->json([
-            'reviewLog' => $this->reviewLogPayload($knowledgeReviewLog->fresh()),
+            'reviewLog' => $this->reviewLogPayload(
+                $knowledgeReviewLog->fresh()
+            ),
             'knowledgeItemNextReviewDate' => $knowledgeItem
                 ->fresh()
                 ->nextreviewdate
@@ -51,7 +60,10 @@ class KnowledgeItemReviewLogController extends Controller
         KnowledgeItem $knowledgeItem,
         KnowledgeReviewLog $knowledgeReviewLog
     ) {
-        $this->ensureOwnership($knowledgeItem, $knowledgeReviewLog);
+        $this->ensureOwnership(
+            $knowledgeItem,
+            $knowledgeReviewLog
+        );
 
         $knowledgeReviewLog->update([
             'nextreviewdate' => null,
@@ -72,7 +84,10 @@ class KnowledgeItemReviewLogController extends Controller
         KnowledgeItem $knowledgeItem,
         KnowledgeReviewLog $knowledgeReviewLog
     ) {
-        $this->ensureOwnership($knowledgeItem, $knowledgeReviewLog);
+        $this->ensureOwnership(
+            $knowledgeItem,
+            $knowledgeReviewLog
+        );
 
         $knowledgeReviewLog->delete();
 
@@ -82,15 +97,32 @@ class KnowledgeItemReviewLogController extends Controller
     private function validatedData(Request $request): array
     {
         return $request->validate([
-            'reviewdate' => ['required', 'date'],
+            'reviewdate' => [
+                'required',
+                'date',
+            ],
             'reviewtype' => [
                 'required',
                 'string',
                 Rule::in(KnowledgeReviewLog::typeValues()),
             ],
-            'outcome' => ['nullable', 'string', 'max:50'],
-            'summary' => ['nullable', 'string'],
-            'nextreviewdate' => ['nullable', 'date'],
+            'outcome' => [
+                'nullable',
+                'string',
+                'max:50',
+            ],
+            'summary' => [
+                'nullable',
+                'string',
+            ],
+            'nextreviewdate' => [
+                'nullable',
+                'date',
+            ],
+            'isactive' => [
+                'sometimes',
+                'boolean',
+            ],
         ]);
     }
 
@@ -99,21 +131,29 @@ class KnowledgeItemReviewLogController extends Controller
         KnowledgeReviewLog $knowledgeReviewLog
     ): void {
         abort_unless(
-            (int) $knowledgeReviewLog->knowledgeitemid === (int) $knowledgeItem->id,
+            (int) $knowledgeReviewLog->knowledgeitemid
+                === (int) $knowledgeItem->id,
             404
         );
     }
 
-    private function reviewLogPayload(KnowledgeReviewLog $reviewLog): array
-    {
-        $reviewTypeOptions = KnowledgeReviewLog::typeOptions();
+    private function reviewLogPayload(
+        KnowledgeReviewLog $reviewLog
+    ): array {
+        $reviewTypeOptions =
+            KnowledgeReviewLog::typeOptions();
 
         return [
             'id' => $reviewLog->id,
-            'reviewdate' => $reviewLog->reviewdate?->format('Y-m-d'),
-            'reviewdate_display' => $reviewLog->reviewdate?->format('d M Y'),
+            'reviewdate' => $reviewLog
+                ->reviewdate
+                ?->format('Y-m-d'),
+            'reviewdate_display' => $reviewLog
+                ->reviewdate
+                ?->format('d M Y'),
             'reviewtype' => $reviewLog->reviewtype,
-            'reviewtype_label' => $reviewTypeOptions[$reviewLog->reviewtype]
+            'reviewtype_label' =>
+                $reviewTypeOptions[$reviewLog->reviewtype]
                 ?? $reviewLog->reviewtype
                 ?? 'Review',
             'outcome' => $reviewLog->outcome,
@@ -121,8 +161,13 @@ class KnowledgeItemReviewLogController extends Controller
             'summary_html' => app(Markdown::class)
                 ->parse($reviewLog->summary ?? '')
                 ->toHtml(),
-            'nextreviewdate' => $reviewLog->nextreviewdate?->format('Y-m-d'),
-            'nextreviewdate_display' => $reviewLog->nextreviewdate?->format('d M Y'),
+            'nextreviewdate' => $reviewLog
+                ->nextreviewdate
+                ?->format('Y-m-d'),
+            'nextreviewdate_display' => $reviewLog
+                ->nextreviewdate
+                ?->format('d M Y'),
+            'isactive' => (bool) $reviewLog->isactive,
         ];
     }
 }

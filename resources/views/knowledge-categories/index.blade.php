@@ -171,7 +171,18 @@
                                             class="block rounded-md px-2.5 py-2 text-sm font-medium bg-violet-500/15 text-violet-200 hover:bg-violet-500/25 hover:text-violet-100">
                                                 Category Tree Report
                                             </a>
+                                            <a
+                                                href="{{ route('reports.knowledge.categories.tree-reference-book', [
+                                                    'categoryid' => $selectedCategory->id,
+                                                    'agenda_mode' => 1,
+                                                    'return_to' => url()->full(),
+                                                ]) }}"
+                                                class="block rounded-md px-2.5 py-2 text-sm font-medium bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/25 hover:text-emerald-100"
+                                            >
+                                                Category Agenda
+                                            </a>
                                         @endif
+                                        
 
                                         @if(!empty($filters['domainid']))
                                             <a href="{{ route('knowledge.search', [

@@ -2,16 +2,21 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class KnowledgeReviewLog extends Model
 {
     use HasFactory;
 
     protected $table = 'knowledgereviewlog';
+    protected $primaryKey = 'id';
+
+    public $incrementing = true;
+
+    protected $keyType = 'int';
 
     protected $fillable = [
         'knowledgeitemid',
@@ -20,16 +25,22 @@ class KnowledgeReviewLog extends Model
         'outcome',
         'summary',
         'nextreviewdate',
+        'isactive',
+    ];
+
+    protected $attributes = [
+        'isactive' => true,
     ];
 
     protected $casts = [
         'knowledgeitemid' => 'integer',
         'reviewdate' => 'date',
         'nextreviewdate' => 'date',
+        'isactive' => 'boolean',
     ];
 
-    const CREATED_AT = 'createdat';
-    const UPDATED_AT = 'updatedat';
+    public const CREATED_AT = 'createdat';
+    public const UPDATED_AT = 'updatedat';
 
     public const TYPE_OPTIONS = [
         'routine' => 'Routine',
@@ -51,12 +62,31 @@ class KnowledgeReviewLog extends Model
     {
         return array_keys(self::TYPE_OPTIONS);
     }
+
+    /**
+     * Limit the query to active review-log entries.
+     */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where(
+            $this->qualifyColumn('isactive'),
+            true
+        );
+    }
+
     public function item(): BelongsTo
     {
-        return $this->belongsTo(KnowledgeItem::class, 'knowledgeitemid');
+        return $this->belongsTo(
+            KnowledgeItem::class,
+            'knowledgeitemid'
+        );
     }
+
     public function knowledgeItem(): BelongsTo
     {
-        return $this->belongsTo(KnowledgeItem::class, 'knowledgeitemid');
+        return $this->belongsTo(
+            KnowledgeItem::class,
+            'knowledgeitemid'
+        );
     }
 }

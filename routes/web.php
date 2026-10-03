@@ -345,27 +345,70 @@ Route::middleware('auth')->group(function () {
         Route::delete('{destinationItem}/sources/{source}', [DestinationItemController::class, 'destroySource'])->name('sources.destroy');
     });
 
+/*
+|--------------------------------------------------------------------------
+| Reports
+|--------------------------------------------------------------------------
+| Shared reports outside a single module workflow.
+*/
+Route::prefix('reports')->name('reports.')->group(function () {
+    Route::get(
+        'places/reference-book',
+        [PlaceController::class, 'referenceBook']
+    )->name('places.reference-book');
+
+    Route::get(
+        'places/{place}/reference-book',
+        [PlaceController::class, 'referenceBookForPlace']
+    )->name('places.reference-book.place');
+
     /*
     |--------------------------------------------------------------------------
-    | Reports
+    | Knowledge reports
     |--------------------------------------------------------------------------
-    | Shared reports outside a single module workflow.
     */
-    Route::prefix('reports')->name('reports.')->group(function () {
-        Route::get('places/reference-book', [PlaceController::class, 'referenceBook'])->name('places.reference-book');
-        Route::get('places/{place}/reference-book', [PlaceController::class, 'referenceBookForPlace'])
-        ->name('places.reference-book.place');
 
-        Route::get('knowledge/categories/reference-book', [KnowledgeReportController::class, 'categoryReferenceBook'])
-            ->name('knowledge.categories.reference-book');
-        Route::get('knowledge/domains/reference-book', [KnowledgeReportController::class, 'domainReferenceBook'])
-            ->name('knowledge.domains.reference-book');
-        Route::get('knowledge/categories/tree-reference-book', [KnowledgeReportController::class, 'categoryTreeReferenceBook'])
-            ->name('knowledge.categories.tree-reference-book');
-        Route::get('knowledge/family-tree', [KnowledgeFamilyTreeReportController::class, 'show'])
-            ->name('knowledge.family-tree');
-        Route::get('knowledge/items/{knowledgeItem}/reference-book',[KnowledgeReportController::class, 'knowledgeItemReferenceBook'])->name('knowledge.items.reference-book');
-    });
+    // General report for one or more explicitly selected categories.
+    Route::get(
+        'knowledge/categories/reference-book',
+        [KnowledgeReportController::class, 'categoryReferenceBook']
+    )->name('knowledge.categories.reference-book');
+
+    // Report for every category in a selected domain.
+    Route::get(
+        'knowledge/domains/reference-book',
+        [KnowledgeReportController::class, 'domainReferenceBook']
+    )->name('knowledge.domains.reference-book');
+
+    // Report for one selected category and all child categories beneath it.
+    Route::get(
+        'knowledge/categories/tree-reference-book',
+        [KnowledgeReportController::class, 'categoryTreeReferenceBook']
+    )->name('knowledge.categories.tree-reference-book');
+
+    // Editable Agenda-format DOCX export for one selected category tree.
+    Route::get(
+        'knowledge/categories/agenda-docx',
+        [KnowledgeReportController::class, 'agendaDocx']
+    )->name('knowledge.categories.agenda-docx');
+
+    Route::get(
+        'knowledge/items/{knowledgeItem}/agenda-docx',
+        [KnowledgeReportController::class, 'knowledgeItemAgendaDocx']
+    )->name('knowledge.items.agenda-docx');
+
+    // Knowledge item reference report.
+    Route::get(
+        'knowledge/items/{knowledgeItem}/reference-book',
+        [KnowledgeReportController::class, 'knowledgeItemReferenceBook']
+    )->name('knowledge.items.reference-book');
+
+    // Knowledge family tree report.
+    Route::get(
+        'knowledge/family-tree',
+        [KnowledgeFamilyTreeReportController::class, 'show']
+    )->name('knowledge.family-tree');
+});
 
     /*
     |--------------------------------------------------------------------------

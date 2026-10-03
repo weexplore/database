@@ -20,6 +20,7 @@
                     ->toHtml(),
                 'nextreviewdate' => $log->nextreviewdate?->format('Y-m-d'),
                 'nextreviewdate_display' => $log->nextreviewdate?->format('d M Y'),
+                'isactive' => (bool) $log->isactive,
             ];
         });
 @endphp
@@ -152,9 +153,26 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">
                         Next review date
                     </label>
-                    <input type="date"
-                           x-model="newLog.nextreviewdate"
-                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+
+                    <input
+                        type="date"
+                        x-model="newLog.nextreviewdate"
+                        class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                    >
+                </div>
+
+                <div class="flex items-end">
+                    <label class="inline-flex items-center gap-2 pb-2">
+                        <input
+                            type="checkbox"
+                            x-model="newLog.isactive"
+                            class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        >
+
+                        <span class="text-sm text-gray-700">
+                            Active
+                        </span>
+                    </label>
                 </div>
             </div>
 
@@ -192,6 +210,17 @@
                                     <template x-if="log.outcome">
                                         <span class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 border border-green-200"
                                               x-text="log.outcome">
+                                        </span>
+                                    </template>
+                                    <template x-if="log.isactive">
+                                        <span class="inline-flex items-center rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                                            Active
+                                        </span>
+                                    </template>
+
+                                    <template x-if="!log.isactive">
+                                        <span class="inline-flex items-center rounded-full border border-gray-300 bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                                            Inactive
                                         </span>
                                     </template>
                                 </div>
@@ -359,9 +388,26 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">
                                     Next review date
                                 </label>
-                                <input type="date"
-                                       x-model="log.draft.nextreviewdate"
-                                       class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+
+                                <input
+                                    type="date"
+                                    x-model="log.draft.nextreviewdate"
+                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                >
+                            </div>
+
+                            <div class="flex items-end">
+                                <label class="inline-flex items-center gap-2 pb-2">
+                                    <input
+                                        type="checkbox"
+                                        x-model="log.draft.isactive"
+                                        class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                    >
+
+                                    <span class="text-sm text-gray-700">
+                                        Active
+                                    </span>
+                                </label>
                             </div>
                         </div>
 
@@ -482,6 +528,7 @@
                     outcome: '',
                     summary: '',
                     nextreviewdate: '',
+                    isactive: true,
                 };
             },
 
@@ -510,6 +557,7 @@
                     outcome: log.outcome || '',
                     summary: log.summary || '',
                     nextreviewdate: log.nextreviewdate || '',
+                    isactive: Boolean(log.isactive),
                 };
 
                 log.editing = true;
@@ -626,7 +674,13 @@
                                 'Content-Type': 'application/json',
                                 'Accept': 'application/json',
                             },
-                            body: JSON.stringify(payload),
+                            body: JSON.stringify({
+                                ...payload,
+                                outcome: payload.outcome || null,
+                                summary: payload.summary || null,
+                                nextreviewdate: payload.nextreviewdate || null,
+                                isactive: Boolean(payload.isactive),
+                            }),
                         }
                     );
 

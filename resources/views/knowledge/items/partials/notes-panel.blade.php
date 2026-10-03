@@ -24,6 +24,7 @@
                 'reviewdate' => $note->reviewdate?->format('Y-m-d'),
                 'reviewdate_display' => $note->reviewdate?->format('d M Y'),
                 'isprivate' => (bool) $note->isprivate,
+                'isactive' => (bool) $note->isactive,
                 'sortorder' => (int) ($note->sortorder ?? 0),
             ];
         });
@@ -138,6 +139,18 @@
                                     <template x-if="note.isprivate">
                                         <span class="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-medium text-amber-700">
                                             Private
+                                        </span>
+                                    </template>
+
+                                    <template x-if="note.isactive">
+                                        <span class="inline-flex items-center rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                                            Active
+                                        </span>
+                                    </template>
+
+                                    <template x-if="!note.isactive">
+                                        <span class="inline-flex items-center rounded-full border border-gray-300 bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                                            Inactive
                                         </span>
                                     </template>
                                 </div>
@@ -372,6 +385,7 @@
                     convictionlevel: '',
                     reviewdate: '',
                     isprivate: true,
+                    isactive: true,
                     sortorder: this.nextSortOrder(),
                 };
             },
@@ -413,6 +427,7 @@
                     convictionlevel: note.convictionlevel || '',
                     reviewdate: note.reviewdate || '',
                     isprivate: Boolean(note.isprivate),
+                    isactive: Boolean(note.isactive),
                     sortorder: note.sortorder || 0,
                 };
 
@@ -475,6 +490,7 @@
                                 reviewdate: payload.reviewdate || null,
                                 sortorder: Number(payload.sortorder) || 0,
                                 isprivate: Boolean(payload.isprivate),
+                                isactive: Boolean(payload.isactive),
                             }),
                         }
                     );

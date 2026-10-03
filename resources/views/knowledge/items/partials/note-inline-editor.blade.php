@@ -105,15 +105,32 @@
                    min="0"
                    class="w-full rounded-md border-gray-300 shadow-sm text-sm">
         </div>
-        <div class="flex items-end pb-2">
-            <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+        <div class="flex flex-wrap items-center gap-y-3">
+            <label class="inline-flex items-center gap-2">
                 <input
                     type="checkbox"
                     x-model="{{ $draftReference }}.isprivate"
-                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500"
+                    class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
 
-                <span>Private</span>
+                <span class="text-sm text-gray-700">
+                    Private
+                </span>
+            </label>
+
+            <label
+                class="inline-flex items-center gap-2"
+                style="margin-left: 1.5rem;"
+            >
+                <input
+                    type="checkbox"
+                    x-model="{{ $draftReference }}.isactive"
+                    class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                >
+
+                <span class="text-sm text-gray-700">
+                    Active
+                </span>
             </label>
         </div>
     </div>

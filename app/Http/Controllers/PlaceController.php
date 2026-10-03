@@ -523,8 +523,6 @@ public function edit(Request $request, Place $place)
         ->orderBy('regionname')
         ->get();
 
-$itemTypeOptions = $this->destinationItemTypeOptions();
-
 return view('places.edit', compact(
     'place',
     'countries',
@@ -534,8 +532,7 @@ return view('places.edit', compact(
     'selectedCountryId',
     'selectedStateId',
     'selectedRegionId',
-    'destinationItems',
-    'itemTypeOptions'
+    'destinationItems'
 ));
 }
 
@@ -804,20 +801,6 @@ private function placeDuplicateKey(?string $placename, $countryId, $stateId, ?st
         (string) ($stateId ?? ''),
         $this->normaliseText($locality) ?? '',
     ]);
-}
-private function destinationItemTypeOptions(): array
-{
-    return [
-        'attraction' => 'Attraction',
-        'walk' => 'Walk',
-        'dump_point' => 'Dump Point',
-        'water_point' => 'Water Point',
-        'museum' => 'Museum',
-        'drive' => 'Drive',
-        'campground' => 'Campground',
-        'lookout' => 'Lookout',
-        'other' => 'Other',
-    ];
 }
     public function nearbyData(Request $request, Place $place)
     {

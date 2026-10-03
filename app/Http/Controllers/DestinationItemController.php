@@ -12,11 +12,6 @@ use Illuminate\Validation\Rule;
 
 class DestinationItemController extends Controller
 {
-    private function itemTypeOptions(): array
-    {
-        return DestinationItem::itemTypeOptions();
-    }
-
     private function visitInterestOptions(): array
     {
         return DestinationItem::visitInterestOptions();
