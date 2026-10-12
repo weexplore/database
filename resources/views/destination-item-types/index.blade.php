@@ -42,7 +42,7 @@
                                 id="search"
                                 value="{{ $filters['search'] ?? '' }}"
                                 class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                placeholder="Type name or slug">
+                                placeholder="Type name, slug or match keyword"
                         </div>
 
                         <div>
@@ -78,6 +78,7 @@
                                 <tr>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type Name</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Slug</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Match Keywords</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-28">Sort Order</th>
                                     <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase w-24">Active</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-32">Actions</th>
@@ -103,7 +104,21 @@
                                                 name="existing[{{ $type->id }}][slug]"
                                                 value="{{ old("existing.$type->id.slug", $type->slug) }}"
                                                 class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                                maxlength="120">
+                                                maxlength="50">
+                                        </td>
+
+                                        <td class="px-3 py-2 min-w-[360px]">
+                                            <input
+                                                type="text"
+                                                name="existing[{{ $type->id }}][matchkeywords]"
+                                                value="{{ old(
+                                                    "existing.$type->id.matchkeywords",
+                                                    $type->matchkeywords
+                                                ) }}"
+                                                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                                maxlength="500"
+                                                placeholder="caravan park,camping,cabin"
+                                            >
                                         </td>
 
                                         <td class="px-3 py-2">
@@ -137,7 +152,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="5" class="px-3 py-6 text-center text-sm text-gray-500">
+                                        <td colspan="6" class="px-3 py-6 text-center text-sm text-gray-500">
                                             No destination item types found.
                                         </td>
                                     </tr>
@@ -160,10 +175,19 @@
                                             name="new[slug]"
                                             value="{{ old('new.slug') }}"
                                             class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-                                            maxlength="120"
+                                            maxlength="50"
                                             placeholder="Auto from name if blank">
                                     </td>
-
+                                    <td class="px-3 py-2 min-w-[360px]">
+                                        <input
+                                            type="text"
+                                            name="new[matchkeywords]"
+                                            value="{{ old('new.matchkeywords') }}"
+                                            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                                            maxlength="500"
+                                            placeholder="Comma-separated matching words"
+                                        >
+                                    </td>
                                     <td class="px-3 py-2">
                                         <input
                                             type="number"

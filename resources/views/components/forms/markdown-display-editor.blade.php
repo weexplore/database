@@ -1,202 +1,108 @@
 @props([
-    'name',
-    'id' => null,
-    'label',
-    'value' => '',
-    'rows' => 6,
-    'placeholder' => '',
-    'help' => null,
-    'startOpen' => false,
-    'collapsible' => true,
-    'collapsedHeight' => '18rem',
+    'name', 'id' => null, 'label', 'value' => '', 'rows' => 6,
+    'placeholder' => '', 'help' => null, 'startOpen' => false,
+    'collapsible' => true, 'collapsedHeight' => '18rem',
 ])
-
 @php
     $fieldId = $id ?? $name;
     $fieldValue = old($name, $value ?? '');
     $hasContent = filled($fieldValue);
 @endphp
-
-    <style>
-        .markdown-display-editor-collapsed {
-            max-height: var(--markdown-collapsed-height);
-            overflow: hidden;
-        }
-    </style>
-
-    <div
-        class="rounded-lg border border-gray-200 bg-white"
-        x-data="{
-            editing: @js($startOpen || !$hasContent),
-            content: @js($fieldValue),
-            expanded: false,
-            collapsible: @js($collapsible),
-            collapsedHeight: @js($collapsedHeight),
-            hasOverflow: false,
-
-            measureOverflow(container) {
-                this.$nextTick(() => {
-                    if (!container || !this.collapsible) {
-                        this.hasOverflow = false;
-                        return;
-                    }
-
-                    const collapseClass = 'markdown-display-editor-collapsed';
-                    const wasCollapsed = !this.expanded;
-
-                    /*
-                    * Apply the class before measuring clientHeight. This returns the
-                    * actual computed display height in pixels, regardless of whether
-                    * collapsedHeight was passed as 18rem, 24rem, 320px, etc.
-                    */
-                    container.classList.add(collapseClass);
-
-                    const collapsedHeight = container.clientHeight;
-
-                    /*
-                    * Remove the class to get the full natural height of the rendered
-                    * Markdown content.
-                    */
-                    container.classList.remove(collapseClass);
-
-                    const naturalHeight = container.scrollHeight;
-
-                    this.hasOverflow = naturalHeight > collapsedHeight + 2;
-
-                    /*
-                    * Restore the state visible to the user. The Alpine :class binding
-                    * continues to manage the class after this measurement.
-                    */
-                    container.classList.toggle(collapseClass, wasCollapsed);
-                });
-            },
-
-            toggleExpanded() {
-                this.expanded = !this.expanded;
-
-                this.$nextTick(() => {
-                    window.renderMarkdownMath?.(this.$refs.renderedContent);
-                });
-            },
-        }"
-    >
-
+<style>
+    .markdown-display-editor-collapsed {
+        max-height: var(--markdown-collapsed-height);
+        overflow: hidden;
+    }
+</style>
+<div class="rounded-lg border border-gray-200 bg-white"
+     data-markdown-field="{{ $name }}"
+     x-data="{
+        fieldName: @js($name),
+        editing: @js($startOpen || !$hasContent),
+        content: @js($fieldValue),
+        composedPreviewHtml: null,
+        expanded: false,
+        collapsible: @js($collapsible),
+        collapsedHeight: @js($collapsedHeight),
+        hasOverflow: false,
+        measureOverflow(container) {
+            this.$nextTick(() => {
+                if (!container || !this.collapsible) {
+                    this.hasOverflow = false;
+                    return;
+                }
+                const collapseClass = 'markdown-display-editor-collapsed';
+                const wasCollapsed = !this.expanded;
+                container.classList.add(collapseClass);
+                const collapsedHeight = container.clientHeight;
+                container.classList.remove(collapseClass);
+                this.hasOverflow = container.scrollHeight > collapsedHeight + 2;
+                container.classList.toggle(collapseClass, wasCollapsed);
+            });
+        },
+        refreshDisplay() {
+            this.$nextTick(() => {
+                window.renderMarkdownMath?.(this.$refs.renderedContent);
+                this.measureOverflow(this.$refs.renderedContent);
+            });
+        },
+        toggleExpanded() {
+            this.expanded = !this.expanded;
+            this.refreshDisplay();
+        },
+        receiveComposed(detail) {
+            if (detail.field !== this.fieldName) return;
+            this.content = detail.value;
+            this.composedPreviewHtml = detail.html;
+            this.editing = false;
+            this.expanded = false;
+            this.refreshDisplay();
+        },
+     }"
+     @destination-markdown-set.window="receiveComposed($event.detail)">
     <div class="flex items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3">
         <div class="min-w-0">
-            <h5 class="text-sm font-semibold text-gray-900">
-                {{ $label }}
-            </h5>
-
-            @if($help)
-                <p class="mt-0.5 text-xs text-gray-500">
-                    {{ $help }}
-                </p>
-            @endif
+            <h5 class="text-sm font-semibold text-gray-900">{{ $label }}</h5>
+            @if ($help)<p class="mt-0.5 text-xs text-gray-500">{{ $help }}</p>@endif
         </div>
-
-        <button type="button"
-                @click="editing = !editing"
+        <button type="button" @click="editing = !editing; refreshDisplay()"
                 class="inline-flex shrink-0 items-center rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
-                x-text="editing ? 'Hide editor' : 'Edit'">
-        </button>
+                x-text="editing ? 'Hide editor' : 'Edit'"></button>
     </div>
-
-    {{-- Display mode --}}
-    <div
-        x-show="!editing"
-        x-cloak
-        class="p-4"
-    >
+    <div x-show="!editing" x-cloak class="p-4">
         <template x-if="content.trim() !== ''">
             <div>
-                <div
-                    x-ref="renderedContent"
-                    class="relative"
-                    :class="{
-                        'markdown-display-editor-collapsed':
-                            collapsible && !expanded
-                    }"
-                    :style="{
-                        '--markdown-collapsed-height': collapsedHeight
-                    }"
-                    x-init="$nextTick(() => {
-                        window.renderMarkdownMath?.($el);
-                        measureOverflow($el);
-                    })"
-                >
-                    <div class="markdown-content prose prose-sm max-w-none text-gray-700">
+                <div x-ref="renderedContent" class="relative"
+                     :class="{ 'markdown-display-editor-collapsed': collapsible && !expanded }"
+                     :style="{ '--markdown-collapsed-height': collapsedHeight }"
+                     x-init="$nextTick(() => refreshDisplay())">
+                    <div x-show="composedPreviewHtml === null"
+                         class="markdown-content prose prose-sm max-w-none text-gray-700">
                         @include('partials.markdown.rendered-block', [
                             'content' => $fieldValue,
                             'collapsible' => false,
                         ])
                     </div>
-
-                    <div
-                        x-show="collapsible && hasOverflow && !expanded"
-                        x-cloak
-                        class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent"
-                    ></div>
+                    <div x-show="composedPreviewHtml !== null"
+                         x-html="composedPreviewHtml || ''"
+                         class="markdown-content prose prose-sm max-w-none text-gray-700"></div>
+                    <div x-show="collapsible && hasOverflow && !expanded" x-cloak
+                         class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent"></div>
                 </div>
-
-                <button
-                    type="button"
-                    x-show="collapsible && hasOverflow"
-                    x-cloak
-                    @click="toggleExpanded()"
-                    class="mt-3 inline-flex items-center rounded text-xs font-medium text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                    :aria-expanded="expanded ? 'true' : 'false'"
-                >
+                <button type="button" x-show="collapsible && hasOverflow" x-cloak
+                        @click="toggleExpanded()" :aria-expanded="expanded ? 'true' : 'false'"
+                        class="mt-3 text-xs font-medium text-blue-600 hover:text-blue-800">
                     <span x-text="expanded ? 'Show less' : 'Show more'"></span>
-
-                    <svg
-                        class="ml-1 h-4 w-4 transition-transform"
-                        :class="{ 'rotate-180': expanded }"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        aria-hidden="true"
-                    >
-                        <path
-                            fill-rule="evenodd"
-                            d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z"
-                            clip-rule="evenodd"
-                        />
-                    </svg>
                 </button>
             </div>
         </template>
-
-        <p
-            x-show="content.trim() === ''"
-            x-cloak
-            class="text-sm italic text-gray-500"
-        >
-            No {{ strtolower($label) }} entered yet.
-        </p>
+        <p x-show="content.trim() === ''" x-cloak class="text-sm italic text-gray-500">No {{ strtolower($label) }} entered yet.</p>
     </div>
-
-    {{-- Edit mode --}}
-    <div x-show="editing"
-         x-cloak
-         class="space-y-3 p-4">
-        <textarea name="{{ $name }}"
-                  id="{{ $fieldId }}"
-                  x-model="content"
-                  rows="{{ $rows }}"
-                  placeholder="{{ $placeholder }}"
-                  class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
-        </textarea>
-
-        <p class="text-xs text-gray-500">
-            Markdown is supported. Use <code>$$...$$</code> for a displayed
-            mathematical, logical, or flow expression. Changes are saved with the
-            main “Save Changes” button.
-        </p>
+    <div x-show="editing" x-cloak class="space-y-3 p-4">
+        <textarea name="{{ $name }}" id="{{ $fieldId }}" x-model="content"
+                  rows="{{ $rows }}" placeholder="{{ $placeholder }}"
+                  class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+        <p class="text-xs text-gray-500">Markdown is supported. Changes are saved with the main save button. The display preview reflects saved content.</p>
     </div>
-
-    {{-- Ensure the value is posted even when editor is collapsed --}}
-    <template x-if="!editing">
-        <input type="hidden"
-               name="{{ $name }}"
-               :value="content">
-    </template>
+    {{-- x-show does not disable the textarea: it posts even when the editor is hidden. --}}
 </div>

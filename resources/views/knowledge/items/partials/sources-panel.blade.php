@@ -67,39 +67,32 @@
     'csrfToken' => csrf_token(),
     'sourceTypes' => $sourceTypeOptions ?? [],
     'fetchSourceDraft' => $hasFetchedSourceDraft ? $fetchedSourceDraft : null,
+    'showFetchPanel' => request()->boolean('show_fetch_source')
+        || filled(old('fetch_url')),    
 ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}
 </script>
 
 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg"
-     x-data="knowledgeSourcesPanel()">
+     x-data="knowledgeSourcesPanel()"
+     @knowledge-source-add-reference.window="startNewSource()">
 
     {{-- Header --}}
     <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
-        <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="flex items-center justify-between gap-3">
             <div>
-                <h3 class="text-sm font-semibold text-gray-900">Sources</h3>
+                <h3 class="text-sm font-semibold text-gray-900">
+                    Saved Sources
+                </h3>
+
                 <p class="mt-1 text-sm text-gray-500">
-                    Track articles, books, documents, and web pages supporting this knowledge item.
+                    Open saved content or maintain its reference details.
                 </p>
             </div>
 
-            <div class="flex flex-wrap items-center gap-2">
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
-                    <span x-text="sources.length"></span> total
-                </span>
-
-                <button type="button"
-                        @click="toggleFetchPanel()"
-                        class="inline-flex items-center px-3 py-1.5 bg-slate-700 text-white rounded text-sm hover:bg-slate-800">
-                    <span x-text="showFetchPanel ? 'Hide fetch' : 'Fetch from Internet'"></span>
-                </button>
-
-                <button type="button"
-                        @click="startNewSource()"
-                        class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
-                    + Add Source
-                </button>
-            </div>
+            <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                <span x-text="sources.length"></span>
+                <span>total</span>
+            </span>
         </div>
     </div>
 
@@ -162,7 +155,7 @@
         <div class="m-4 sm:m-6 rounded-lg border border-blue-200 bg-blue-50 p-4 sm:p-5">
             <div class="mb-4 flex items-start justify-between gap-3">
                 <div>
-                    <h4 class="text-sm font-semibold text-blue-900">Add Source</h4>
+                    <h4 class="text-sm font-semibold text-blue-900">Add Reference</h4>
                     <p class="mt-1 text-xs text-blue-700">
                         Markdown is rendered after saving. Imported content can be edited before it is retained.
                     </p>
@@ -179,7 +172,7 @@
                 'draftReference' => 'newSource',
                 'saveAction' => 'saveNewSource()',
                 'cancelAction' => 'cancelNewSource()',
-                'saveLabel' => 'Save New Source',
+                'saveLabel' => 'Save Reference',
             ])
         </div>
     </template>
@@ -421,16 +414,27 @@
                             </template>
                         </div>
 
-                        <div class="flex shrink-0 items-center gap-2 self-end sm:self-start">
+                        <div class="flex shrink-0 flex-nowrap items-center gap-2 self-end sm:self-start">
+                            <button type="button"
+                                    @click="$dispatch('knowledge-research-open-source', {
+                                        id: source.id
+                                    })"
+                                    :disabled="saving"
+                                    class="inline-flex shrink-0 items-center whitespace-nowrap rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
+                                Open Content
+                            </button>
+
                             <button type="button"
                                     @click="startEditSource(source)"
-                                    class="inline-flex items-center px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs hover:bg-gray-300">
-                                Edit
+                                    :disabled="saving"
+                                    class="inline-flex shrink-0 items-center whitespace-nowrap rounded bg-gray-200 px-3 py-1.5 text-xs text-gray-800 hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-50">
+                                Edit Reference
                             </button>
 
                             <button type="button"
                                     @click="deleteSource(source)"
-                                    class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white rounded text-xs hover:bg-red-700">
+                                    :disabled="saving"
+                                    class="inline-flex shrink-0 items-center whitespace-nowrap rounded bg-red-600 px-3 py-1.5 text-xs text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50">
                                 Delete
                             </button>
                         </div>
@@ -513,6 +517,7 @@
                     this.storeUrl = data.storeUrl;
                     this.baseUrl = data.baseUrl;
                     this.csrfToken = data.csrfToken;
+                    this.showFetchPanel = Boolean(data.showFetchPanel);
 
                     if (data.fetchSourceDraft) {
                         this.newSource = {

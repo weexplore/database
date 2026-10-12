@@ -88,7 +88,9 @@
 
                         <div class="shrink-0">
                             <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
-                                {{ ucfirst($activeTab ?? 'details') }}
+                                {{ ($activeTab ?? 'details') === 'relationships'
+                                    ? 'Related Items'
+                                    : ucfirst($activeTab ?? 'details') }}
                             </span>
                         </div>
                     </div>
@@ -104,7 +106,7 @@
                     'notes' => $knowledgeItem->notes->count(),
                     'sources' => $knowledgeItem->sources->count(),
                     'review-logs' => $knowledgeItem->reviewLogs->count(),
-                    'relationships' => $displayRelationships->count(),
+                    'relationships' => (int) $relationshipCount,
                     'attachments' => $knowledgeItem->attachments->count(),
                 ];
 
@@ -128,7 +130,7 @@
                     'notes' => 'Notes',
                     'sources' => 'Sources',
                     'review-logs' => 'Review Logs',
-                    'relationships' => 'Relationships',
+                    'relationships' => 'Related Items',
                     'attachments' => 'Attachments',
                 ];
 
@@ -245,10 +247,16 @@
             @endif
 
             @if(($activeTab ?? 'details') === 'sources')
-                @include('knowledge.items.partials.sources-panel', [
+                @include('knowledge.items.partials.research-panel', [
                     'knowledgeItem' => $knowledgeItem,
-                    'sourceTypeOptions' => $sourceTypeOptions ?? [],
                 ])
+
+                <div id="knowledge-existing-sources">
+                    @include('knowledge.items.partials.sources-panel', [
+                        'knowledgeItem' => $knowledgeItem,
+                        'sourceTypeOptions' => $sourceTypeOptions ?? [],
+                    ])
+                </div>
             @endif
 
             @if(($activeTab ?? 'details') === 'review-logs')

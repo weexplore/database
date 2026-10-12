@@ -125,6 +125,81 @@ class KnowledgeItemRelationshipController extends Controller
         ]);
     }
 
+    public function searchItems(
+        Request $request,
+        KnowledgeItem $knowledgeItem
+    ) {
+        $request->merge([
+            'q' => trim((string) $request->query('q', '')),
+        ]);
+
+        $validated = $request->validate([
+            'q' => ['required', 'string', 'min:4', 'max:150'],
+        ]);
+
+        /*
+        * Treat LIKE wildcard characters as literal search text.
+        */
+        $term = str_replace(
+            ['!', '%', '_'],
+            ['!!', '!%', '!_'],
+            $validated['q']
+        );
+
+        $pattern = '%' . $term . '%';
+
+        $items = KnowledgeItem::query()
+            ->select([
+                'id',
+                'itemname',
+                'primarycategoryid',
+                'isactive',
+            ])
+            ->with('primaryCategory')
+            ->where('id', '<>', $knowledgeItem->id)
+            ->where(function ($query) use ($pattern) {
+                $query->whereRaw(
+                    "itemname LIKE ? ESCAPE '!'",
+                    [$pattern]
+                )->orWhereHas('primaryCategory', function ($categoryQuery) use ($pattern) {
+                    $categoryQuery->whereRaw(
+                        "categoryname LIKE ? ESCAPE '!'",
+                        [$pattern]
+                    );
+                });
+            })
+            ->orderBy('itemname')
+            ->orderBy('id')
+            ->limit(51)
+            ->get();
+
+        $hasMore = $items->count() > 50;
+
+        $results = $items
+            ->take(50)
+            ->map(function ($item) {
+                $category = $item->primaryCategory?->full_path
+                    ?? $item->primaryCategory?->categoryname
+                    ?? 'Uncategorised';
+
+                $name = $item->itemname ?: 'Untitled item';
+
+                return [
+                    'id' => (string) $item->id,
+                    'name' => $name,
+                    'category' => $category,
+                    'label' => $category . ': ' . $name
+                        . ((bool) $item->isactive ? '' : ' [Inactive]'),
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'items' => $results,
+            'hasMore' => $hasMore,
+        ]);
+    }
+
     public function destroy(
         KnowledgeItem $knowledgeItem,
         KnowledgeRelationship $knowledgeRelationship
@@ -203,7 +278,7 @@ class KnowledgeItemRelationshipController extends Controller
             'direction' => $isOutgoing ? 'outgoing' : 'incoming',
             'relateditemid' => $relatedItem?->id,
             'relateditemname' => $relatedItem?->itemname ?? 'Missing related item',
-            'relateditemcategory' => $relatedItem?->primaryCategory?->categoryname
+            'relateditemcategory' => $relatedItem?->primaryCategory?->full_path
                 ?? 'Uncategorised',
             'relationshiptype' => $relationship->relationshiptype,
             'relationshiptype_label' => $relationshipTypeLabel,

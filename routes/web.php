@@ -8,6 +8,9 @@ use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DestinationItemController;
 use App\Http\Controllers\DestinationItemTypeController;
 use App\Http\Controllers\DestinationSourceController;
+use App\Http\Controllers\DestinationSourceExtractController;
+use App\Http\Controllers\DestinationCompositionController;
+use App\Http\Controllers\DestinationItemCandidateController;
 use App\Http\Controllers\StateController;
 use App\Http\Controllers\RegionController;
 use App\Http\Controllers\PlaceController;
@@ -53,6 +56,7 @@ use App\Http\Controllers\KnowledgeItemAttachmentController;
 use App\Http\Controllers\KnowledgeItemRelationshipController;
 use App\Http\Controllers\KnowledgePersonFactController;
 use App\Http\Controllers\KnowledgeRelationshipFactController;
+use App\Http\Controllers\KnowledgeItemResearchController;
 use App\Http\Controllers\KnowledgeAttachmentController;
 use App\Http\Controllers\InstrumentController;
 use App\Http\Controllers\InstrumentAliasController;
@@ -325,12 +329,86 @@ Route::middleware('auth')->group(function () {
         Route::post('{destination}/sources', [DestinationController::class, 'storeSource'])->name('sources.store');
         Route::put('{destination}/sources/{source}', [DestinationController::class, 'updateSource'])->name('sources.update');
         Route::delete('{destination}/sources/{source}', [DestinationController::class, 'destroySource'])->name('sources.destroy');
+        Route::get('{destination}/composition',[DestinationCompositionController::class, 'data'])->name('composition.data');
+
+        Route::post('{destination}/composition',[DestinationCompositionController::class, 'save'])->name('composition.save');
+
+
+        Route::prefix('{destination}/item-candidates')->name('item-candidates.')->group(function () {
+            Route::get('/', [DestinationItemCandidateController::class, 'index'])->name('index');
+            Route::post('/', [DestinationItemCandidateController::class, 'store'])->name('store');
+            Route::put('{candidate}', [DestinationItemCandidateController::class, 'update'])->name('update');
+            Route::patch('{candidate}/approve', [DestinationItemCandidateController::class, 'approve'])->name('approve');
+            Route::patch('{candidate}/reject', [DestinationItemCandidateController::class, 'reject'])->name('reject');
+            Route::delete('{candidate}', [DestinationItemCandidateController::class, 'destroy'])->name('destroy');
+            Route::post('{candidate}/create-item', [DestinationItemCandidateController::class, 'createItem'])->name('create-item');
+            Route::post('{candidate}/link-item', [DestinationItemCandidateController::class, 'linkItem'])->name('link-item');
+        });
     });
 
-    Route::prefix('destination-sources')->name('destination-sources.')->group(function () {
-        Route::post('/', [DestinationSourceController::class, 'store'])->name('store');
-        Route::put('{destinationsource}', [DestinationSourceController::class, 'update'])->name('update');
-        Route::delete('{destinationsource}', [DestinationSourceController::class, 'destroy'])->name('destroy');
+    Route::prefix('destination-sources')
+    ->name('destination-sources.')
+    ->group(function () {
+        Route::post(
+            '/',
+            [DestinationSourceController::class, 'store']
+        )->name('store');
+
+        Route::put(
+            '{destinationSource}',
+            [DestinationSourceController::class, 'update']
+        )->name('update');
+
+        Route::delete(
+            '{destinationSource}',
+            [DestinationSourceController::class, 'destroy']
+        )->name('destroy');
+
+        Route::post(
+            '{destinationSource}/capture-page',
+            [DestinationSourceController::class, 'capturePage']
+        )->name('capture-page');
+
+        Route::post(
+            '{destinationSource}/copy-summary-to-content',
+            [DestinationSourceController::class, 'copySummaryToContent']
+        )->name('copy-summary-to-content');
+
+        Route::prefix('{destinationSource}/extracts')
+            ->name('extracts.')
+            ->group(function () {
+                Route::post(
+                    '/',
+                    [DestinationSourceExtractController::class, 'store']
+                )->name('store');
+
+                Route::put(
+                    '{destinationSourceExtract}',
+                    [DestinationSourceExtractController::class, 'update']
+                )->name('update');
+
+                Route::patch(
+                    '{destinationSourceExtract}/approve',
+                    [DestinationSourceExtractController::class, 'approve']
+                )->name('approve');
+
+                Route::patch(
+                    '{destinationSourceExtract}/reject',
+                    [DestinationSourceExtractController::class, 'reject']
+                )->name('reject');
+
+                Route::patch(
+                    '{destinationSourceExtract}/apply',
+                    [DestinationSourceExtractController::class, 'apply']
+                )->name('apply');
+
+                Route::delete(
+                    '{destinationSourceExtract}',
+                    [DestinationSourceExtractController::class, 'destroy']
+                )->name('destroy');
+            });
+        
+
     });
 
     Route::prefix('destination-items')->name('destination-items.')->group(function () {
@@ -611,12 +689,46 @@ Route::prefix('reports')->name('reports.')->group(function () {
             Route::post('{knowledgeItem}/person-facts', [KnowledgePersonFactController::class, 'store'])->name('person-facts.store');
             Route::get('{knowledgeItem}/person-facts/{knowledgePersonFact}/edit', [KnowledgePersonFactController::class, 'edit'])
                 ->name('person-facts.edit');
+           
+            /*
+            |--------------------------------------------------------------------------
+            | Knowledge Item Research
+            |--------------------------------------------------------------------------
+            | Manually imported research text and selection-based actions.
+            */
+
+            Route::get(
+                '{knowledgeItem}/research/detailed-notes',
+                [KnowledgeItemResearchController::class, 'detailedNotes']
+            )->name('research.detailed-notes');
+
+            Route::post(
+                '{knowledgeItem}/research/sources',
+                [KnowledgeItemResearchController::class, 'storeSource']
+            )->name('research.sources.store');
+
+            Route::get(
+                '{knowledgeItem}/research/sources/{knowledgeSource}',
+                [KnowledgeItemResearchController::class, 'showSource']
+            )->name('research.sources.show');
+
+            Route::put(
+                '{knowledgeItem}/research/sources/{knowledgeSource}',
+                [KnowledgeItemResearchController::class, 'updateSource']
+            )->name('research.sources.update');
+
+            Route::post(
+                '{knowledgeItem}/research/sources/{knowledgeSource}/apply',
+                [KnowledgeItemResearchController::class, 'apply']
+            )->name('research.apply');
 
             Route::put('{knowledgeItem}/person-facts/{knowledgePersonFact}', [KnowledgePersonFactController::class, 'update'])
                 ->name('person-facts.update');
 
             Route::delete('{knowledgeItem}/person-facts/{knowledgePersonFact}', [KnowledgePersonFactController::class, 'destroy'])
                 ->name('person-facts.destroy');
+
+            Route::post('{knowledgeItem}/relationships/{knowledgeRelationship}/facts/reorder', [KnowledgeRelationshipFactController::class, 'reorder'])->name('relationship-facts.reorder'); 
 
             Route::post('{knowledgeItem}/relationships/{knowledgeRelationship}/facts', [KnowledgeRelationshipFactController::class, 'store'])
                 ->name('relationship-facts.store');
@@ -629,14 +741,15 @@ Route::prefix('reports')->name('reports.')->group(function () {
 
             Route::delete('{knowledgeItem}/relationships/{knowledgeRelationship}/facts/{knowledgeRelationshipFact}', [KnowledgeRelationshipFactController::class, 'destroy'])
                 ->name('relationship-facts.destroy');
-
+            Route::get('{knowledgeItem}/relationships/search-items',[KnowledgeItemRelationshipController::class, 'searchItems'])
+                ->name('relationships.search-items');
 
             Route::post('{knowledgeItem}/notes/reorder', [KnowledgeItemNoteController::class, 'reorder'])->name('notes.reorder');   
             Route::post('{knowledgeItem}/person-facts/reorder', [KnowledgePersonFactController::class, 'reorder'])->name('person-facts.reorder');
             Route::post('{knowledgeItem}/person-facts/reorder/debug', function () {
                 return 'debug-route-hit';
             })->name('person-facts.reorder-debug');
-            Route::post('{knowledgeItem}/relationships/{knowledgeRelationship}/facts/reorder', [KnowledgeRelationshipFactController::class, 'reorder'])->name('relationship-facts.reorder'); 
+            
 
             Route::resource('{knowledgeItem}/notes', KnowledgeItemNoteController::class)
                 ->except(['index', 'show', 'create'])

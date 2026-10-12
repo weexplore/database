@@ -3,9 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Review;
-use App\Models\Attachment;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -107,7 +104,29 @@ class DestinationItem extends Model
 
     public function sources(): HasMany
     {
-        return $this->hasMany(DestinationSource::class, 'destinationitemid');
+        return $this->hasMany(
+            DestinationSource::class,
+            'destinationitemid'
+        )->orderByDesc('retrievedon')
+            ->orderByDesc('id');
+    }
+
+    public function sourceCandidates(): HasMany
+    {
+        return $this->hasMany(
+            DestinationSourceItemCandidate::class,
+            'destinationitemid'
+        )->orderByDesc('appliedon')
+            ->orderByDesc('id');
+    }
+
+    public function itemType(): BelongsTo
+    {
+        return $this->belongsTo(
+            DestinationItemType::class,
+            'itemtype',
+            'slug'
+        );
     }
     public function itemTypes()
     {

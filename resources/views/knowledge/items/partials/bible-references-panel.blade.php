@@ -52,6 +52,7 @@
 
 <script id="knowledge-bible-references-initial-data" type="application/json">
 {!! json_encode([
+    'knowledgeItemName' => $knowledgeItem->itemname ?? '',
     'references' => $referencesPayload,
     'books' => $booksPayload,
     'versions' => $versionsPayload,
@@ -262,6 +263,8 @@
             references: [],
             books: [],
             versions: [],
+            knowledgeItemName: '',
+            pendingItemReference: null,
             storeUrl: '',
             updateUrlTemplate: '',
             deleteUrlTemplate: '',
@@ -287,6 +290,7 @@
 
                     this.books = data.books || [];
                     this.versions = data.versions || [];
+                    this.knowledgeItemName = data.knowledgeItemName || '';
                     this.storeUrl = data.storeUrl;
                     this.updateUrlTemplate = data.updateUrlTemplate;
                     this.deleteUrlTemplate = data.deleteUrlTemplate;
@@ -294,12 +298,166 @@
                     this.baseUrl = data.baseUrl;
                     this.fetchPassageUrlTemplate = data.fetchPassageUrlTemplate;
                     this.csrfToken = data.csrfToken;
+                    
 
                     this.sortReferences();
                 } catch (error) {
                     this.errorMessage = error.message
                         || 'Unable to load Bible references.';
                 }
+            },
+
+            parseBibleReferenceFromItemName() {
+                const value = String(this.knowledgeItemName || '').trim();
+
+                if (!value) {
+                    return null;
+                }
+
+                /*
+                * Accepted formats:
+                *
+                * Romans - 01:08 - 01:15
+                * Romans - 02
+                * Romans - 02:01
+                *
+                * Also supports book names with numbers or spaces:
+                * 1 Corinthians - 13:04 - 13:07
+                * Song of Solomon - 02
+                * 2 Timothy - 01:07
+                */
+
+                // Range: Romans - 01:08 - 01:15
+                let match = value.match(
+                    /^\s*(.+?)\s*-\s*(\d+)\s*:\s*(\d+)\s*-\s*(\d+)\s*:\s*(\d+)\s*$/
+                );
+
+                if (match) {
+                    const [, bookName, chapterFrom, verseFrom, chapterTo, verseTo] = match;
+
+                    return {
+                        bookName: bookName.trim(),
+                        chapterfrom: Number(chapterFrom),
+                        versefrom: Number(verseFrom),
+                        chapterto: Number(chapterTo),
+                        verseto: Number(verseTo),
+                    };
+                }
+
+                // One verse: Romans - 02:01
+                match = value.match(
+                    /^\s*(.+?)\s*-\s*(\d+)\s*:\s*(\d+)\s*$/
+                );
+
+                if (match) {
+                    const [, bookName, chapterFrom, verseFrom] = match;
+
+                    return {
+                        bookName: bookName.trim(),
+                        chapterfrom: Number(chapterFrom),
+                        versefrom: Number(verseFrom),
+                        chapterto: null,
+                        verseto: null,
+                    };
+                }
+
+                // Entire chapter: Romans - 02
+                match = value.match(
+                    /^\s*(.+?)\s*-\s*(\d+)\s*$/
+                );
+
+                if (match) {
+                    const [, bookName, chapterFrom] = match;
+
+                    return {
+                        bookName: bookName.trim(),
+                        chapterfrom: Number(chapterFrom),
+                        versefrom: null,
+                        chapterto: null,
+                        verseto: null,
+                    };
+                }
+
+                return null;
+            },
+
+            normaliseBookName(bookName) {
+                return String(bookName || '')
+                    .toLowerCase()
+                    .replace(/\./g, '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            },
+
+            findBookByName(bookName) {
+                const normalisedBookName = this.normaliseBookName(bookName);
+
+                return this.books.find(book =>
+                    this.normaliseBookName(book.name) === normalisedBookName
+                ) || null;
+            },
+
+            applyPendingItemReference() {
+                if (!this.newReference || !this.pendingItemReference) {
+                    return;
+                }
+
+                const parsed = this.pendingItemReference;
+                const book = this.findBookByName(parsed.bookName);
+
+                if (!book) {
+                    this.errorMessage =
+                        `Could not match "${parsed.bookName}" from the Knowledge Item title `
+                        + 'to a Bible book in the Book dropdown.';
+
+                    return;
+                }
+
+                this.newReference.bookid = String(book.id);
+                this.newReference.chapterfrom = String(parsed.chapterfrom);
+                this.newReference.versefrom = parsed.versefrom === null
+                    ? ''
+                    : String(parsed.versefrom);
+                this.newReference.chapterto = parsed.chapterto === null
+                    ? ''
+                    : String(parsed.chapterto);
+                this.newReference.verseto = parsed.verseto === null
+                    ? ''
+                    : String(parsed.verseto);
+
+                if (!String(this.newReference.referencelabel || '').trim()) {
+                    this.newReference.referencelabel = this.formatParsedReference(
+                        book.name,
+                        parsed
+                    );
+                }
+
+                this.pendingItemReference = null;
+                this.successMessage =
+                    'Bible reference details were filled from the Knowledge Item name.';
+            },
+
+            formatParsedReference(bookName, reference) {
+                const from = `${bookName} ${reference.chapterfrom}`;
+
+                // Romans - 02
+                if (reference.versefrom === null) {
+                    return from;
+                }
+
+                const verseFrom = `${from}:${reference.versefrom}`;
+
+                // Romans - 02:01
+                if (reference.chapterto === null) {
+                    return verseFrom;
+                }
+
+                // Romans - 01:08 - 01:15
+                if (reference.chapterto === reference.chapterfrom) {
+                    return `${verseFrom}-${reference.verseto}`;
+                }
+
+                return `${verseFrom}-${reference.chapterto}:${reference.verseto}`;
             },
 
             prepareReference(reference) {
@@ -326,7 +484,9 @@
             startNewReference() {
                 this.clearMessages();
                 this.closeEditors();
+
                 this.newReference = this.emptyDraft();
+                this.pendingItemReference = this.parseBibleReferenceFromItemName();
 
                 this.$nextTick(() => {
                     this.$refs.versionSelect?.focus();

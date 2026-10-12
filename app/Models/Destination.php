@@ -81,10 +81,15 @@ class Destination extends Model
 
     public function sources(): HasMany
     {
-        return $this->hasMany(DestinationSource::class, 'destinationid');
+        return $this->hasMany(
+            DestinationSource::class,
+            'destinationid'
+        )->orderByDesc('retrievedon')
+            ->orderByDesc('id');
     }
 
-        public static function visitInterestOptions(): array
+
+    public static function visitInterestOptions(): array
     {
         return [
             'must_visit' => 'Must visit',

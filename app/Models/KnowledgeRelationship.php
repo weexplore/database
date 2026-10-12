@@ -154,4 +154,21 @@ class KnowledgeRelationship extends Model
             $this->inboundsortorder = $sortOrder;
         }
     }
+
+    public static function incomingTypeOptions(): array
+    {
+        $options = [];
+
+        foreach (self::TYPE_OPTIONS as $storedType => $label) {
+            $inverseType = self::INVERSE_TYPE_MAP[$storedType] ?? $storedType;
+
+            $options[$storedType] = self::TYPE_OPTIONS[$inverseType]
+                ?? str($inverseType)
+                    ->replace('-', ' ')
+                    ->title()
+                    ->toString();
+        }
+
+        return $options;
+    }
 }

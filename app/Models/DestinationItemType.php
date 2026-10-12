@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
 
 class DestinationItemType extends Model
@@ -11,8 +12,14 @@ class DestinationItemType extends Model
     protected $fillable = [
         'typename',
         'slug',
+        'matchkeywords',
         'sortorder',
         'isactive',
+    ];
+
+    protected $casts = [
+        'sortorder' => 'integer',
+        'isactive' => 'boolean',
     ];
 
     public $timestamps = false;
@@ -24,6 +31,15 @@ class DestinationItemType extends Model
             'destinationitem_destination_item_type',
             'destination_item_type_id',
             'destinationitem_id'
+        );
+    }
+
+    public function sourceItemCandidates(): HasMany
+    {
+        return $this->hasMany(
+            DestinationSourceItemCandidate::class,
+            'itemtype',
+            'slug'
         );
     }
 }

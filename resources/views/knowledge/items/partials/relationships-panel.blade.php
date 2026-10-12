@@ -6,11 +6,18 @@
             $relationship = $entry['relationship'];
             $relatedItem = $entry['relatedItem'];
             $direction = $entry['direction'];
+            
 
             return [
                 'id' => $relationship->id,
                 'direction' => $direction,
                 'relateditemid' => $relatedItem?->id,
+                'relateditemurl' => $relatedItem
+                    ? route('knowledge.items.edit', [
+                        'knowledgeItem' => $relatedItem->id,
+                        'tab' => 'details',
+                    ])
+                    : null,
                 'relateditemname' => $relatedItem?->itemname ?? 'Missing related item',
                 'relateditemcategory' => $relatedItem?->primaryCategory?->full_path
                     ?? 'Uncategorised', 
@@ -27,23 +34,18 @@
             ];
         })
         ->values();
-
-    $relationshipItemsPayload = ($relationshipItems ?? collect())
-        ->map(function ($item) {
-            return [
-                'id' => $item->id,
-                'name' => $item->itemname ?? 'Untitled item',
-                'category' => $item->primaryCategory?->categoryname ?? 'Uncategorised',
-            ];
-        })
-        ->values();
 @endphp
 
 <script id="knowledge-relationships-initial-data" type="application/json">
 {!! json_encode([
     'relationships' => $relationshipsPayload,
-    'relationshipItems' => $relationshipItemsPayload,
     'relationshipTypes' => $relationshipTypeOptions ?? [],
+    'incomingRelationshipTypes' =>
+        \App\Models\KnowledgeRelationship::incomingTypeOptions(),
+    'searchItemsUrl' => route(
+        'knowledge.items.relationships.search-items',
+        $knowledgeItem
+    ),
     'storeUrl' => route('knowledge.items.relationships.store', $knowledgeItem),
     'baseUrl' => url('/knowledge/items/'.$knowledgeItem->id.'/relationships'),
     'reorderUrl' => route('knowledge.items.relationships.reorder', $knowledgeItem),
@@ -58,21 +60,23 @@
     <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
         <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
-                <h3 class="text-sm font-semibold text-gray-900">Relationships</h3>
+                <h3 class="text-sm font-semibold text-gray-900">Related Items</h3>
                 <p class="mt-1 text-sm text-gray-500">
-                    Link this knowledge item to related items in the same domain. Relationships can be viewed from either direction.
+                    Link this knowledge item to related items across the whole knowledge base. Related Items can be viewed from either direction.
                 </p>
             </div>
 
             <div class="flex items-center gap-2">
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
-                    <span x-text="relationships.length"></span> total
+                
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
+                    <span x-text="relationships.length"></span>
+                    <span>total</span>
                 </span>
 
                 <button type="button"
                         @click="startNewRelationship()"
                         class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
-                    + Add Relationship
+                    + Add Related Item
                 </button>
             </div>
         </div>
@@ -89,9 +93,9 @@
         <div class="m-4 sm:m-6 rounded-lg border border-blue-200 bg-blue-50 p-4 sm:p-5">
             <div class="mb-4 flex items-start justify-between gap-3">
                 <div>
-                    <h4 class="text-sm font-semibold text-blue-900">Add Relationship</h4>
+                    <h4 class="text-sm font-semibold text-blue-900">Add Related Item</h4>
                     <p class="mt-1 text-xs text-blue-700">
-                        New relationships are created from this item to the selected related item.
+                        New related items are created from this item to the selected related item.
                     </p>
                 </div>
 
@@ -106,12 +110,12 @@
                 'draftReference' => 'newRelationship',
                 'saveAction' => 'saveNewRelationship()',
                 'cancelAction' => 'cancelNewRelationship()',
-                'saveLabel' => 'Save New Relationship',
+                'saveLabel' => 'Save New Related Item',
             ])
         </div>
     </template>
 
-    {{-- Relationship list --}}
+    {{-- Related Item list --}}
     <div id="knowledge-relationships-list"
          x-ref="relationshipsList"
          class="divide-y divide-gray-200">
@@ -140,9 +144,27 @@
 
                             <div class="min-w-0 flex-1">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <h4 class="text-sm font-semibold text-gray-900 break-words">
-                                        <span x-text="relationship.relateditemcategory"></span>:
-                                        <span x-text="relationship.relateditemname"></span>
+                                    <h4 class="text-sm font-semibold break-words">
+                                        <template x-if="relationship.relateditemurl">
+                                            <a
+                                                :href="relationship.relateditemurl"
+                                                target="_blank"
+                                                rel="noopener"
+                                                :title="`Open ${relationship.relateditemname} in a new tab`"
+                                                class="text-blue-700 hover:text-blue-900 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-sm"
+                                            >
+                                                <span x-text="relationship.relateditemcategory"></span>:
+                                                <span x-text="relationship.relateditemname"></span>
+                                                <span class="sr-only"> (opens in a new tab)</span>
+                                            </a>
+                                        </template>
+
+                                        <template x-if="!relationship.relateditemurl">
+                                            <span class="text-gray-900">
+                                                <span x-text="relationship.relateditemcategory"></span>:
+                                                <span x-text="relationship.relateditemname"></span>
+                                            </span>
+                                        </template>
                                     </h4>
 
                                     <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
@@ -249,14 +271,15 @@
                     <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
                         <div class="mb-4 flex items-start justify-between gap-3">
                             <div>
-                                <h4 class="text-sm font-semibold text-gray-900">Edit Relationship</h4>
+                                <h4 class="text-sm font-semibold text-gray-900">Edit Related Item</h4>
                                 <p class="mt-1 text-xs text-gray-500">
                                     <span x-show="relationship.direction === 'outgoing'">
-                                        This is stored as an outgoing relationship from the current item.
+                                        This is stored as an outgoing related item from the current item.
                                     </span>
 
                                     <span x-show="relationship.direction === 'incoming'">
-                                        This is stored as an incoming relationship. The related item is the source side.
+                                        The related item type is shown from the current item's perspective.
+                                        The related item remains the source side of the stored related Item.
                                     </span>
                                 </p>
                             </div>
@@ -272,7 +295,7 @@
                             'draftReference' => 'relationship.draft',
                             'saveAction' => 'saveExistingRelationship(relationship)',
                             'cancelAction' => 'cancelEditRelationship(relationship)',
-                            'saveLabel' => 'Save Relationship',
+                            'saveLabel' => 'Save Related Item',
                         ])
                     </div>
                 </template>
@@ -281,7 +304,7 @@
 
         <template x-if="relationships.length === 0 && !newRelationship">
             <div class="p-6 text-sm text-gray-500">
-                No relationships recorded for this knowledge item yet.
+                No related item recorded for this knowledge item yet.
             </div>
         </template>
     </div>
@@ -306,10 +329,11 @@
     function knowledgeRelationshipsPanel() {
         return {
             relationships: [],
-            relationshipItems: [],
             relationshipTypes: {},
+            incomingRelationshipTypes: {},
             storeUrl: '',
             baseUrl: '',
+            searchItemsUrl: '',
             reorderUrl: '',
             csrfToken: '',
             newRelationship: null,
@@ -324,30 +348,49 @@
                         'knowledge-relationships-initial-data'
                     );
 
+                    if (!dataElement) {
+                        throw new Error(
+                            'Related Items initial-data element is missing.'
+                        );
+                    }
+
                     const data = JSON.parse(dataElement.textContent);
 
                     this.relationships = (data.relationships || []).map(
                         relationship => this.prepareRelationship(relationship)
                     );
 
-                    this.relationshipItems = data.relationshipItems || [];
                     this.relationshipTypes = data.relationshipTypes || {};
+                    this.incomingRelationshipTypes =
+                        data.incomingRelationshipTypes || {};
+                    this.searchItemsUrl = data.searchItemsUrl || {};
+
                     this.storeUrl = data.storeUrl;
                     this.baseUrl = data.baseUrl;
                     this.reorderUrl = data.reorderUrl;
                     this.csrfToken = data.csrfToken;
 
                     this.sortRelationships();
+                    this.updateTabCount();
 
                     this.$nextTick(() => this.setupSortable());
                 } catch (error) {
-                    this.errorMessage = error.message || 'Unable to load relationships.';
+                    this.errorMessage = error.message
+                        || 'Unable to load relationships.';
+
                     console.error(
                         'Knowledge relationships initialisation failed:',
                         error
                     );
                 }
             },
+
+            typeOptionsFor(direction) {
+                return direction === 'incoming'
+                    ? this.incomingRelationshipTypes
+                    : this.relationshipTypes;
+            },
+
 
             prepareRelationship(relationship) {
                 return {
@@ -396,7 +439,23 @@
                     effective_date: '',
                     notes: '',
                     sortorder: this.nextSortOrder(),
+
+                    relatedSearch: '',
+                    relatedResults: [],
+                    relatedSearchOpen: false,
+                    relatedSearching: false,
+                    relatedSearchError: '',
+                    relatedSearchHasMore: false,
+                    relatedSearchVersion: 0,
+                    relatedSearchTimer: null,
                 };
+            },
+
+            updateTabCount() {
+                document.querySelectorAll('[data-relationship-tab-count]')
+                    .forEach(element => {
+                        element.textContent = String(this.relationships.length);
+                    });
             },
 
             nextSortOrder() {
@@ -433,16 +492,110 @@
                 this.closeAllEditors();
 
                 relationship.draft = {
+                    ...this.emptyDraft(),
+
                     direction: relationship.direction,
-                    relateditemid: relationship.relateditemid || '',
+                    relateditemid: relationship.relateditemid == null
+                        ? ''
+                        : String(relationship.relateditemid),
                     relationshiptype: relationship.relationshiptype || '',
                     effective_date: relationship.effective_date || '',
                     notes: relationship.notes || '',
                     sortorder: relationship.sortorder || 0,
+
+                    relatedSearch: relationship.relateditemid == null
+                        ? ''
+                        : `${relationship.relateditemcategory}: ${relationship.relateditemname}`,
                 };
 
                 relationship.editing = true;
                 this.disableSortable();
+            },
+
+            relatedSearchChanged(draft) {
+                clearTimeout(draft.relatedSearchTimer);
+
+                draft.relatedSearchVersion += 1;
+                draft.relateditemid = '';
+                draft.relatedResults = [];
+                draft.relatedSearchError = '';
+                draft.relatedSearchHasMore = false;
+                draft.relatedSearching = false;
+                draft.relatedSearchOpen = true;
+
+                const query = draft.relatedSearch.trim();
+
+                if ([...query].length < 4) {
+                    return;
+                }
+
+                const version = draft.relatedSearchVersion;
+
+                draft.relatedSearchTimer = setTimeout(() => {
+                    this.searchRelatedItems(draft, query, version);
+                }, 350);
+            },
+
+            async searchRelatedItems(draft, query, version) {
+                if (version !== draft.relatedSearchVersion) {
+                    return;
+                }
+
+                draft.relatedSearching = true;
+
+                try {
+                    const url = new URL(
+                        this.searchItemsUrl,
+                        window.location.origin
+                    );
+
+                    url.searchParams.set('q', query);
+
+                    const response = await fetch(url.toString(), {
+                        headers: {
+                            'Accept': 'application/json',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(
+                            await this.responseMessage(response)
+                        );
+                    }
+
+                    const data = await response.json();
+
+                    if (version !== draft.relatedSearchVersion) {
+                        return;
+                    }
+
+                    draft.relatedResults = data.items || [];
+                    draft.relatedSearchHasMore = Boolean(data.hasMore);
+                } catch (error) {
+                    if (version !== draft.relatedSearchVersion) {
+                        return;
+                    }
+
+                    draft.relatedSearchError = error.message
+                        || 'Unable to search knowledge items.';
+                } finally {
+                    if (version === draft.relatedSearchVersion) {
+                        draft.relatedSearching = false;
+                    }
+                }
+            },
+
+            selectRelatedItem(draft, item) {
+                clearTimeout(draft.relatedSearchTimer);
+
+                draft.relatedSearchVersion += 1;
+                draft.relateditemid = String(item.id);
+                draft.relatedSearch = item.label;
+                draft.relatedResults = [];
+                draft.relatedSearchOpen = false;
+                draft.relatedSearching = false;
+                draft.relatedSearchError = '';
+                draft.relatedSearchHasMore = false;
             },
 
             cancelEditRelationship(relationship) {
@@ -546,6 +699,7 @@
                     }
 
                     this.sortRelationships();
+                    this.updateTabCount();
                     this.enableSortable();
                 } catch (error) {
                     this.errorMessage = error.message
@@ -588,6 +742,7 @@
                     );
 
                     this.sortRelationships();
+                    this.updateTabCount();
                 } catch (error) {
                     this.errorMessage = error.message
                         || 'Unable to delete the relationship.';

@@ -459,6 +459,13 @@ class KnowledgeItemController extends Controller
             'tags',
         ]);
 
+        $relationshipCount = KnowledgeRelationship::query()
+            ->where(function ($query) use ($knowledgeItem) {
+                $query->where('fromitemid', $knowledgeItem->id)
+                    ->orWhere('toitemid', $knowledgeItem->id);
+            })
+            ->count();
+
         $domainId = $knowledgeItem->primaryCategory?->domainid;
         $domain = $knowledgeItem->primaryCategory?->domain;
 
@@ -667,31 +674,6 @@ class KnowledgeItemController extends Controller
                 ])
                 ->values();
 
-            /*
-            * Temporary compatibility collection for an existing relationship
-            * target <select>. Replace with autocomplete; do not remove the limit
-            * unless you deliberately accept loading all domain items again.
-            */
-            $relationshipItems = KnowledgeItem::query()
-                ->select([
-                    'knowledgeitems.id',
-                    'knowledgeitems.itemname',
-                    'knowledgeitems.primarycategoryid',
-                ])
-                ->join(
-                    'knowledgecategories',
-                    'knowledgecategories.id',
-                    '=',
-                    'knowledgeitems.primarycategoryid'
-                )
-                ->where('knowledgecategories.domainid', $domainId)
-                ->where('knowledgeitems.id', '<>', $knowledgeItem->id)
-                ->where('knowledgeitems.isactive', 1)
-                ->with('primaryCategory:id,categoryname,parentcategoryid')
-                ->orderBy('knowledgecategories.categoryname')
-                ->orderBy('knowledgeitems.itemname')
-                ->limit(500)
-                ->get();
         }
 
         if ($activeTab === 'bible-references' && $hasBibleTools) {
@@ -768,6 +750,9 @@ class KnowledgeItemController extends Controller
                     ->flatMap->relationshipFacts
                     ->firstWhere('id', $editingRelationshipFactId)
                 : null;
+
+
+            
         }
 
         $itemTypes = KnowledgeItemType::query()
@@ -790,6 +775,7 @@ class KnowledgeItemController extends Controller
             'showAddRelationship' => $showAddRelationship,
             'relationshipItems' => $relationshipItems,
             'displayRelationships' => $displayRelationships,
+            'relationshipCount' => $relationshipCount,
             'allRelationships' => $allRelationships,
             'domainId' => $domainId,
             'categories' => $categories,

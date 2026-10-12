@@ -13,12 +13,13 @@
                 Version
             </label>
 
-            <select
-                id="versionid"
-                x-ref="versionSelect"
-                x-model="{{ $draftReference }}.versionid"
-                class="w-full rounded-md border-gray-300 shadow-sm text-sm"
-            >
+                <select
+                    id="versionid"
+                    x-ref="versionSelect"
+                    x-model="{{ $draftReference }}.versionid"
+                    @change="if ({{ $draftReference }}.versionid) { applyPendingItemReference(); }"
+                    class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                >
                 <option value="">Select</option>
 
                 <template x-for="version in versions" :key="version.id">

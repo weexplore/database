@@ -254,6 +254,7 @@ public function edit(Request $request, Destination $destination)
             ->orderBy('itemname')
             ->orderByRaw('COALESCE(sortorder, 999999)'),
         'sources' => fn ($query) => $query
+            ->with('extracts')
             ->orderByRaw("CASE importstatus
                 WHEN 'pendingreview' THEN 1
                 WHEN 'approved' THEN 2
@@ -303,17 +304,9 @@ public function edit(Request $request, Destination $destination)
         'placeid' => ['nullable', 'integer', 'exists:places,id'],
         'destinationname' => ['required', 'string', 'max:200'],
         'destinationtype' => ['required', 'string', Rule::in($this->typeOptions())],
-        'revisitinterestlevel' => [
-            'nullable',
-            'string',
-            Rule::in(array_keys($this->revisitOptions())),
-        ],
+        'revisitinterestlevel' => ['nullable', 'string', Rule::in(array_keys($this->revisitOptions()))],
         'hasvisited' => ['nullable', 'boolean'],
-        'visitinterestlevel' => [
-            'nullable',
-            'string',
-            Rule::in(array_keys($this->visitInterestOptions())),
-        ],
+        'visitinterestlevel' => ['nullable', 'string', Rule::in(array_keys($this->visitInterestOptions()))],
         'visitinterestnotes' => ['nullable', 'string'],
         'visitedat' => ['nullable', 'date'],
         'overview' => ['nullable', 'string'],
@@ -323,15 +316,16 @@ public function edit(Request $request, Destination $destination)
         'accessnotes' => ['nullable', 'string'],
         'personalcommentary' => ['nullable', 'string'],
         'isfeatured' => ['nullable', 'boolean'],
+        'tab' => ['nullable', 'string', Rule::in([
+            'destination', 'destination-items', 'record-information',
+            'attachments', 'internet-research',
+        ])],
     ]);
-    $visitInterestLevel = $validated['visitinterestlevel'] ?: null;
 
+    $visitInterestLevel = ($validated['visitinterestlevel'] ?? null) ?: null;
     $wishlistAddedAt = $destination->wishlistaddedat;
 
-    if (
-        filled($visitInterestLevel)
-        && blank($wishlistAddedAt)
-    ) {
+    if (filled($visitInterestLevel) && blank($wishlistAddedAt)) {
         $wishlistAddedAt = now();
     }
 
@@ -354,16 +348,21 @@ public function edit(Request $request, Destination $destination)
         'isfeatured' => (bool) ($validated['isfeatured'] ?? false),
     ]);
 
-    $returnTo = $request->input('return_to');
+    $parameters = [
+        'destination' => $destination,
+        'tab' => $validated['tab'] ?? 'destination',
+    ];
 
-    if ($returnTo) {
-        return redirect($returnTo)->with('success', 'Destination updated successfully.');
+    $returnTo = $request->input('return_to');
+    if (is_string($returnTo) && $returnTo !== '') {
+        $parameters['return_to'] = $returnTo;
     }
 
     return redirect()
-        ->route('destinations.edit', $destination)
+        ->route('destinations.edit', $parameters)
         ->with('success', 'Destination updated successfully.');
 }
+
 
     public function destroy(Request $request, Destination $destination)
     {
@@ -402,14 +401,66 @@ public function edit(Request $request, Destination $destination)
         }
     }
     
-    public function suggestFromWeb(Destination $destination, DestinationImportService $service)
-    {
-        $destination->load('place');
-
-        $result = $service->suggestForDestination($destination);
-
-        return response()->json($result);
+    public function suggestFromWeb(
+    Destination $destination,
+    DestinationImportService $service
+) {
+    if (blank(config('services.serpapi.api_key'))) {
+        return response()->json([
+            'message' => 'Internet search is not configured. Check the SerpAPI key.',
+        ], 503);
     }
+
+    $destination->load('place');
+
+    try {
+        $result = $service->suggestForDestination($destination);
+    } catch (\Illuminate\Http\Client\ConnectionException $exception) {
+        report($exception);
+
+        return response()->json([
+            'message' => 'The search provider could not be reached. Please try again later.',
+        ], 502);
+    }
+
+    $destination->load([
+        'sources' => fn ($query) => $query
+            ->with('extracts')
+            ->orderByRaw("CASE importstatus
+                WHEN 'pendingreview' THEN 1
+                WHEN 'approved' THEN 2
+                WHEN 'rejected' THEN 3
+                WHEN 'archived' THEN 4
+                ELSE 5
+            END")
+            ->orderByDesc('retrievedon')
+            ->orderByDesc('createdat'),
+    ]);
+
+    $returnedSourceCount = count($result['sources'] ?? []);
+
+    $sourceListHtml = view(
+        'destinations.partials.source-list',
+        [
+            'destination' => $destination,
+            'sourceReturnTo' => route(
+                'destinations.edit',
+                $destination
+            ),
+            'sourceFormAction' => null,
+            'sourceFormId' => null,
+        ]
+    )->render();
+
+    return response()->json([
+        'message' => $returnedSourceCount > 0
+            ? "Search returned {$returnedSourceCount} usable source records. Existing records are included in that count. Destination notes have not been changed."
+            : 'No usable source records were returned. Existing sources remain displayed. Destination notes have not been changed.',
+        'query' => $result['query'] ?? null,
+        'returned_source_count' => $returnedSourceCount,
+        'source_list_html' => $sourceListHtml,
+    ]);
+}
 
     public function createFromPlace(Request $request, Place $place)
 {
@@ -516,93 +567,302 @@ public static function revisitOptions(): array
 }
 public function storeSource(Request $request, Destination $destination)
 {
+    $validated = $this->validatedNestedSourceData(
+        $request,
+        $destination
+    );
+
+    $destination->sources()->create([
+        ...$validated,
+        'sourcetype' => 'website',
+        'retrievedon' => $validated['retrievedon']
+            ?? now()->toDateString(),
+    ]);
+
+return redirect()
+    ->route(
+        'destinations.edit',
+        $this->destinationResearchRedirectParameters(
+            $request,
+            $destination
+        )
+    )
+    ->with(
+        'success',
+        'Internet source saved successfully.'
+    );
+}
+
+public function updateSource(
+    Request $request,
+    Destination $destination,
+    DestinationSource $source
+) {
+    abort_unless(
+        (int) $source->destinationid === (int) $destination->id,
+        404
+    );
+
+    $validated = $this->validatedNestedSourceData(
+        $request,
+        $destination,
+        $source
+    );
+
+    $source->update($validated);
+
+    return redirect()
+        ->route(
+            'destinations.edit',
+            $this->destinationResearchRedirectParameters(
+                $request,
+                $destination
+            )
+        )
+        ->with(
+            'success',
+            'Internet source saved successfully.'
+        );
+}
+
+public function destroySource(
+    Request $request,
+    Destination $destination,
+    DestinationSource $source
+) {
+    abort_unless(
+        (int) $source->destinationid === (int) $destination->id,
+        404
+    );
+
+    DB::transaction(function () use ($destination, $source) {
+        $lockedSource = DestinationSource::query()
+            ->lockForUpdate()
+            ->findOrFail($source->getKey());
+
+        abort_unless(
+            (int) $lockedSource->destinationid
+                === (int) $destination->id,
+            404
+        );
+
+        $hasAppliedExtracts = $lockedSource->extracts()
+            ->where('extractstatus', 'applied')
+            ->exists();
+
+        $hasResolvedCandidates = $lockedSource->itemCandidates()
+            ->whereIn('candidatestatus', ['created', 'linked'])
+            ->exists();
+
+        if ($hasAppliedExtracts || $hasResolvedCandidates) {
+            throw ValidationException::withMessages([
+                'source' => [
+                    'This source contains applied history and cannot be deleted. Archive it instead.',
+                ],
+            ]);
+        }
+
+        $lockedSource->delete();
+    });
+
+    if ($request->expectsJson()) {
+        return response()->noContent();
+    }
+
+    return redirect()
+    ->route(
+        'destinations.edit',
+        $this->destinationResearchRedirectParameters(
+            $request,
+            $destination
+        )
+    )
+    ->with(
+        'success',
+        'Internet source deleted successfully.'
+    );
+}
+
+protected function validatedNestedSourceData(
+    Request $request,
+    Destination $destination,
+    ?DestinationSource $source = null
+): array {
+    $uniqueUrl = Rule::unique(
+        'destinationsources',
+        'sourceurl'
+    )->where(
+        fn ($query) => $query->where(
+            'destinationid',
+            $destination->getKey()
+        )
+    );
+
+    if ($source) {
+        $uniqueUrl->ignore($source);
+    }
+
     $validated = $request->validate([
-        'sourcetitle' => ['required', 'string', 'max:255'],
-        'sourcepublisher' => ['nullable', 'string', 'max:255'],
-        'sourceurl' => ['nullable', 'url', 'max:1000'],
-        'retrievedon' => ['nullable', 'date'],
-        'importstatus' => ['nullable', Rule::in(['pendingreview', 'approved', 'rejected', 'archived'])],
-        'summary' => ['nullable', 'string'],
-        'notes' => ['nullable', 'string'],
-        'return_to' => ['nullable', 'string'],
+        'sourcetitle' => [
+            'required',
+            'string',
+            'max:255',
+        ],
+        'sourcepublisher' => [
+            'nullable',
+            'string',
+            'max:150',
+        ],
+        'sourceurl' => [
+            'nullable',
+            'url:http,https',
+            'max:255',
+            $uniqueUrl,
+        ],
+        'retrievedon' => [
+            'nullable',
+            'date',
+        ],
+        'importstatus' => [
+            'required',
+            Rule::in(DestinationSource::importStatusValues()),
+        ],
+        'importedsummary' => [
+            'nullable',
+            'string',
+        ],
+        'importednotes' => [
+            'nullable',
+            'string',
+        ],
     ]);
 
-    DestinationSource::create([
-        'destinationid' => $destination->id,
-        'sourcetitle' => trim($validated['sourcetitle']),
-        'sourcepublisher' => $validated['sourcepublisher'] ?? null,
-        'sourceurl' => $validated['sourceurl'] ?? null,
-        'retrievedon' => $validated['retrievedon'] ?? now()->toDateString(),
-        'importstatus' => $validated['importstatus'] ?? 'pendingreview',
-        'summary' => $validated['summary'] ?? null,
-        'notes' => $validated['notes'] ?? null,
-    ]);
+    foreach ([
+        'sourcetitle',
+        'sourcepublisher',
+        'sourceurl',
+        'importedsummary',
+        'importednotes',
+    ] as $field) {
+        $value = trim((string) ($validated[$field] ?? ''));
 
-    $returnTo = $request->input('return_to');
-
-    if ($returnTo) {
-        return redirect($returnTo)->with('success', 'Internet source added successfully.');
+        $validated[$field] = $value !== '' ? $value : null;
     }
 
-    return redirect()
-        ->route('destinations.edit', $destination)
-        ->with('success', 'Internet source added successfully.');
+    $validated['retrievedon'] =
+        $validated['retrievedon'] ?? null;
+
+    if ($validated['sourcetitle'] === null) {
+        throw ValidationException::withMessages([
+            'sourcetitle' => [
+                'A source title is required.',
+            ],
+        ]);
+    }
+
+    if ($validated['importstatus'] === 'approved') {
+        $hasSubmittedContent =
+            $validated['importedsummary'] !== null
+            || $validated['importednotes'] !== null;
+
+        $hasExistingContent = $source
+            && (
+                filled($source->rawcontent)
+                || $source->extracts()->exists()
+                || $source->itemCandidates()->exists()
+            );
+
+        if (!$hasSubmittedContent && !$hasExistingContent) {
+            throw ValidationException::withMessages([
+                'importedsummary' => [
+                    'An approved source must contain imported content, raw content, an extract, or an item candidate.',
+                ],
+            ]);
+        }
+    }
+
+    return $validated;
 }
 
-public function updateSource(Request $request, Destination $destination, DestinationSource $source)
-{
-    if ((int) $source->destinationid !== (int) $destination->id) {
-        abort(404);
+protected function destinationResearchRedirectParameters(
+    Request $request,
+    Destination $destination
+): array {
+    $parameters = [
+        'destination' => $destination,
+        'tab' => 'internet-research',
+    ];
+
+    $candidate = $request->input('return_to');
+
+    $expected = parse_url(
+        route('destinations.edit', $destination)
+    );
+
+    if (!is_string($candidate)) {
+        return $parameters;
     }
 
-    $validated = $request->validate([
-        'sourcetitle' => ['required', 'string', 'max:255'],
-        'sourcepublisher' => ['nullable', 'string', 'max:255'],
-        'sourceurl' => ['nullable', 'url', 'max:1000'],
-        'retrievedon' => ['nullable', 'date'],
-        'importstatus' => ['nullable', Rule::in(['pendingreview', 'approved', 'rejected', 'archived'])],
-        'summary' => ['nullable', 'string'],
-        'notes' => ['nullable', 'string'],
-        'return_to' => ['nullable', 'string'],
-    ]);
+    $parts = parse_url($candidate);
 
-    $source->update([
-        'sourcetitle' => trim($validated['sourcetitle']),
-        'sourcepublisher' => $validated['sourcepublisher'] ?? null,
-        'sourceurl' => $validated['sourceurl'] ?? null,
-        'retrievedon' => $validated['retrievedon'] ?? null,
-        'importstatus' => $validated['importstatus'] ?? 'pendingreview',
-        'summary' => $validated['summary'] ?? null,
-        'notes' => $validated['notes'] ?? null,
-    ]);
-
-    $returnTo = $request->input('return_to');
-
-    if ($returnTo) {
-        return redirect($returnTo)->with('success', 'Internet source updated successfully.');
+    if (!is_array($parts) || !is_array($expected)) {
+        return $parameters;
     }
 
-    return redirect()
-        ->route('destinations.edit', $destination)
-        ->with('success', 'Internet source updated successfully.');
+    $port = fn (array $url): int => (int) (
+        $url['port']
+        ?? (($url['scheme'] ?? '') === 'https' ? 443 : 80)
+    );
+
+    if (
+        isset($parts['user'])
+        || isset($parts['pass'])
+        || ($parts['scheme'] ?? '') !== ($expected['scheme'] ?? '')
+        || strtolower($parts['host'] ?? '')
+            !== strtolower($expected['host'] ?? '')
+        || $port($parts) !== $port($expected)
+        || ($parts['path'] ?? '') !== ($expected['path'] ?? '')
+    ) {
+        return $parameters;
+    }
+
+    parse_str($parts['query'] ?? '', $query);
+
+    $backUrl = $query['return_to'] ?? null;
+
+    if (
+        !is_string($backUrl)
+        || $backUrl === ''
+        || str_contains($backUrl, '\\')
+        || preg_match('/[\x00-\x20\x7F]/', $backUrl)
+    ) {
+        return $parameters;
+    }
+
+    if (
+        str_starts_with($backUrl, '/')
+        && !str_starts_with($backUrl, '//')
+    ) {
+        $parameters['return_to'] = $backUrl;
+
+        return $parameters;
+    }
+
+    $back = parse_url($backUrl);
+
+    if (
+        is_array($back)
+        && !isset($back['user'])
+        && !isset($back['pass'])
+        && ($back['scheme'] ?? '') === ($expected['scheme'] ?? '')
+        && strtolower($back['host'] ?? '')
+            === strtolower($expected['host'] ?? '')
+        && $port($back) === $port($expected)
+    ) {
+        $parameters['return_to'] = $backUrl;
+    }
+
+    return $parameters;
 }
 
-public function destroySource(Request $request, Destination $destination, DestinationSource $source)
-{
-    if ((int) $source->destinationid !== (int) $destination->id) {
-        abort(404);
-    }
-
-    $source->delete();
-
-    $returnTo = $request->input('return_to');
-
-    if ($returnTo) {
-        return redirect($returnTo)->with('success', 'Internet source deleted successfully.');
-    }
-
-    return redirect()
-        ->route('destinations.edit', $destination)
-        ->with('success', 'Internet source deleted successfully.');
-}
 }
