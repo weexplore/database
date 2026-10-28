@@ -534,6 +534,27 @@ class KnowledgeItemController extends Controller
         $editingPersonFact = null;
         $editingRelationshipFact = null;
 
+        /*
+        * Places are required by the Details form and the Family History forms.
+        * Include an existing linked place even if it has since become inactive.
+        */
+        if (
+            $activeTab === 'details'
+            || ($activeTab === 'family-history' && $hasFamilyHistoryTools)
+        ) {
+            $places = Place::query()
+                ->where(function ($query) use ($knowledgeItem) {
+                    $query->where('isactive', true);
+
+                    if ($knowledgeItem->placeid !== null) {
+                        $query->orWhere('id', $knowledgeItem->placeid);
+                    }
+                })
+                ->orderBy('placename')
+                ->orderBy('locality')
+                ->get(['id', 'placename', 'locality', 'placetype']);
+        }
+
         /* Details: only data needed by the general edit form. */
         if ($activeTab === 'details') {
             $categories = KnowledgeCategory::query()

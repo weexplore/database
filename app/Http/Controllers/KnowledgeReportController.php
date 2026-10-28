@@ -305,12 +305,12 @@ class KnowledgeReportController extends Controller
                         fn ($query) => $query->active()
                     )
                     ->orderBy('sortorder')
-                    ->orderByDesc('reviewdate')
+                    ->orderBy('reviewdate')
                     ->orderByDesc('id');
             },
 
             'knowledgeItems.sources' => function ($query) {
-                $query->orderByDesc('retrievedon')
+                $query->orderBy('retrievedon')
                     ->orderByDesc('id');
             },
 
@@ -326,7 +326,7 @@ class KnowledgeReportController extends Controller
                         $activeOnly,
                         fn ($query) => $query->active()
                     )
-                    ->orderByDesc('reviewdate')
+                    ->orderBy('reviewdate')
                     ->orderByDesc('id');
             },
 
@@ -383,13 +383,13 @@ class KnowledgeReportController extends Controller
 
             'knowledgeItems.instrument.priceObservations'
                 => function ($query) {
-                    $query->orderByDesc('observedon')
+                    $query->orderBy('observedon')
                         ->orderByDesc('id');
                 },
 
             'knowledgeItems.instrument.corporateActions'
                 => function ($query) {
-                    $query->orderByDesc('actiondate')
+                    $query->orderBy('actiondate')
                         ->orderByDesc('id');
                 },
 
@@ -397,7 +397,7 @@ class KnowledgeReportController extends Controller
 
             'knowledgeItems.instrument.transactions'
                 => function ($query) {
-                    $query->orderByDesc('transactiondate')
+                    $query->orderBy('transactiondate')
                         ->orderByDesc('id');
                 },
 
@@ -508,17 +508,17 @@ public function knowledgeItemReferenceBook(
 
             'notes' => function ($query) {
                 $query->orderBy('sortorder')
-                    ->orderByDesc('reviewdate')
+                    ->orderBy('reviewdate')
                     ->orderByDesc('id');
             },
 
             'sources' => function ($query) {
-                $query->orderByDesc('retrievedon')
+                $query->orderBy('retrievedon')
                     ->orderByDesc('id');
             },
 
             'reviewLogs' => function ($query) {
-                $query->orderByDesc('reviewdate')
+                $query->orderBy('reviewdate')
                     ->orderByDesc('id');
             },
 
@@ -566,18 +566,18 @@ public function knowledgeItemReferenceBook(
             },
 
             'instrument.priceObservations' => function ($query) {
-                $query->orderByDesc('observedon')
+                $query->orderBy('observedon')
                     ->orderByDesc('id');
             },
 
             'instrument.corporateActions' => function ($query) {
-                $query->orderByDesc('actiondate')
+                $query->orderBy('actiondate')
                     ->orderByDesc('id');
             },
             'instrument.corporateActions.source',
 
             'instrument.transactions' => function ($query) {
-                $query->orderByDesc('transactiondate')
+                $query->orderBy('transactiondate')
                     ->orderByDesc('id');
             },
             'instrument.transactions.portfolio',
@@ -881,7 +881,7 @@ protected function prepareKnowledgeItemForReport($item)
                     ->filter(fn ($note) => filled($note->notecontent))
                     ->sortBy([
                         ['sortorder', 'asc'],
-                        ['reviewdate', 'desc'],
+                        ['reviewdate', 'asc'],
                         ['id', 'asc'],
                     ])
                     ->values();
@@ -938,12 +938,14 @@ protected function prepareKnowledgeItemForReport($item)
                             continue;
                         }
 
+/*
                         $prefix = $reviewLog->reviewdate
                             ? $reviewLog->reviewdate->format('d M Y') . ': '
                             : '';
-
+*/
                         $section->addListItem(
-                            $prefix . $reviewText,
+                            /* $prefix . $reviewText, */
+                            $reviewText,
                             0,
                             [
                                 'name' => 'Arial',
@@ -992,11 +994,11 @@ protected function prepareKnowledgeItemForReport($item)
                 'primaryCategory.parentCategory',
                 'notes' => function ($query) {
                     $query->orderBy('sortorder')
-                        ->orderByDesc('reviewdate')
+                        ->orderBy('reviewdate')
                         ->orderByDesc('id');
                 },
                 'reviewLogs' => function ($query) {
-                    $query->orderByDesc('reviewdate')
+                    $query->orderBy('reviewdate')
                         ->orderByDesc('id');
                 },
             ])

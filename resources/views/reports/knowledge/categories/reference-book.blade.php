@@ -674,11 +674,12 @@
                                                                         Stance: {{ ucfirst($note->stance) }}
                                                                     </span>
                                                                 @endif
-
-                                                                @if($note->reviewdate)
-                                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                                                        Review: {{ $note->reviewdate->format('d M Y') }}
-                                                                    </span>
+                                                                @if (! $agendaMode)
+                                                                    @if($note->reviewdate)
+                                                                        <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                                            Review: {{ $note->reviewdate->format('d M Y') }}
+                                                                        </span>
+                                                                    @endif
                                                                 @endif
 
                                                                 @if($note->isprivate)
@@ -828,10 +829,12 @@
                                                 @foreach($knowledgeItem->reviewLogs as $log)
                                                     <div class="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
                                                         <div class="flex flex-wrap gap-2 text-xs mb-2">
-                                                            @if($log->reviewdate)
-                                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                                                    {{ $log->reviewdate->format('d M Y') }}
-                                                                </span>
+                                                            @if ($agendaMode)
+                                                                @if($log->reviewdate)
+                                                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                                        {{ $log->reviewdate->format('d M Y') }}
+                                                                    </span>
+                                                                @endif
                                                             @endif
 
                                                             @if($log->reviewtype)
